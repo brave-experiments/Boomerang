@@ -1,4 +1,4 @@
-# ZK-ary
+# CDLS (Cuddles): Committed Discrete Logarithms with Soundness
 
 Run either:
 
