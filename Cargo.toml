@@ -6,5 +6,10 @@ authors = ["Sofia Celi <cherenkov@riseup.net>"] # add yourself!
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+members = [
+        "t256"
+]
+
+
 [dependencies]
 merlin = "3.0.0"
