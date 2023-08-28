@@ -7,9 +7,38 @@ authors = ["Sofia Celi <cherenkov@riseup.net>"] # add yourself!
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 members = [
-        "t256"
+        "t256",
+        "t384",
 ]
 
+resolver = "2"
 
 [dependencies]
 merlin = "3.0.0"
+t256 = { path = "src/t256" }
+t384 = { path = "src/t384" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+incremental = true
+panic = 'abort'
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = "thin"
+incremental = true
+debug-assertions = false
+
+[profile.dev]
+opt-level = 0
+panic = 'abort'
+
+[profile.test]
+opt-level = 3
+lto = "thin"
+incremental = true
+debug-assertions = true
+debug = true
