@@ -1,0 +1,53 @@
+use ark_ec::{
+    models::CurveConfig,
+    short_weierstrass::{self as sw, SWCurveConfig},
+};
+
+use ark_ff::{Field, MontFp};
+
+use crate::{fq::Fq, fr::Fr};
+
+#[cfg(test)]
+mod tests;
+
+pub type Affine = sw::Affine<Config>;
+pub type Projective = sw::Projective<Config>;
+
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
+pub struct Config;
+
+impl CurveConfig for Config {
+    type BaseField = Fq;
+    type ScalarField = Fr;
+
+    // We're dealing with prime order curves.
+    
+    /// COFACTOR = 1
+    const COFACTOR: &'static [u64] = &[0x1];
+
+    /// COFACTOR_INV = COFACTOR^{-1} mod r = 1
+    const COFACTOR_INV: Fr = Fr::ONE;
+}
+
+impl SWCurveConfig for Config {
+
+    /// COEFF_A = a4 in the docs, which is a very large string.
+    const COEFF_A : Fq = MontFp!("20026862879313379863654166607105301622642181700373777070134388010349273891892149760539610171757683236290527048057018");
+            
+    /// COEFF_B = a6 in the docs, which is a very large string.
+    const COEFF_B : Fq = MontFp!("23911602450661234612404882548336064535929415695327240026670179346429452149970125567156571346957298429887433518292555");
+        
+    /// GENERATOR = (G_GENERATOR_X, G_GENERATOR_Y)
+    const GENERATOR : Affine = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);    
+}
+
+/// G_GENERATOR_X = 18624522857557105898096886988538082729570911703609840597859472552101056293848159295245991160598223034723589185598549
+pub const G_GENERATOR_X : Fq = MontFp!("18624522857557105898096886988538082729570911703609840597859472552101056293848159295245991160598223034723589185598549");
+
+/// G_GENERATOR_Y = 16812635070577401701780555151784939373443796894181112771346367209071849423738982329774175396215506669421943316852710
+pub const G_GENERATOR_Y : Fq = MontFp!("16812635070577401701780555151784939373443796894181112771346367209071849423738982329774175396215506669421943316852710");
+
+
+
+
+
