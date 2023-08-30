@@ -3,6 +3,8 @@ use ark_ec::{
     short_weierstrass::{self as sw, SWCurveConfig},
 };
 
+use pedersen::PedersenConfig;
+
 use ark_ff::{Field, MontFp};
 
 use crate::{fq::Fq, fr::Fr};
@@ -41,13 +43,26 @@ impl SWCurveConfig for Config {
     const GENERATOR : Affine = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);    
 }
 
+impl PedersenConfig for Config {
+    /// GENERATOR2 = (G_GENERATOR_X2, G_GENERATOR_Y2)
+    const GENERATOR2 : Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
+}
+
+
+
+
 /// G_GENERATOR_X = 3
 pub const G_GENERATOR_X : Fq = MontFp!("3");
 
 /// G_GENERATOR_Y = 40902200210088653215032584946694356296222563095503428277299570638400093548589
 pub const G_GENERATOR_Y : Fq = MontFp!("40902200210088653215032584946694356296222563095503428277299570638400093548589");
 
+/// G_GENERATOR_X2 = 5
+pub const G_GENERATOR_X2 : Fq = MontFp!("5");
 
+/// G_GENERATOR_Y2 = 28281484859698624956664858566852274012236038028101624500031073655422126514829
+
+pub const G_GENERATOR_Y2 : Fq = MontFp!("28281484859698624956664858566852274012236038028101624500031073655422126514829");
 
 
 
