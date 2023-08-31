@@ -66,17 +66,20 @@ def find_order(characteristic: int):
     :param characteristic: the desired order of the curve that is found.
     :return the time taken (in seconds) to find the curve.
     """
-    
+    print("Finding order: ")
+
     start = timer()
     E = find_curve_of_order(characteristic)
     end = timer()
     if E.order() == characteristic:
         print(E)
+        print("Discriminant: %x" % E.discriminant())
+        print("J invariant: %x" % E.j_invariant())
     else:
         print("Error: could not find curve of characteristic %d" % characteristic)
 
     return end - start
-    
+
 
 def main():
     """
