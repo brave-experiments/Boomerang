@@ -3,8 +3,22 @@
 # Input: A prime N
 # Output: A field F_t, and an elliptic curve E such that the order of E(F_t) is N.
 from itertools import combinations
+from timeit import default_timer as timer
 
-SECP256K1_CURVE_ORDER = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+# The characteristic of the base fields for each curve. E.g if E if a curve over F_p, then the value below is p.
+
+# This is the 256-bit NIST Koblitz curve.
+SECP256K1_FIELD_CHARACTERISTIC = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f
+
+# This is also known as P-256
+SECP256R1_FIELD_CHARACTERISTIC = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
+
+# This is also known as P-384
+SECP384R1_FIELD_CHARACTERISTIC = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff
+
+# This is also known as P-521
+SECP521R1_FIELD_CHARACTERISTIC = 0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+
 
 def cornacchia(d, m):
 	Q = gp.Qfb(1,0,d)
@@ -42,7 +56,40 @@ def find_curve_of_order(n):
 					else:
 						return E.quadratic_twist()
 		r += 1
-		
-E = find_curve_of_order(SECP256K1_CURVE_ORDER)
-if E.order() == SECP256K1_CURVE_ORDER:
-	print(E)
+
+
+
+def find_order(characteristic: int):
+    """
+    find_order. Helper function for finding a curve of order `characteristic`.
+
+    :param characteristic: the desired order of the curve that is found.
+    :return the time taken (in seconds) to find the curve.
+    """
+    
+    start = timer()
+    E = find_curve_of_order(characteristic)
+    end = timer()
+    if E.order == characteristic:
+        print(E)
+    else:
+        print("Error: could not find curve of characteristic %d" % characteristic)
+
+    return end - start
+    
+
+def main():
+    """
+    main. Finds a correctly ordered curve for each listed field characteristic and prints out the time taken (in seconds)
+    for each search.
+    """
+    k256_time = find_order(SECP256K1_FIELD_CHARACTERISTIC)
+    p256_time = find_order(SECP256R1_FIELD_CHARACTERISTIC)
+    p384_time = find_order(SECP384R1_FIELD_CHARACTERISTIC)
+    p521_time = find_order(SECP521_FIELD_CHARACTERISTIC)
+
+    print("Time for K256(s): %f, P256(s): %f, P384(s): %f, P521(s): %f" % k256_time, p256_time, p384_time, p521_time)
+
+if __name__ == "__main__":
+    main()
+
