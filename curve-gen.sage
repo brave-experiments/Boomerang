@@ -29,7 +29,7 @@ def cornacchia(d, m):
 
 def find_curve_of_order(n):
 	r = 0
-	logn = int(log(n))
+	logn = int(log(n,2).n())
 	while True:
 		S = [ legendre_symbol(-1, p)*p for p in prime_range(max(3,r*logn), (r+1)*logn) if legendre_symbol(n, p) == 1]
 		for i in range(1, len(S)):
@@ -70,7 +70,7 @@ def find_order(characteristic: int):
     start = timer()
     E = find_curve_of_order(characteristic)
     end = timer()
-    if E.order == characteristic:
+    if E.order() == characteristic:
         print(E)
     else:
         print("Error: could not find curve of characteristic %d" % characteristic)
@@ -86,9 +86,9 @@ def main():
     k256_time = find_order(SECP256K1_FIELD_CHARACTERISTIC)
     p256_time = find_order(SECP256R1_FIELD_CHARACTERISTIC)
     p384_time = find_order(SECP384R1_FIELD_CHARACTERISTIC)
-    p521_time = find_order(SECP521_FIELD_CHARACTERISTIC)
+    p521_time = find_order(SECP521R1_FIELD_CHARACTERISTIC)
 
-    print("Time for K256(s): %f, P256(s): %f, P384(s): %f, P521(s): %f" % k256_time, p256_time, p384_time, p521_time)
+    print("Time for K256(s): %f, P256(s): %f, P384(s): %f, P521(s): %f" % (k256_time, p256_time, p384_time, p521_time))
 
 if __name__ == "__main__":
     main()
