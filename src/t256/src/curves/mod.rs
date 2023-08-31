@@ -3,7 +3,7 @@ use ark_ec::{
     short_weierstrass::{self as sw, SWCurveConfig},
 };
 
-use pedersen::PedersenConfig;
+use pedersen::pedersen_config::PedersenConfig;
 
 use ark_ff::{Field, MontFp};
 
