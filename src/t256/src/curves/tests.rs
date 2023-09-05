@@ -3,7 +3,7 @@ use ark_algebra_test_templates::*;
 use ark_std::{UniformRand};
 use ark_ec::{CurveConfig};
 
-use pedersen::{pedersen_config::PedersenComm, equality_protocol::EqualityProof as EP, opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP};
+use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig, equality_protocol::EqualityProof as EP, opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP};
 use rand_core::OsRng;
 use merlin::Transcript;
 
@@ -16,6 +16,14 @@ fn test_pedersen() {
     // Test that committing to a random point works.
     let a = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
     let c : PC = PC::new(a, &mut OsRng);
+    assert!(c.comm.is_on_curve());
+}
+
+#[test]
+fn test_pedersen_from_ocurve() {
+    // Test that committing a random point from P256 works.
+    let a = <<Config as PedersenConfig>::OCurve as CurveConfig>::ScalarField::rand(&mut OsRng);
+    let c : PC = PC::new_from_ocurve(a, &mut OsRng);
     assert!(c.comm.is_on_curve());
 }
 

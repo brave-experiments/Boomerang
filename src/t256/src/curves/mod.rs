@@ -3,11 +3,14 @@ use ark_ec::{
     short_weierstrass::{self as sw, SWCurveConfig},
 };
 
+
 use pedersen::pedersen_config::PedersenConfig;
 
 use ark_ff::{Field, MontFp};
 
 use crate::{fq::Fq, fr::Fr};
+
+use ark_secp256r1::Config as secp256r1conf;
 
 #[cfg(test)]
 mod tests;
@@ -44,6 +47,9 @@ impl SWCurveConfig for Config {
 }
 
 impl PedersenConfig for Config {
+    type OCurve = secp256r1conf;
+        
+    
     /// GENERATOR2 = (G_GENERATOR_X2, G_GENERATOR_Y2)
     const GENERATOR2 : Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
 }
