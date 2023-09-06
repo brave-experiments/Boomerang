@@ -48,6 +48,21 @@ fn test_pedersen_add() {
     let c_act : sw::Affine<Config> = (c1.comm.into_group() + c2.comm).into();
     assert!(c3.comm == c_act);
     assert!(c3.r == c1.r + c2.r);   
+
+    // Same if by reference.
+    let c3r = c1 + &c2;
+    assert!(c3r.comm == c_act);
+    assert!(c3r.r == c1.r + c2.r);
+
+    // Or if by reference the other way.
+    let c3rv = &c1 + c2;
+    assert!(c3rv.comm == c_act);
+    assert!(c3rv.r == c1.r + c2.r);
+
+    // Or even if both.
+    let c3rr = &c1 + &c2;
+    assert!(c3rr.comm == c_act);
+    assert!(c3rr.r == c1.r + c2.r);    
 }
 
 #[test]
@@ -65,7 +80,24 @@ fn test_pedersen_sub() {
 
     let c_act : sw::Affine<Config> = (c1.comm.into_group() - c2.comm).into();
     assert!(c3.comm == c_act);
-    assert!(c3.r == c1.r - c2.r);   
+    assert!(c3.r == c1.r - c2.r);
+
+
+    // Same if by reference.
+    let c3r = c1 - &c2;
+    assert!(c3r.comm == c_act);
+    assert!(c3r.r == c1.r - c2.r);
+
+    // Or if by reference the other way.
+    let c3rv = &c1 - c2;
+    assert!(c3rv.comm == c_act);
+    assert!(c3rv.r == c1.r - c2.r);
+
+    // Or even if both.
+    let c3rr = &c1 - &c2;
+    assert!(c3rr.comm == c_act);
+    assert!(c3rr.r == c1.r - c2.r);    
+    
 }
 
 #[test]

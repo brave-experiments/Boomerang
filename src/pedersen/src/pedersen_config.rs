@@ -37,6 +37,30 @@ impl<P: PedersenConfig> ops::Add<PedersenComm<P>> for PedersenComm<P> {
     }
 }
 
+impl<P: PedersenConfig> ops::Add<&PedersenComm<P>> for &PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn add(self, rhs: &PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() + rhs.comm).into(), r: self.r + rhs.r }
+    }
+}
+
+impl<P: PedersenConfig> ops::Add<&PedersenComm<P>> for PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn add(self, rhs: &PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() + rhs.comm).into(), r: self.r + rhs.r }
+    }
+}
+
+impl<P: PedersenConfig> ops::Add<PedersenComm<P>> for &PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn add(self, rhs: PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() + rhs.comm).into(), r: self.r + rhs.r }
+    }
+}
+
 impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for PedersenComm<P> {
     type Output = PedersenComm<P>;
 
@@ -44,6 +68,32 @@ impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for PedersenComm<P> {
         Self::Output { comm: (self.comm.into_group() - rhs.comm).into(), r: self.r - rhs.r }
     }
 }
+
+impl<P: PedersenConfig> ops::Sub<&PedersenComm<P>> for &PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn sub(self, rhs: &PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() - rhs.comm).into(), r: self.r - rhs.r }
+    }
+}
+
+impl<P: PedersenConfig> ops::Sub<&PedersenComm<P>> for PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn sub(self, rhs: &PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() - rhs.comm).into(), r: self.r - rhs.r }
+    }
+}
+
+impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for &PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn sub(self, rhs: PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() - rhs.comm).into(), r: self.r - rhs.r }
+    }
+}
+
+
 
 impl<P: PedersenConfig> PedersenComm<P> {    
     pub fn new<T: RngCore + CryptoRng>(x: <P as CurveConfig>::ScalarField, rng: &mut T) -> Self {
