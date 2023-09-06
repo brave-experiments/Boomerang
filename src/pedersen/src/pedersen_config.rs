@@ -6,8 +6,6 @@ use ark_ec::{
 
 use ark_std::{UniformRand, ops::Mul};
 use rand::{RngCore, CryptoRng};
-use num_bigint;
-
 
 pub trait PedersenConfig : SWCurveConfig {
     /// Second generator that's used in Pedersen commitments.
@@ -16,6 +14,11 @@ pub trait PedersenConfig : SWCurveConfig {
     /// The curve type that maps to this PedersenConfig.
     /// For example, for T256 it would be P256.
     type OCurve : CurveConfig;
+
+    fn from_oc(x: <Self::OCurve as CurveConfig>::ScalarField) -> <Self as CurveConfig>::ScalarField {
+        let x_bt : num_bigint::BigUint = x.into();
+        <Self as CurveConfig>::ScalarField::from(x_bt)
+    }    
 }
 
 pub struct PedersenComm<P: PedersenConfig> {
@@ -29,19 +32,6 @@ impl<P: PedersenConfig> PedersenComm<P> {
         let x_r = <P as CurveConfig>::ScalarField::rand(rng);
         let x_p = <P as SWCurveConfig>::GENERATOR.mul(x) + P::GENERATOR2.mul(x_r);
         Self {comm: x_p.into_affine(), r: x_r }
-    }
-
-    pub fn new_from_ocurve<T: RngCore + CryptoRng>(x : <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField, rng: &mut T) -> Self {
-        let x_r = <P as CurveConfig>::ScalarField::rand(rng);
-
-        // To make this work for types that don't necessarily map 1:1, we need to convert x into a
-        // big_uint first and then into the type in our field. This is annoying, but hopefully not too
-        // painful long term. 
-        let x_bt : num_bigint::BigUint = x.into();
-        let x_c = <P as CurveConfig>::ScalarField::from(x_bt);
-        
-        let x_p = <P as SWCurveConfig>::GENERATOR.mul(x_c) + P::GENERATOR2.mul(x_r);
-        Self { comm: x_p.into_affine(), r: x_r }
-    }
+    }    
 }
 

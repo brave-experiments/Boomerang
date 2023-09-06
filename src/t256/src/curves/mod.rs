@@ -54,9 +54,6 @@ impl PedersenConfig for Config {
     const GENERATOR2 : Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
 }
 
-
-
-
 /// G_GENERATOR_X = 3
 pub const G_GENERATOR_X : Fq = MontFp!("3");
 
