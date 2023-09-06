@@ -6,15 +6,18 @@ use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw},
     AffineRepr,
+    CurveGroup,
 };
 
-use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig, equality_protocol::EqualityProof as EP, opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP};
+use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig, equality_protocol::EqualityProof as EP, opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP, ec_point_add_protocol::ECPointAddProof as EPAP};
 use rand_core::OsRng;
 use merlin::Transcript;
+use ark_secp256r1::Config as secp256r1conf;
 
 test_group!(g1; Projective; sw);
 
 type PC = PedersenComm<Config>;
+type OtherProjectiveType = sw::Projective<secp256r1conf>;
 
 #[test]
 fn test_pedersen() {
@@ -245,7 +248,7 @@ fn test_pedersen_mul() {
     let c3 : PC = PC::new(z, &mut OsRng);
 
     let mut transcript = Transcript::new(label);
-    let proof = MP::create(&mut transcript, &mut OsRng, a, b, &c1, &c2, &c3);    
+    let proof = MP::create(&mut transcript, &mut OsRng, &a, &b, &c1, &c2, &c3);    
     assert!(proof.alpha.is_on_curve());
     assert!(proof.beta.is_on_curve());
     assert!(proof.delta.is_on_curve());
@@ -286,7 +289,7 @@ fn test_pedersen_mul_nist() {
     let c3 : PC = PC::new(z, &mut OsRng);
 
     let mut transcript = Transcript::new(label);
-    let proof = MP::create(&mut transcript, &mut OsRng, a, b, &c1, &c2, &c3);    
+    let proof = MP::create(&mut transcript, &mut OsRng, &a, &b, &c1, &c2, &c3);    
     assert!(proof.alpha.is_on_curve());
     assert!(proof.beta.is_on_curve());
     assert!(proof.delta.is_on_curve());
@@ -307,4 +310,51 @@ fn test_pedersen_mul_nist() {
     let c4 : PC = PC::new(d, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
     assert!(!proof.verify(&mut transcript_f, &c1, &c2, &c4));    
+}
+
+
+#[test]
+fn test_pedersen_point_add() {
+    // Test that the point addition proof goes through.
+    let label = b"PedersenECPointAdd";
+    let a     = OtherProjectiveType::rand(&mut OsRng).into_affine();
+    let mut b     = OtherProjectiveType::rand(&mut OsRng).into_affine();
+
+    loop {
+        if b != a { break; }
+        b = OtherProjectiveType::rand(&mut OsRng).into_affine();
+    }
+    
+    // Note: this needs to be forced into affine too, or the underlying
+    // proof system breaks (this seems to be an ark_ff thing).
+    let t = (a + b).into_affine();
+
+    let mut transcript = Transcript::new(label);
+    let proof : EPAP<Config> = EPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
+
+    assert!(proof.c1.comm.is_on_curve());
+    assert!(proof.c2.comm.is_on_curve());
+    assert!(proof.c3.comm.is_on_curve());
+    assert!(proof.c4.comm.is_on_curve());
+    assert!(proof.c5.comm.is_on_curve());
+    assert!(proof.c6.comm.is_on_curve());
+    assert!(proof.c7.comm.is_on_curve());
+
+    // Now check that it verifies.
+    let mut transcript_v = Transcript::new(label);
+    assert!(proof.verify(&mut transcript_v));
+
+    // Alternatively, generate a false proof and watch it fail.
+    let mut tf = OtherProjectiveType::rand(&mut OsRng).into_affine();
+    loop {
+        if tf != t { break; }
+        tf = OtherProjectiveType::rand(&mut OsRng).into_affine();
+    }
+
+    // Now show it fails.
+    let mut transcript_f1 = Transcript::new(label);
+    let proof_f : EPAP<Config> = EPAP::create(&mut transcript_f1, &mut OsRng, a.x, a.y, b.x, b.y, tf.x, tf.y);
+
+    let mut transcript_f2 = Transcript::new(label);
+    assert!(!proof_f.verify(&mut transcript_f2));
 }

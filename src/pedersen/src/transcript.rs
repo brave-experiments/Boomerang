@@ -87,3 +87,31 @@ impl MulTranscript for Transcript {
     }
 }
 
+pub trait ECPointAdditionTranscript {
+
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static[u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static[u8]) -> [u8; 64];
+}
+
+impl ECPointAdditionTranscript for Transcript {
+
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"ec-point-addition-proof");        
+    }
+
+    fn append_point(&mut self, label: &'static[u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static[u8]) -> [u8; 64] {
+        let mut buf = [0u8; 64];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}

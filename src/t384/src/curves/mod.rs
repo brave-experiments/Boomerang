@@ -5,11 +5,63 @@ use ark_ec::{
 
 use pedersen::pedersen_config::PedersenConfig;
 
-use ark_ff::{Field, MontFp};
+use ark_ff::{Field, MontFp, MontConfig};
+use ark_ff::{BigInt};
 
-use crate::{fq::Fq, fr::Fr};
+use crate::{fq::Fq, fr::Fr, fr::FrConfig};
 
 use ark_secp384r1::Config as secp384r1conf;
+use ark_secp384r1::Fq as secp384r1Fq;
+use ark_secp384r1::FqConfig as secp384FqConfig;
+type OtherBaseField = <secp384r1conf as CurveConfig>::BaseField;
+
+// Define the various conversion structs.
+struct FrStruct(Fr);
+impl FrStruct {
+    pub fn new(x: Fr) -> FrStruct {
+        FrStruct(x)
+    }
+
+    pub fn as_fr(&self) -> Fr {
+        self.0
+    }
+}
+
+impl From<BigInt<6>> for FrStruct {
+    fn from(x: BigInt<6>) -> Self {
+        let x_t = FrConfig::from_bigint(x).unwrap();
+        FrStruct::new(x_t)
+    }
+}
+
+impl Into<BigInt<6>> for FrStruct {
+    fn into(self) -> BigInt<6> {
+        FrConfig::into_bigint(self.0)
+    }
+}
+
+struct Secp384r1base(OtherBaseField);
+
+impl Secp384r1base {
+
+    pub fn new(x: secp384r1Fq) -> Secp384r1base {
+        Secp384r1base(x)
+    }
+}
+
+
+impl Into<BigInt<6>> for Secp384r1base {
+    fn into(self) -> BigInt<6> {
+        secp384FqConfig::into_bigint(self.0)
+    }
+}
+
+impl From<BigInt<6>> for Secp384r1base {
+    fn from(x: BigInt<6>) -> Self {
+        let x_t = secp384FqConfig::from_bigint(x).unwrap();
+        Secp384r1base::new(x_t)    
+    }
+}
 
 #[cfg(test)]
 mod tests;
@@ -50,6 +102,12 @@ impl PedersenConfig for Config {
     
     /// GENERATOR2 = (G_GENERATOR_X2, G_GENERATOR_Y2)
     const GENERATOR2: Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
+
+    fn from_ob_to_sf(x: OtherBaseField) -> <Config as CurveConfig>::ScalarField {
+        let x_t : BigInt<6> = x.into();
+        let x_v : FrStruct = FrStruct::from(x_t);
+        x_v.as_fr()
+    }
 }
 
 

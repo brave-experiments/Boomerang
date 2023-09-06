@@ -68,8 +68,8 @@ impl <P: PedersenConfig> MulProof<P> {
     
     pub fn create<T: RngCore + CryptoRng>(transcript: &mut Transcript,
                                           rng: &mut T,
-                                          x: <P as CurveConfig>::ScalarField,
-                                          y: <P as CurveConfig>::ScalarField,
+                                          x:  &<P as CurveConfig>::ScalarField,
+                                          y:  &<P as CurveConfig>::ScalarField,
                                           c1: &PedersenComm<P>,
                                           c2: &PedersenComm<P>,
                                           c3: &PedersenComm<P>) -> Self {
