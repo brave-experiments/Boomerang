@@ -1,7 +1,12 @@
 use crate::{Projective, Config};
 use ark_algebra_test_templates::*;
 use ark_std::{UniformRand};
-use ark_ec::{CurveConfig};
+
+use ark_ec::{
+    models::CurveConfig,
+    short_weierstrass::{self as sw},
+    AffineRepr,
+};
 
 use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig, equality_protocol::EqualityProof as EP, opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP};
 use rand_core::OsRng;
@@ -25,6 +30,42 @@ fn test_pedersen_convert() {
     let a = <<Config as PedersenConfig>::OCurve as CurveConfig>::ScalarField::rand(&mut OsRng);
     let c : PC = PC::new(<Config as PedersenConfig>::from_oc(a), &mut OsRng);
     assert!(c.comm.is_on_curve());
+}
+
+#[test]
+fn test_pedersen_add() {
+    // Test that adding two random pedersen commitments works.
+    let a = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
+    let c1 : PC = PC::new(a, &mut OsRng);
+    assert!(c1.comm.is_on_curve());
+
+    let b = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
+    let c2 : PC = PC::new(b, &mut OsRng);
+    assert!(c2.comm.is_on_curve());
+
+    let c3 = c1 + c2;
+
+    let c_act : sw::Affine<Config> = (c1.comm.into_group() + c2.comm).into();
+    assert!(c3.comm == c_act);
+    assert!(c3.r == c1.r + c2.r);   
+}
+
+#[test]
+fn test_pedersen_sub() {
+    // Same as for addition, but subtraction instead.
+    let a = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
+    let c1 : PC = PC::new(a, &mut OsRng);
+    assert!(c1.comm.is_on_curve());
+
+    let b = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
+    let c2 : PC = PC::new(b, &mut OsRng);
+    assert!(c2.comm.is_on_curve());
+
+    let c3 = c1 - c2;
+
+    let c_act : sw::Affine<Config> = (c1.comm.into_group() - c2.comm).into();
+    assert!(c3.comm == c_act);
+    assert!(c3.r == c1.r - c2.r);   
 }
 
 #[test]

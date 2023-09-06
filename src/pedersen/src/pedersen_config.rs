@@ -2,9 +2,11 @@ use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw, SWCurveConfig},
     CurveGroup,
+    AffineRepr,
 };
 
 use ark_std::{UniformRand, ops::Mul};
+use std::ops;
 use rand::{RngCore, CryptoRng};
 
 pub trait PedersenConfig : SWCurveConfig {
@@ -21,11 +23,27 @@ pub trait PedersenConfig : SWCurveConfig {
     }    
 }
 
+#[derive(Clone, Copy)]
 pub struct PedersenComm<P: PedersenConfig> {
     pub comm: sw::Affine<P>,
     pub r: <P as CurveConfig>::ScalarField,    
 }
 
+impl<P: PedersenConfig> ops::Add<PedersenComm<P>> for PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn add(self, rhs: PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() + rhs.comm).into(), r: self.r + rhs.r }
+    }
+}
+
+impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for PedersenComm<P> {
+    type Output = PedersenComm<P>;
+
+    fn sub(self, rhs: PedersenComm<P>) -> PedersenComm<P> {
+        Self::Output { comm: (self.comm.into_group() - rhs.comm).into(), r: self.r - rhs.r }
+    }
+}
 
 impl<P: PedersenConfig> PedersenComm<P> {    
     pub fn new<T: RngCore + CryptoRng>(x: <P as CurveConfig>::ScalarField, rng: &mut T) -> Self {
