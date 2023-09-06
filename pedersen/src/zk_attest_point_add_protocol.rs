@@ -10,7 +10,8 @@ use ark_serialize::{CanonicalSerialize};
 use ark_ff::fields::Field;
 use rand::{RngCore, CryptoRng};
 
-use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm, transcript::ECPointAdditionTranscript, mul_protocol::MulProof, opening_protocol::OpeningProof, transcript::ZKAttestECPointAdditionTranscript};
+use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm, transcript::ECPointAdditionTranscript, mul_protocol::MulProof, equality_protocol::EqualityProof,
+            opening_protocol::OpeningProof, transcript::ZKAttestECPointAdditionTranscript};
 
 pub struct ZKAttestPointAddProof<P:PedersenConfig> {
     /// c1: the commitment to a_x.
@@ -47,7 +48,12 @@ pub struct ZKAttestPointAddProof<P:PedersenConfig> {
     /// (a_x-t_x)
     pub c13 : PedersenComm<P>,
 
-    pub mp1 : MulProof<P>,        
+    pub mp1 : MulProof<P>,
+    pub mp2 : MulProof<P>,
+    pub mp3 : MulProof<P>,
+    pub mp4 : MulProof<P>,
+    pub e1  : EqualityProof<P>,
+    pub e2  : EqualityProof<P>,
 }
 
 impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
@@ -105,7 +111,6 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         Self::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6);
 
-
         // Now make the proof that there's an inverse for b_x - a_x.
         let z1 = <P as PedersenConfig>::from_ob_to_sf(b_x - a_x);
         let z2 = <P as PedersenConfig>::from_ob_to_sf((b_x - a_x).inverse().unwrap());
@@ -117,7 +122,7 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
         let commit_one = PedersenComm::new(<P as CurveConfig>::ScalarField::ONE, rng);        
         let mp1 = MulProof::create(transcript, rng, &z1, &z2, &c7, &c8, &commit_one);
 
-        // Proof of C10
+        // Proof of c10
         let z3 = <P as PedersenConfig>::from_ob_to_sf(b_y - a_y);
         let c9 = PedersenComm::new(z3, rng);        
         let z4 = z3 * z2;
@@ -137,7 +142,15 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         let mp4 = MulProof::create(transcript, rng, &z4, &z6, &c10, &c12, &c13);
 
-        // 
+        // And now the remaining equality proofs.
+        let c14 = &c5 + &c1 + &c3;
+        let eq1 = EqualityProof::create(transcript, rng, &c14, &c11);
+
+        // This is the corrected one.
+        let c15 = &c6 + &c2;
+        let eq2 = EqualityProof::create(transcript, rng, &c15, &c13);
+
+        Self { c1: c1, c2: c2, c3: c3, c4: c4, c5: c5, c6: c6, c8: c8, c10: c10, c11: c11, c13: c13, mp1: mp1, mp2: mp2, mp3: mp3, mp4: mp4, e1: eq1, e2: eq2 }
         
     }    
 }
