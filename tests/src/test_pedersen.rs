@@ -110,7 +110,7 @@ macro_rules! __test_pedersen {
             let mut transcript_v = Transcript::new(label);
             
             // Now check that the proof verifies properly.
-            assert!(proof.verify(&mut transcript_v, &c1, &c2));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm));
 
             // Alternatively, check that a different proof would fail.
             let mut b = SF::rand(&mut OsRng);
@@ -122,7 +122,7 @@ macro_rules! __test_pedersen {
             
             let c3 : PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c1, &c3));
+            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3,comm));
         }
 
         #[test]
@@ -144,7 +144,7 @@ macro_rules! __test_pedersen {
             let mut transcript_v = Transcript::new(label);
             
             // Now check that the proof verifies properly.
-            assert!(proof.verify(&mut transcript_v, &c1, &c2));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm));
 
             // Alternatively, check that a different proof would fail.
             let mut b = OSF::rand(&mut OsRng);
@@ -156,7 +156,7 @@ macro_rules! __test_pedersen {
             
             let c3 : PC = PC::new(<$config as PedersenConfig>::from_oc(b), &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c1, &c3));
+            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3.comm));
         }
 
         #[test]
@@ -173,7 +173,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies correctly.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1));
+            assert!(proof.verify(&mut transcript_v, &c1.comm));
 
             // Now check that an unrelated commitment would fail.
             // Alternatively, check that a different proof would fail.
@@ -186,7 +186,7 @@ macro_rules! __test_pedersen {
             
             let c3 : PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c3));
+            assert!(!proof.verify(&mut transcript_f, &c3.comm));
         }
 
         #[test]
@@ -206,7 +206,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies correctly.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1));
+            assert!(proof.verify(&mut transcript_v, &c1.comm));
 
             // Now check that an unrelated commitment would fail.
             // Alternatively, check that a different proof would fail.
@@ -219,7 +219,7 @@ macro_rules! __test_pedersen {
             
             let c3 : PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c3));
+            assert!(!proof.verify(&mut transcript_f, &c3.comm));
         }
 
         #[test]
@@ -243,7 +243,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1, &c2, &c3));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm, &c3.comm));
 
             // And now check it would fail on a different c3 value.
 
@@ -256,7 +256,7 @@ macro_rules! __test_pedersen {
 
             let c4 : PC = PC::new(d, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c1, &c2, &c4));    
+            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));    
         }
 
         #[test]
@@ -284,7 +284,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1, &c2, &c3));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm, &c3.comm));
 
             // And now check it would fail on a different c3 value.
 
@@ -297,7 +297,7 @@ macro_rules! __test_pedersen {
 
             let c4 : PC = PC::new(d, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c1, &c2, &c4));    
+            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));    
         }
 
 
