@@ -4,14 +4,16 @@
 use merlin::Transcript;
 use ark_ec::{
     CurveConfig,
+    short_weierstrass::{SWCurveConfig},
 };
 
 use ark_serialize::{CanonicalSerialize};
 use ark_ff::fields::Field;
 use rand::{RngCore, CryptoRng};
 
-use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm, transcript::ECPointAdditionTranscript, mul_protocol::MulProof, equality_protocol::EqualityProof,
-            opening_protocol::OpeningProof, transcript::ZKAttestECPointAdditionTranscript};
+use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm,
+            mul_protocol::MulProof, equality_protocol::EqualityProof,
+            transcript::ZKAttestECPointAdditionTranscript};
 
 pub struct ZKAttestPointAddProof<P:PedersenConfig> {
     /// c1: the commitment to a_x.
@@ -47,9 +49,10 @@ pub struct ZKAttestPointAddProof<P:PedersenConfig> {
     /// c13: the commitment to (b_y - a_y)/(b_x-a_x) *
     /// (a_x-t_x)
     pub c13 : PedersenComm<P>,
-
+    
     pub mp1 : MulProof<P>,
     pub mp2 : MulProof<P>,
+
     pub mp3 : MulProof<P>,
     pub mp4 : MulProof<P>,
     pub e1  : EqualityProof<P>,
@@ -119,25 +122,28 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
         let c8 = PedersenComm::new(z2, rng);
         
         // Make the multiplication proof for c8.
-        let commit_one = PedersenComm::new(<P as CurveConfig>::ScalarField::ONE, rng);        
+        let commit_one = PedersenComm{comm: <P as SWCurveConfig>::GENERATOR, r: <P as CurveConfig>::ScalarField::ZERO};
         let mp1 = MulProof::create(transcript, rng, &z1, &z2, &c7, &c8, &commit_one);
 
         // Proof of c10
-        let z3 = <P as PedersenConfig>::from_ob_to_sf(b_y - a_y);
-        let c9 = PedersenComm::new(z3, rng);        
-        let z4 = z3 * z2;
-        let c10 = PedersenComm::new(z4, rng);
-        let mp2 = MulProof::create(transcript, rng, &z3, &z4, &c8, &c9, &c10);
+        let z3 = <P as PedersenConfig>::from_ob_to_sf(b_y - a_y);                    
+        let c9 = &c4 - &c2;
 
+        let z4 = z3 * z2; // b_y - a_y / b_x - a_x
+        let c10 = PedersenComm::new(z4, rng);
+
+        let mp2 = MulProof::create(transcript, rng, &z3, &z2, &c9, &c8, &c10);
+        
         // Proof of c11
-        let z5 = z4 * z4;
+        let z5 = z4 * z4;  
         let c11 = PedersenComm::new(z5, rng);
         let mp3 = MulProof::create(transcript, rng, &z4, &z4, &c10, &c10, &c11);
 
         // Proof of c13.
-        let z6 = <P as PedersenConfig>::from_ob_to_sf(b_x - t_x);
-        let c12 = PedersenComm::new(z6, rng);
-        let z7 = z4 * z6;
+        let z6 = <P as PedersenConfig>::from_ob_to_sf(a_x - t_x);
+        let c12 = &c1 - &c5;
+        
+        let z7 = z4 * z6; // z4 = b_y - a_y / (b_x - a_x), z6 = (a_x - t_x)
         let c13 = PedersenComm::new(z7, rng);
 
         let mp4 = MulProof::create(transcript, rng, &z4, &z6, &c10, &c12, &c13);
@@ -148,10 +154,48 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         // This is the corrected one.
         let c15 = &c6 + &c2;
-        let eq2 = EqualityProof::create(transcript, rng, &c15, &c13);
+        let eq2 = EqualityProof::create(transcript, rng, &c13, &c15);
 
-        Self { c1: c1, c2: c2, c3: c3, c4: c4, c5: c5, c6: c6, c8: c8, c10: c10, c11: c11, c13: c13, mp1: mp1, mp2: mp2, mp3: mp3, mp4: mp4, e1: eq1, e2: eq2 }
-        
+        Self { c1: c1, c2: c2, c3: c3, c4: c4, c5: c5, c6: c6, c8: c8, c10: c10,               
+               c11: c11, c13: c13, mp1: mp1, mp2: mp2, mp3: mp3, mp4: mp4, e1: eq1, e2: eq2}
+
+    }
+
+    pub fn verify(&self, transcript: &mut Transcript) -> bool {
+        // This function just needs to verify that everything else works as it should.
+        Self::make_transcript(transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6);
+
+        // Check that the multiplication proof holds for proving that c7 * c8 == 1
+        // We recover c7 as c3 - c1
+        let c7 = &self.c3 - &self.c1;        
+
+        // Now we verify that c8 * c7 is a commitment to 1.
+        // N.B We use the same fixed commitment to 1 as above.
+        let commit_one = PedersenComm{comm: <P as SWCurveConfig>::GENERATOR, r: <P as CurveConfig>::ScalarField::ZERO};
+        let first = self.mp1.verify(transcript, &c7, &self.c8, &commit_one);
+
+        // Proof of c10 = c9 * c10.
+        // We recover c9 as c4 - c2.
+        let c9 = &self.c4 - &self.c2;
+        let second = self.mp2.verify(transcript, &c9, &self.c8, &self.c10);
+
+        // Proof of c11 = c10*c10
+        let third = self.mp3.verify(transcript, &self.c10, &self.c10, &self.c11);
+
+        // Proof of c13 = c10 * c12.
+        // We recover c12 as c1 - c5
+        let c12 = &self.c1 - &self.c5;
+        let fourth = self.mp4.verify(transcript, &self.c10, &c12, &self.c13);
+
+        // Verify that c5 + c1 + c3 == c11
+        let c14 = &self.c5 + &self.c1 + &self.c3;
+        let fifth = self.e1.verify(transcript, &c14, &self.c11);
+
+        // Verify that c13 == c6 + c2.
+        let c15 = &self.c6 + &self.c2;
+        let sixth = self.e2.verify(transcript, &self.c13, &c15);        
+
+        first && second && third && fourth && fifth && sixth
     }    
 }
      

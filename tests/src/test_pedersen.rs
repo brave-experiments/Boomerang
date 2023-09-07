@@ -320,13 +320,13 @@ macro_rules! __test_pedersen {
             let mut transcript = Transcript::new(label);
             let proof : EPAP<Config> = EPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
 
-            assert!(proof.c1.comm.is_on_curve());
-            assert!(proof.c2.comm.is_on_curve());
-            assert!(proof.c3.comm.is_on_curve());
-            assert!(proof.c4.comm.is_on_curve());
-            assert!(proof.c5.comm.is_on_curve());
-            assert!(proof.c6.comm.is_on_curve());
-            assert!(proof.c7.comm.is_on_curve());
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c7.is_on_curve());
 
             // Now check that it verifies.
             let mut transcript_v = Transcript::new(label);
@@ -345,8 +345,42 @@ macro_rules! __test_pedersen {
 
             let mut transcript_f2 = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_f2));
-    }
-  }
+        }
+
+        #[test]
+        fn test_zkattest_point_add() {
+            // Test that ZKAttest point addition proofs work.
+            let label = b"PedersenZKAttestECPointAdd";
+            let a     = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            let mut b     = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+
+            loop {
+                if b != a { break; }
+                b = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            }
+            
+            // Note: this needs to be forced into affine too, or the underlying
+            // proof system breaks (this seems to be an ark_ff thing).
+            let t = (a + b).into_affine();
+            let mut transcript = Transcript::new(label);
+            let proof : ZKEPAP<Config> = ZKEPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
+
+            // Check that all of the commitments are valid.
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c8.is_on_curve());
+            assert!(proof.c10.is_on_curve());
+            assert!(proof.c11.is_on_curve());
+            assert!(proof.c13.is_on_curve());
+
+            // Now check that it verifies properly.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v));
+        }           
 }
 
 #[macro_export]
