@@ -122,7 +122,7 @@ fn test_pedersen_equality() {
     let mut transcript_v = Transcript::new(label);
     
     // Now check that the proof verifies properly.
-    assert!(proof.verify(&mut transcript_v, &c1, &c2));
+    assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm));
 
     // Alternatively, check that a different proof would fail.
     let mut b = <Config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -134,7 +134,7 @@ fn test_pedersen_equality() {
     
     let c3 : PC = PC::new(b, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c1, &c3));
+    assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3.comm));
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn test_pedersen_equality_nist() {
     let mut transcript_v = Transcript::new(label);
     
     // Now check that the proof verifies properly.
-    assert!(proof.verify(&mut transcript_v, &c1, &c2));
+    assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm));
 
     // Alternatively, check that a different proof would fail.
     let mut b = <<Config as PedersenConfig>::OCurve as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -168,7 +168,7 @@ fn test_pedersen_equality_nist() {
     
     let c3 : PC = PC::new(<Config as PedersenConfig>::from_oc(b), &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c1, &c3));
+    assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3.comm));
 }
 
 #[test]
