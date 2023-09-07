@@ -17,6 +17,7 @@ resolver = "2"
 merlin = "3.0.0"
 t256 = { path = "src/t256" }
 t384 = { path = "src/t384" }
+pedersen = { path = "src/pedersen" }
 
 [profile.release]
 opt-level = 3

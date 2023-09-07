@@ -1,0 +1,15 @@
+[package]
+name = "pedersen"
+version = "0.0.1-alpha.1"
+description = "A package implementing Pedersen Commitments"
+include = ["Cargo.toml", "src"]
+edition = "2021"
+
+[dependencies]
+ark-ec = { version = "0.4.0", default-features = false }
+ark-std = { version = "0.4.0", default-features = false }
+rand = { version = "0.8.5" }
+ark-ff = { version = "0.4.0"}
+ark-serialize = { version = "0.4.0"}
+merlin = { version = "3.0.0"}
+num-bigint = { version = "0.4", default-features = false }

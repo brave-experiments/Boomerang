@@ -1,11 +1,67 @@
 use ark_ec::{
     models::CurveConfig,
-    short_weierstrass::{self as sw, SWCurveConfig},
+    short_weierstrass::{self as sw, SWCurveConfig},    
 };
 
-use ark_ff::{Field, MontFp};
+use pedersen::pedersen_config::PedersenConfig;
 
-use crate::{fq::Fq, fr::Fr};
+use ark_ff::{Field, MontFp, MontConfig};
+use ark_ff::{BigInt};
+
+use crate::{fq::Fq, fr::Fr, fr::FrConfig};
+
+use ark_secp384r1::Config as secp384r1conf;
+use ark_secp384r1::Fq as secp384r1Fq;
+use ark_secp384r1::FqConfig as secp384FqConfig;
+type OtherBaseField = <secp384r1conf as CurveConfig>::BaseField;
+
+// Define the various conversion structs.
+struct FrStruct(Fr);
+impl FrStruct {
+    pub fn new(x: Fr) -> FrStruct {
+        FrStruct(x)
+    }
+
+    pub fn as_fr(&self) -> Fr {
+        self.0
+    }
+}
+
+impl From<BigInt<6>> for FrStruct {
+    fn from(x: BigInt<6>) -> Self {
+        let x_t = FrConfig::from_bigint(x).unwrap();
+        FrStruct::new(x_t)
+    }
+}
+
+impl Into<BigInt<6>> for FrStruct {
+    fn into(self) -> BigInt<6> {
+        FrConfig::into_bigint(self.0)
+    }
+}
+
+struct Secp384r1base(OtherBaseField);
+
+impl Secp384r1base {
+
+    pub fn new(x: secp384r1Fq) -> Secp384r1base {
+        Secp384r1base(x)
+    }
+}
+
+
+impl Into<BigInt<6>> for Secp384r1base {
+    fn into(self) -> BigInt<6> {
+        secp384FqConfig::into_bigint(self.0)
+    }
+}
+
+impl From<BigInt<6>> for Secp384r1base {
+    fn from(x: BigInt<6>) -> Self {
+        let x_t = secp384FqConfig::from_bigint(x).unwrap();
+        Secp384r1base::new(x_t)    
+    }
+}
 
 #[cfg(test)]
 mod tests;
@@ -41,13 +97,29 @@ impl SWCurveConfig for Config {
     const GENERATOR : Affine = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);    
 }
 
+impl PedersenConfig for Config {
+    type OCurve = secp384r1conf;
+    
+    /// GENERATOR2 = (G_GENERATOR_X2, G_GENERATOR_Y2)
+    const GENERATOR2: Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
+
+    fn from_ob_to_sf(x: OtherBaseField) -> <Config as CurveConfig>::ScalarField {
+        let x_t : BigInt<6> = x.into();
+        let x_v : FrStruct = FrStruct::from(x_t);
+        x_v.as_fr()
+    }
+}
+
+
 /// G_GENERATOR_X = 18624522857557105898096886988538082729570911703609840597859472552101056293848159295245991160598223034723589185598549
 pub const G_GENERATOR_X : Fq = MontFp!("18624522857557105898096886988538082729570911703609840597859472552101056293848159295245991160598223034723589185598549");
 
 /// G_GENERATOR_Y = 16812635070577401701780555151784939373443796894181112771346367209071849423738982329774175396215506669421943316852710
 pub const G_GENERATOR_Y : Fq = MontFp!("16812635070577401701780555151784939373443796894181112771346367209071849423738982329774175396215506669421943316852710");
 
+/// G_GENERATOR_X2 = 5
+pub const G_GENERATOR_X2 : Fq = MontFp!("5");
 
-
-
+/// G_GENERATOR_Y2 = 6363885786003242131136944941369369468464707802299146445548164183900284786157464900151666199152091187308687891798230
+pub const G_GENERATOR_Y2 : Fq = MontFp!("6363885786003242131136944941369369468464707802299146445548164183900284786157464900151666199152091187308687891798230");
 
