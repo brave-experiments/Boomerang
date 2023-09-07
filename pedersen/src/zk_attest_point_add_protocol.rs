@@ -4,7 +4,9 @@
 use merlin::Transcript;
 use ark_ec::{
     CurveConfig,
-    short_weierstrass::{SWCurveConfig},
+    short_weierstrass::{self as sw, SWCurveConfig},
+    CurveGroup,
+    AffineRepr,
 };
 
 use ark_serialize::{CanonicalSerialize};
@@ -17,38 +19,38 @@ use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm,
 
 pub struct ZKAttestPointAddProof<P:PedersenConfig> {
     /// c1: the commitment to a_x.
-    pub c1: PedersenComm<P>,
+    pub c1: sw::Affine<P>,
     /// c2: the commitment to a_y.
-    pub c2: PedersenComm<P>,
+    pub c2: sw::Affine<P>,
     /// c3: the commitment to b_x.
-    pub c3: PedersenComm<P>,
+    pub c3: sw::Affine<P>,
     /// c4: the commitment to b_y.
-    pub c4: PedersenComm<P>,
+    pub c4: sw::Affine<P>,
     /// c5: the commitment to t_x.
-    pub c5: PedersenComm<P>,
+    pub c5: sw::Affine<P>,
     /// c6: the commitment to t_y.
-    pub c6: PedersenComm<P>,
+    pub c6: sw::Affine<P>,
 
     // We do not need c7: Pedersen Commitments are additively
     // homomorphic.
-    //pub c7 : PedersenComm<P>,
+    //pub c7 : sw::Affine<P>,
     
     /// c8: the commitment to (b_x - a_x)^-1
-    pub c8 : PedersenComm<P>,
+    pub c8 : sw::Affine<P>,
 
-    // pub c9 : PedersenComm<P>
+    // pub c9 : sw::Affine<P>
 
     /// c10: the commitment to (b_y - a_y) / (b_x - a_x).
-    pub c10 : PedersenComm<P>,
+    pub c10 : sw::Affine<P>,
 
     /// c11: the commitment to ((b_y - a_y) / (b_x - a_x))^2
-    pub c11 : PedersenComm<P>,
+    pub c11 : sw::Affine<P>,
 
-    // pub c12: PedersenComm<P>,
+    // pub c12: sw::Affine<P>,
 
     /// c13: the commitment to (b_y - a_y)/(b_x-a_x) *
     /// (a_x-t_x)
-    pub c13 : PedersenComm<P>,
+    pub c13 : sw::Affine<P>,
     
     pub mp1 : MulProof<P>,
     pub mp2 : MulProof<P>,
@@ -62,32 +64,32 @@ pub struct ZKAttestPointAddProof<P:PedersenConfig> {
 impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
-                       c2: &PedersenComm<P>,
-                       c3: &PedersenComm<P>,
-                       c4: &PedersenComm<P>,
-                       c5: &PedersenComm<P>,
-                       c6: &PedersenComm<P>) {
+                       c1: &sw::Affine<P>,
+                       c2: &sw::Affine<P>,
+                       c3: &sw::Affine<P>,
+                       c4: &sw::Affine<P>,
+                       c5: &sw::Affine<P>,
+                       c6: &sw::Affine<P>) {
 
         ZKAttestECPointAdditionTranscript::domain_sep(transcript);
         
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C1", &compressed_bytes[..]);
         
-        c2.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C2", &compressed_bytes[..]);
 
-        c3.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c3.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C3", &compressed_bytes[..]);
         
-        c4.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c4.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C4", &compressed_bytes[..]);
 
-        c5.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c5.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C5", &compressed_bytes[..]);
 
-        c6.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c6.serialize_compressed(&mut compressed_bytes).unwrap();
         ZKAttestECPointAdditionTranscript::append_point(transcript, b"C6", &compressed_bytes[..]);        
     }
 
@@ -112,7 +114,7 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
         let c5 = Self::make_commitment(t_x, rng);
         let c6 = Self::make_commitment(t_y, rng);
 
-        Self::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6);
+        Self::make_transcript(transcript, &c1.comm, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &c6.comm);
 
         // Now make the proof that there's an inverse for b_x - a_x.
         let z1 = <P as PedersenConfig>::from_ob_to_sf(b_x - a_x);
@@ -156,8 +158,8 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
         let c15 = &c6 + &c2;
         let eq2 = EqualityProof::create(transcript, rng, &c13, &c15);
 
-        Self { c1: c1, c2: c2, c3: c3, c4: c4, c5: c5, c6: c6, c8: c8, c10: c10,               
-               c11: c11, c13: c13, mp1: mp1, mp2: mp2, mp3: mp3, mp4: mp4, e1: eq1, e2: eq2}
+        Self { c1: c1.comm, c2: c2.comm, c3: c3.comm, c4: c4.comm, c5: c5.comm, c6: c6.comm, c8: c8.comm, c10: c10.comm,               
+               c11: c11.comm, c13: c13.comm, mp1: mp1, mp2: mp2, mp3: mp3, mp4: mp4, e1: eq1, e2: eq2}
 
     }
 
@@ -167,16 +169,16 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         // Check that the multiplication proof holds for proving that c7 * c8 == 1
         // We recover c7 as c3 - c1
-        let c7 = &self.c3 - &self.c1;        
+        let c7 = (self.c3.into_group() - self.c1).into_affine();        
 
         // Now we verify that c8 * c7 is a commitment to 1.
         // N.B We use the same fixed commitment to 1 as above.
         let commit_one = PedersenComm{comm: <P as SWCurveConfig>::GENERATOR, r: <P as CurveConfig>::ScalarField::ZERO};
-        let first = self.mp1.verify(transcript, &c7, &self.c8, &commit_one);
+        let first = self.mp1.verify(transcript, &c7, &self.c8, &commit_one.comm);
 
         // Proof of c10 = c9 * c10.
         // We recover c9 as c4 - c2.
-        let c9 = &self.c4 - &self.c2;
+        let c9 = (self.c4.into_group() - self.c2).into_affine();
         let second = self.mp2.verify(transcript, &c9, &self.c8, &self.c10);
 
         // Proof of c11 = c10*c10
@@ -184,17 +186,16 @@ impl <P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         // Proof of c13 = c10 * c12.
         // We recover c12 as c1 - c5
-        let c12 = &self.c1 - &self.c5;
+        let c12 = (self.c1.into_group() - self.c5).into_affine();
         let fourth = self.mp4.verify(transcript, &self.c10, &c12, &self.c13);
 
         // Verify that c5 + c1 + c3 == c11
-        let c14 = &self.c5 + &self.c1 + &self.c3;
+        let c14 = (self.c5 + self.c1 + self.c3).into_affine();
         let fifth = self.e1.verify(transcript, &c14, &self.c11);
 
         // Verify that c13 == c6 + c2.
-        let c15 = &self.c6 + &self.c2;
+        let c15 = (self.c6 + self.c2).into_affine();
         let sixth = self.e2.verify(transcript, &self.c13, &c15);        
-
         first && second && third && fourth && fifth && sixth
     }    
 }
