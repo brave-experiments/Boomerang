@@ -29,3 +29,7 @@ run:
 	cargo build $(release)
 	cargo run
 
+test:
+	cargo build $(release)
+	cargo run
+	cargo test
