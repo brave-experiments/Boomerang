@@ -43,16 +43,16 @@ impl <P: PedersenConfig> MulProof<P> {
     /// This is just to circumvent an annoying issue with Rust's current generics system. 
     pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
 
-    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &PedersenComm<P>,
-                       c2: &PedersenComm<P>,
-                             c3: &PedersenComm<P>) {        
+    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &sw::Affine<P><P>,
+                       c2: &sw::Affine<P><P>,
+                             c3: &sw::Affine<P><P>) {        
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta)
     }
     
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
-                       c2: &PedersenComm<P>,
-                       c3: &PedersenComm<P>,
+                       c1: &sw::Affine<P>,
+                       c2: &sw::Affine<P>,
+                       c3: &sw::Affine<P>,
                        alpha: &sw::Affine<P>,
                        beta: &sw::Affine<P>,
                        delta: &sw::Affine<P>) {
@@ -62,13 +62,13 @@ impl <P: PedersenConfig> MulProof<P> {
         // we use a temporary buffer here.
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C1", &compressed_bytes[..]);
         
-        c2.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C2", &compressed_bytes[..]);
 
-        c3.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c3.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C3", &compressed_bytes[..]);
 
         alpha.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -107,7 +107,7 @@ impl <P: PedersenConfig> MulProof<P> {
         let beta  = (P::GENERATOR.mul(b3) + P::GENERATOR2.mul(b4)).into_affine();
         let delta = (c1.comm.mul(b3) + P::GENERATOR2.mul(b5)).into_affine();
 
-        Self::make_transcript(transcript, c1, c2, c3, &alpha, &beta, &delta);
+        Self::make_transcript(transcript, &c1.comm, &c2.comm, &c3.comm, &alpha, &beta, &delta);
 
         MulProofIntermediate { b1: b1, b2: b2, b3: b3, b4: b4, b5: b5, alpha: alpha, beta: beta, delta: delta }        
     }
@@ -134,16 +134,16 @@ impl <P: PedersenConfig> MulProof<P> {
         }        
     }
 
-    pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>, c2: &PedersenComm<P>, c3: &PedersenComm<P>) -> bool {
+    pub fn verify(&self, transcript: &mut Transcript, c1: &sw::Affine<P>, c2: &sw::Affine<P>, c3: &sw::Affine<P>) -> bool {
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
         self.verify_with_challenge(c1, c2, c3, &transcript.challenge_scalar(b"c")[..])
     }
 
 
-    pub fn verify_with_challenge(&self, c1: &PedersenComm<P>, c2: &PedersenComm<P>, c3: &PedersenComm<P>, chal_buf: &[u8]) -> bool {
-        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        (self.alpha + c1.comm.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
-            (self.beta + c2.comm.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
-            (self.delta + c3.comm.mul(chal) == c1.comm.mul(self.z3) + P::GENERATOR2.mul(self.z5))        
+    pub fn verify_with_challenge(&self, c1: &sw::Affine<P>, c2: &sw::Affine<P>, c3: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
+        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);        
+        (self.alpha + c1.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
+            (self.beta + c2.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
+            (self.delta + c3.mul(chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))        
     }
 }

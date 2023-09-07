@@ -32,12 +32,12 @@ impl<P: PedersenConfig> OpeningProof<P> {
     /// This is just to circumvent an annoying issue with Rust's current generics system. 
     pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
 
-    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &PedersenComm<P>) {
+    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &sw::Affine<P>) {        
         Self::make_transcript(transcript, c1, &self.alpha)
     }
     
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
+                       c1: &sw::Affine<P>,
                        alpha_p: &sw::Affine<P>) {
 
         // This function just builds the transcript out of the various input values.
@@ -45,7 +45,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         // we use a temporary buffer here.
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C1", &compressed_bytes[..]);
 
         alpha_p.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -75,7 +75,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let t2 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (P::GENERATOR.mul(t1) + P::GENERATOR2.mul(t2)).into_affine();
-        Self::make_transcript(transcript, c1, &alpha);
+        Self::make_transcript(transcript, &c1.comm, &alpha);
 
         OpenProofIntermediate { t1: t1, t2: t2, alpha: alpha }
     }
@@ -91,7 +91,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         }
     }
 
-    pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>) -> bool {
+    pub fn verify(&self, transcript: &mut Transcript, c1: &sw::Affine<P>) -> bool {
         // Make the transcript.
         self.add_to_transcript(transcript, c1);
         
@@ -99,9 +99,10 @@ impl<P: PedersenConfig> OpeningProof<P> {
         self.verify_with_challenge(c1, &transcript.challenge_scalar(b"c")[..])
     }
 
-    pub fn verify_with_challenge(&self, c1: &PedersenComm<P>, chal_buf: &[u8]) -> bool {
+
+    pub fn verify_with_challenge(&self, c1: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
         // Make the challenge and check.
         let chal = Self::make_challenge_from_buffer(chal_buf);
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.comm.mul(chal) + self.alpha
+        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(chal) + self.alpha
     }
 }
