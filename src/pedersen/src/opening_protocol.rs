@@ -25,7 +25,7 @@ pub struct OpeningProof<P: PedersenConfig> {
 impl<P: PedersenConfig> OpeningProof<P> {
 
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
+                       c1: &sw::Affine<P>,
                        alpha_p: &sw::Affine<P>) {
 
         // This function just builds the transcript out of the various input values.
@@ -33,7 +33,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         // we use a temporary buffer here.
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C1", &compressed_bytes[..]);
 
         alpha_p.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -52,7 +52,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let t2 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (P::GENERATOR.mul(t1) + P::GENERATOR2.mul(t2)).into_affine();
-        Self::make_transcript(transcript, c1, &alpha);
+        Self::make_transcript(transcript, &c1.comm, &alpha);
 
         // Now make the challenge.
         let chal = Self::make_challenge(transcript);
@@ -64,13 +64,13 @@ impl<P: PedersenConfig> OpeningProof<P> {
         }        
     }
 
-    pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>) -> bool {
+    pub fn verify(&self, transcript: &mut Transcript, c1: &sw::Affine<P>) -> bool {
         // Make the transcript.
         Self::make_transcript(transcript, c1, &self.alpha);
 
         // Now make the challenge and check.
         let chal = Self::make_challenge(transcript);
 
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.comm.mul(chal) + self.alpha
+        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(chal) + self.alpha
     }
 }

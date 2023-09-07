@@ -30,9 +30,9 @@ pub struct MulProof<P: PedersenConfig> {
 impl <P: PedersenConfig> MulProof<P> {
 
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
-                       c2: &PedersenComm<P>,
-                       c3: &PedersenComm<P>,
+                       c1: &sw::Affine<P>,
+                       c2: &sw::Affine<P>,
+                       c3: &sw::Affine<P>,
                        alpha: &sw::Affine<P>,
                        beta: &sw::Affine<P>,
                        delta: &sw::Affine<P>) {
@@ -42,13 +42,13 @@ impl <P: PedersenConfig> MulProof<P> {
         // we use a temporary buffer here.
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C1", &compressed_bytes[..]);
         
-        c2.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C2", &compressed_bytes[..]);
 
-        c3.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c3.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"C3", &compressed_bytes[..]);
 
         alpha.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -85,7 +85,7 @@ impl <P: PedersenConfig> MulProof<P> {
         let beta  = (P::GENERATOR.mul(b3) + P::GENERATOR2.mul(b4)).into_affine();
         let delta = (c1.comm.mul(b3) + P::GENERATOR2.mul(b5)).into_affine();
 
-        Self::make_transcript(transcript, c1, c2, c3, &alpha, &beta, &delta);
+        Self::make_transcript(transcript, &c1.comm, &c2.comm, &c3.comm, &alpha, &beta, &delta);
 
         // Now make the challenge.
         let chal = Self::make_challenge(transcript);
@@ -102,12 +102,12 @@ impl <P: PedersenConfig> MulProof<P> {
         }        
     }
 
-    pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>, c2: &PedersenComm<P>, c3: &PedersenComm<P>) -> bool {
+    pub fn verify(&self, transcript: &mut Transcript, c1: &sw::Affine<P>, c2: &sw::Affine<P>, c3: &sw::Affine<P>) -> bool {
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
         let chal = Self::make_challenge(transcript);
         
-        (self.alpha + c1.comm.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
-            (self.beta + c2.comm.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
-            (self.delta + c3.comm.mul(chal) == c1.comm.mul(self.z3) + P::GENERATOR2.mul(self.z5))        
+        (self.alpha + c1.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
+            (self.beta + c2.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
+            (self.delta + c3.mul(chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))        
     }
 }

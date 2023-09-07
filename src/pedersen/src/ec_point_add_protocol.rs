@@ -5,6 +5,9 @@
 use merlin::Transcript;
 use ark_ec::{
     CurveConfig,
+    short_weierstrass::{self as sw},
+    AffineRepr,
+    CurveGroup,
 };
 
 use ark_serialize::{CanonicalSerialize};
@@ -16,20 +19,20 @@ use crate::{pedersen_config::PedersenConfig, pedersen_config::PedersenComm, tran
 
 pub struct ECPointAddProof<P: PedersenConfig> {    
     /// c1: the commitment to a_x.
-    pub c1: PedersenComm<P>,
+    pub c1: sw::Affine<P>,
     /// c2: the commitment to a_y.
-    pub c2: PedersenComm<P>,
+    pub c2: sw::Affine<P>,
     /// c3: the commitment to b_x.
-    pub c3: PedersenComm<P>,
+    pub c3: sw::Affine<P>,
     /// c4: the commitment to b_y.
-    pub c4: PedersenComm<P>,
+    pub c4: sw::Affine<P>,
     /// c5: the commitment to t_x.
-    pub c5: PedersenComm<P>,
+    pub c5: sw::Affine<P>,
     /// c6: the commitment to t_y.
-    pub c6: PedersenComm<P>,
+    pub c6: sw::Affine<P>,
 
     /// c7: the commitment to tau = (b_y - a_y)/(b_x - a_x)
-    pub c7: PedersenComm<P>,
+    pub c7: sw::Affine<P>,
     
     /// mp1: the multiplication proof that verifies that equation 1 holds.
     pub mp1: MulProof<P>,
@@ -46,13 +49,13 @@ pub struct ECPointAddProof<P: PedersenConfig> {
 
 impl <P: PedersenConfig> ECPointAddProof<P> {    
     fn make_transcript(transcript: &mut Transcript,
-                       c1: &PedersenComm<P>,
-                       c2: &PedersenComm<P>,
-                       c3: &PedersenComm<P>,
-                       c4: &PedersenComm<P>,
-                       c5: &PedersenComm<P>,
-                       c6: &PedersenComm<P>,
-                       c7: &PedersenComm<P>) {
+                       c1: &sw::Affine<P>,
+                       c2: &sw::Affine<P>,
+                       c3: &sw::Affine<P>,
+                       c4: &sw::Affine<P>,
+                       c5: &sw::Affine<P>,
+                       c6: &sw::Affine<P>,
+                       c7: &sw::Affine<P>) {
 
         // This function just builds the transcript for both the create and verify functions.
         // N.B Because of how we define the serialisation API to handle different numbers,
@@ -60,25 +63,25 @@ impl <P: PedersenConfig> ECPointAddProof<P> {
         ECPointAdditionTranscript::domain_sep(transcript);
         
         let mut compressed_bytes = Vec::new();
-        c1.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C1", &compressed_bytes[..]);
         
-        c2.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C2", &compressed_bytes[..]);
 
-        c3.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c3.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C3", &compressed_bytes[..]);
         
-        c4.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c4.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C4", &compressed_bytes[..]);
 
-        c5.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c5.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C5", &compressed_bytes[..]);
 
-        c6.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c6.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C6", &compressed_bytes[..]);
 
-        c7.comm.serialize_compressed(&mut compressed_bytes).unwrap();
+        c7.serialize_compressed(&mut compressed_bytes).unwrap();
         ECPointAdditionTranscript::append_point(transcript, b"C7", &compressed_bytes[..]);
     }
 
@@ -113,7 +116,8 @@ impl <P: PedersenConfig> ECPointAddProof<P> {
 
 
         // Now commit to all of them.
-        Self::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6, &c7);
+        Self::make_transcript(transcript, &c1.comm, &c2.comm, &c3.comm, &c4.comm, &c5.comm,
+                              &c6.comm, &c7.comm);
 
         // And now we simply invoke each of the sub-protocols.
         let z1 = &c3 - &c1;        
@@ -137,18 +141,18 @@ impl <P: PedersenConfig> ECPointAddProof<P> {
         let op = OpeningProof::create(transcript, rng, &taua, &c7);
 
         // And now we just return.
-        Self { c1: c1, c2: c2, c3: c3, c4: c4, c5: c5, c6: c6, c7: c7, mp1: mp1, mp2: mp2, mp3: mp3, op: op }
+        Self { c1: c1.comm, c2: c2.comm, c3: c3.comm, c4: c4.comm, c5: c5.comm, c6: c6.comm, c7: c7.comm, mp1: mp1, mp2: mp2, mp3: mp3, op: op }
     }
 
     pub fn verify(&self, transcript: &mut Transcript) -> bool {
         Self::make_transcript(transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7);
 
-        let z1 = &self.c3 - &self.c1;
+        let z1 = (self.c3.into_group() - self.c1).into_affine();
         let z2 = &self.c7;
-        let z3 = &self.c4 - &self.c2;
-        let z4 = &self.c1 + &self.c3 + &self.c5;
-        let z5 = &self.c1 - &self.c5;
-        let z6 = &self.c2 + &self.c6;
+        let z3 = (self.c4.into_group() - self.c2).into_affine();
+        let z4 = ((self.c1.into_group() + self.c3) + self.c5).into_affine();
+        let z5 = (self.c1.into_group() - self.c5).into_affine();
+        let z6 = (self.c2.into_group() + self.c6).into_affine();
 
         self.mp1.verify(transcript, &z1, &z2, &z3) && self.mp2.verify(transcript, &self.c7, &self.c7, &z4) &&
         self.mp3.verify(transcript, &z2, &z5, &z6) && self.op.verify(transcript, &self.c7)        

@@ -185,7 +185,7 @@ fn test_pedersen_opening() {
 
     // Now check that the proof verifies correctly.
     let mut transcript_v = Transcript::new(label);
-    assert!(proof.verify(&mut transcript_v, &c1));
+    assert!(proof.verify(&mut transcript_v, &c1.comm));
 
     // Now check that an unrelated commitment would fail.
     // Alternatively, check that a different proof would fail.
@@ -198,7 +198,7 @@ fn test_pedersen_opening() {
     
     let c3 : PC = PC::new(b, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c3));
+    assert!(!proof.verify(&mut transcript_f, &c3.comm));
 }
 
 #[test]
@@ -218,7 +218,7 @@ fn test_pedersen_opening_nist() {
 
     // Now check that the proof verifies correctly.
     let mut transcript_v = Transcript::new(label);
-    assert!(proof.verify(&mut transcript_v, &c1));
+    assert!(proof.verify(&mut transcript_v, &c1.comm));
 
     // Now check that an unrelated commitment would fail.
     // Alternatively, check that a different proof would fail.
@@ -231,7 +231,7 @@ fn test_pedersen_opening_nist() {
     
     let c3 : PC = PC::new(b, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c3));
+    assert!(!proof.verify(&mut transcript_f, &c3.comm));
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn test_pedersen_mul() {
 
     // Now check that the proof verifies.
     let mut transcript_v = Transcript::new(label);
-    assert!(proof.verify(&mut transcript_v, &c1, &c2, &c3));
+    assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm, &c3.comm));
 
     // And now check it would fail on a different c3 value.
 
@@ -268,7 +268,7 @@ fn test_pedersen_mul() {
 
     let c4 : PC = PC::new(d, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c1, &c2, &c4));    
+    assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));    
 }
 
 #[test]
@@ -296,7 +296,7 @@ fn test_pedersen_mul_nist() {
 
     // Now check that the proof verifies.
     let mut transcript_v = Transcript::new(label);
-    assert!(proof.verify(&mut transcript_v, &c1, &c2, &c3));
+    assert!(proof.verify(&mut transcript_v, &c1.comm, &c2.comm, &c3.comm));
 
     // And now check it would fail on a different c3 value.
 
@@ -309,7 +309,7 @@ fn test_pedersen_mul_nist() {
 
     let c4 : PC = PC::new(d, &mut OsRng);
     let mut transcript_f = Transcript::new(label);
-    assert!(!proof.verify(&mut transcript_f, &c1, &c2, &c4));    
+    assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));    
 }
 
 
@@ -332,13 +332,13 @@ fn test_pedersen_point_add() {
     let mut transcript = Transcript::new(label);
     let proof : EPAP<Config> = EPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
 
-    assert!(proof.c1.comm.is_on_curve());
-    assert!(proof.c2.comm.is_on_curve());
-    assert!(proof.c3.comm.is_on_curve());
-    assert!(proof.c4.comm.is_on_curve());
-    assert!(proof.c5.comm.is_on_curve());
-    assert!(proof.c6.comm.is_on_curve());
-    assert!(proof.c7.comm.is_on_curve());
+    assert!(proof.c1.is_on_curve());
+    assert!(proof.c2.is_on_curve());
+    assert!(proof.c3.is_on_curve());
+    assert!(proof.c4.is_on_curve());
+    assert!(proof.c5.is_on_curve());
+    assert!(proof.c6.is_on_curve());
+    assert!(proof.c7.is_on_curve());
 
     // Now check that it verifies.
     let mut transcript_v = Transcript::new(label);
