@@ -13,6 +13,7 @@ use rand::{CryptoRng, RngCore};
 use crate::{
     mul_protocol::MulProof, opening_protocol::OpeningProof, pedersen_config::PedersenComm,
     pedersen_config::PedersenConfig, transcript::ECPointAdditionTranscript,
+    transcript::EC_POINT_CHALLENGE_SIZE,
 };
 
 pub struct ECPointAddProof<P: PedersenConfig> {
@@ -45,7 +46,12 @@ pub struct ECPointAddProof<P: PedersenConfig> {
     pub op: OpeningProof<P>,
 }
 
-impl<P: PedersenConfig> ECPointAddProof<P> {
+impl<P: PedersenConfig> ECPointAddProof<P> {    
+    /// This is just to circumvent an annoying issue with Rust's current generics system.
+    const MPSIZE: usize = MulProof::<P>::CHAL_SIZE;
+    const OPSIZE: usize = OpeningProof::<P>::CHAL_SIZE;    
+    pub const CHAL_SIZE: usize = 3*Self::MPSIZE + Self::OPSIZE;
+    
     fn make_transcript(
         transcript: &mut Transcript,
         c1: &PedersenComm<P>,
@@ -115,32 +121,58 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let taua = <P as PedersenConfig>::from_ob_to_sf(tau);
         let c7 = PedersenComm::new(taua, rng);
 
-        // Now commit to all of them.
+        // Now we begin the stage of incorporating everything into the
+        // transcript. We do this by creating the intermediates for each
+        // proof (which adds to the transcript in turn), before generating a long
+        // challenge (with enough space for each sub-proof). We then, finally,
+        // split up this challenge into smaller slices that can be used by each
+        // individual proof.
         Self::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6, &c7);
 
-        // And now we simply invoke each of the sub-protocols.
-        // TODO: shouldn't all of these proofs be done in parallel? Meaning using one long challenge..
-        let z1 = &c3 - &c1;
-        let z2 = &c4 - &c2;
+        // These are the temporaries for the first multiplication proof, which
+        // verifies that (b_x - a_x)*tau = b_y - a_y.
+        let z1 = &c3 - &c1; // This is the commitment for b_x - a_x.
+        let z2 = &c4 - &c2; // This is the commitment for b_y - a_y.
+
         let x1 = <P as PedersenConfig>::from_ob_to_sf(b_x - a_x);
-        let mp1 = MulProof::create(transcript, rng, &x1, &taua, &z1, &c7, &z2);
+        let mpi1 = MulProof::create_intermediates(transcript, rng, &z1, &c7, &z2);
 
-        let z4 = &c1 + &c3 + &c5;
-        let mp2 = MulProof::create(transcript, rng, &taua, &taua, &c7, &c7, &z4);
-        assert!(mp2.alpha.is_on_curve());
-        assert!(mp2.beta.is_on_curve());
-        assert!(mp2.delta.is_on_curve());
-
-        let x3 = <P as PedersenConfig>::from_ob_to_sf(a_x - t_x);
-
-        let z5 = &c1 - &c5;
-        let z6 = &c2 + &c6;
-        let mp3 = MulProof::create(transcript, rng, &taua, &x3, &c7, &z5, &z6);
-
+        // These are the temporaries for the second multiplication proof, which verifies that
+        // tau^2 = a_x + b_x + t_x.
+        let z4 = &c1 + &c3 + &c5; // This is the commitment to a_x + b_x + t_x.
+        let mpi2 = MulProof::create_intermediates(transcript, rng, &c7, &c7, &z4);
         
+        // These are the temporaries for the third multiplication proof, which verifies that
+        // tau*(a_x - t_x) = a_y + t_y.
+        let x3 = <P as PedersenConfig>::from_ob_to_sf(a_x - t_x); // Value of a_x - t_x
+        let z5 = &c1 - &c5; // The commitment to a_x - t_x
+        let z6 = &c2 + &c6; // The commitment to a_y + t_y.        
+        let mpi3 = MulProof::create_intermediates(transcript, rng, &c7, &z5, &z6);
+
+        // And, finally, the intermediates for the Opening proof.
+        // This proves that C2 opens to a_y.
         let ay_sf = <P as PedersenConfig>::from_ob_to_sf(a_y);
-        let op = OpeningProof::create(transcript, rng, &ay_sf, &c2);
-        
+        let opi = OpeningProof::create_intermediates(transcript, rng, &c2);
+
+        // Now we make a very large challenge and create the various proofs from the
+        // intermediates.
+        let chal_buf = ECPointAdditionTranscript::challenge_scalar(transcript, b"c");
+
+        // Make sure it all lines up.
+        assert!(Self::CHAL_SIZE == EC_POINT_CHALLENGE_SIZE);
+
+        // Make the sub-challenges.        
+        let mp1chal = &chal_buf[0..Self::MPSIZE];
+        let mp2chal = &chal_buf[Self::MPSIZE..2*Self::MPSIZE];
+        let mp3chal = &chal_buf[2*Self::MPSIZE..3*Self::MPSIZE];
+        let opchal  = &chal_buf[3*Self::MPSIZE..];
+
+        // And now we build the sub-proofs before returning.
+        let mp1 = MulProof::create_proof(&x1, &taua, &mpi1, &z1, &c7, &z2, mp1chal);
+        let mp2 = MulProof::create_proof(&taua, &taua, &mpi2, &c7, &c7, &z4, mp2chal);
+        let mp3 = MulProof::create_proof(&taua, &x3, &mpi3, &c7, &z5, &z6, mp3chal);
+        let op  = OpeningProof::create_proof(&ay_sf, &opi, &c2, opchal);
+                    
         // And now we just return.
         Self {
             c1: c1,
@@ -150,10 +182,10 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             c5: c5,
             c6: c6,
             c7: c7,
-            mp1: mp1,
-            mp2: mp2,
-            mp3: mp3,
-            op: op,
+            mp1: mp1,                
+            mp2: mp2,            
+            mp3: mp3,            
+            op:  op,            
         }
     }
 
@@ -161,7 +193,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         Self::make_transcript(
             transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
         );
-
+        
         let z1 = &self.c3 - &self.c1;
         let z2 = &self.c7;
         let z3 = &self.c4 - &self.c2;
@@ -169,9 +201,22 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let z5 = &self.c1 - &self.c5;
         let z6 = &self.c2 + &self.c6;
 
-        self.mp1.verify(transcript, &z1, &z2, &z3)
-            && self.mp2.verify(transcript, &self.c7, &self.c7, &z4)
-            && self.mp3.verify(transcript, &z2, &z5, &z6)
-            && self.op.verify(transcript, &self.c2)
+        // Rebuild the rest of the transcript.        
+        self.mp1.add_to_transcript(transcript, &z1, &z2, &z3);
+        self.mp2.add_to_transcript(transcript, &self.c7, &self.c7, &z4);
+        self.mp3.add_to_transcript(transcript, &z2, &z5, &z6);
+        self.op.add_to_transcript(transcript, &self.c2);
+
+        // Make the challenges and sub-challenges.
+        let chal_buf = ECPointAdditionTranscript::challenge_scalar(transcript, b"c");
+        let mp1chal = &chal_buf[0..Self::MPSIZE];
+        let mp2chal = &chal_buf[Self::MPSIZE..2*Self::MPSIZE];
+        let mp3chal = &chal_buf[2*Self::MPSIZE..3*Self::MPSIZE];
+        let opchal  = &chal_buf[3*Self::MPSIZE..];
+
+        self.mp1.verify_with_challenge(&z1, &z2, &z3, mp1chal)
+            && self.mp2.verify_with_challenge(&self.c7, &self.c7, &z4, mp2chal)
+            && self.mp3.verify_with_challenge(&z2, &z5, &z6, mp3chal)
+            && self.op.verify_with_challenge(&self.c2, opchal)
     }
 }

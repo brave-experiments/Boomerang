@@ -7,20 +7,30 @@ use ark_ec::{
     short_weierstrass::{self as sw},
 };
 
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
-
+use ark_serialize::CanonicalSerialize;
 use ark_std::{UniformRand, ops::Mul};
 use rand::{RngCore, CryptoRng};
 
-use crate::{transcript::EqualityTranscript, pedersen_config::PedersenConfig, pedersen_config::PedersenComm};
+use crate::{transcript::EqualityTranscript, pedersen_config::PedersenConfig, pedersen_config::PedersenComm, transcript::CHALLENGE_SIZE};
 
 pub struct EqualityProof<P: PedersenConfig> {
     pub alpha: sw::Affine<P>,    
     pub z : <P as CurveConfig>::ScalarField, 
 }
 
-impl<P: PedersenConfig> EqualityProof<P> {
+pub struct EqualityProofIntermediate<P: PedersenConfig> {
+    pub r: <P as CurveConfig>::ScalarField,
+    pub alpha : sw::Affine<P>,
+}
 
+impl<P: PedersenConfig> EqualityProof<P> {
+    /// This is just to circumvent an annoying issue with Rust's current generics system. 
+    pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
+
+    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &PedersenComm<P>, c2: &PedersenComm<P>) {
+        Self::make_transcript(transcript, c1, c2, &self.alpha)
+    }
+       
     fn make_transcript(transcript: &mut Transcript,
                        c1: &PedersenComm<P>,
                        c2: &PedersenComm<P>,
@@ -40,38 +50,46 @@ impl<P: PedersenConfig> EqualityProof<P> {
         transcript.append_point(b"alpha", &compressed_bytes[..]);
     }
 
-    fn make_challenge(transcript: &mut Transcript) -> <P as CurveConfig>::ScalarField {
-        <P as CurveConfig>::ScalarField::deserialize_compressed(&transcript.challenge_scalar(b"c")[..]).unwrap()
-    }
-
-    
-    pub fn create<T: RngCore + CryptoRng>(transcript: &mut Transcript,
+    pub fn create_intermediates<T: RngCore + CryptoRng>(transcript: &mut Transcript,
                                           rng: &mut T,
                                           c1: &PedersenComm<P>,                                          
-                                          c2: &PedersenComm<P>) -> EqualityProof<P> {
-        
+                                                        c2: &PedersenComm<P>) -> EqualityProofIntermediate<P> {
+
         let r = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = P::GENERATOR2.mul(r).into_affine();
         Self::make_transcript(transcript, c1, c2, &alpha);
+        EqualityProofIntermediate {
+            r: r,
+            alpha: alpha
+        }
+    }
 
-        // Now make the challenge.
-        let chal = Self::make_challenge(transcript);
+    pub fn create<T: RngCore + CryptoRng>(transcript: &mut Transcript,
+                                          rng: &mut T,
+                                          c1: &PedersenComm<P>,
+                                          c2: &PedersenComm<P>) -> Self {
+        Self::create_proof(&Self::create_intermediates(transcript, rng, c1, c2), c1, c2, &transcript.challenge_scalar(b"c")[..])
+    }
+
+    pub fn create_proof(inter: &EqualityProofIntermediate<P>, c1: &PedersenComm<P>, c2: &PedersenComm<P>, chal_buf: &[u8]) -> Self {
         
-        let z = chal * (c1.r - c2.r) + r;
+        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);        
+        let z = chal * (c1.r - c2.r) + inter.r;
         EqualityProof {
-            alpha: alpha, 
+            alpha: inter.alpha, 
             z: z
         }
     }
 
     pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>, c2: &PedersenComm<P>) -> bool {
         // Make the transcript.
-        Self::make_transcript(transcript, c1, c2, &self.alpha);
+        self.add_to_transcript(transcript, c1, c2);
+        self.verify_with_challenge(c1, c2, &transcript.challenge_scalar(b"c")[..])        
+    }
 
-        // Now make the challenge and check.
-        let chal = Self::make_challenge(transcript);
-
-        P::GENERATOR2.mul(self.z) == (c1.comm - c2.comm).mul(chal) + self.alpha
+    pub fn verify_with_challenge(&self, c1: &PedersenComm<P>, c2: &PedersenComm<P>, chal_buf: &[u8]) -> bool {
+        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
+        P::GENERATOR2.mul(self.z) == (c1.comm - c2.comm).mul(chal) + self.alpha            
     }
 }
 

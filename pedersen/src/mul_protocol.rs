@@ -9,11 +9,11 @@ use ark_ec::{
     short_weierstrass::{self as sw},
 };
 
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+use ark_serialize::CanonicalSerialize;
 use ark_std::{UniformRand, ops::Mul};
 use rand::{RngCore, CryptoRng};
 
-use crate::{transcript::MulTranscript, pedersen_config::PedersenConfig, pedersen_config::PedersenComm};
+use crate::{transcript::MulTranscript, pedersen_config::PedersenConfig, pedersen_config::PedersenComm, transcript::CHALLENGE_SIZE};
 
 pub struct MulProof<P: PedersenConfig> {
     pub alpha: sw::Affine<P>,
@@ -27,8 +27,28 @@ pub struct MulProof<P: PedersenConfig> {
     pub z5: <P as CurveConfig>::ScalarField,    
 }
 
-impl <P: PedersenConfig> MulProof<P> {
+pub struct MulProofIntermediate<P: PedersenConfig> {
+    pub alpha: sw::Affine<P>,
+    pub beta: sw::Affine<P>,
+    pub delta: sw::Affine<P>,
+    
+    pub b1: <P as CurveConfig>::ScalarField,
+    pub b2: <P as CurveConfig>::ScalarField,
+    pub b3: <P as CurveConfig>::ScalarField,
+    pub b4: <P as CurveConfig>::ScalarField,
+    pub b5: <P as CurveConfig>::ScalarField,   
+}
 
+impl <P: PedersenConfig> MulProof<P> {
+    /// This is just to circumvent an annoying issue with Rust's current generics system. 
+    pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
+
+    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &PedersenComm<P>,
+                       c2: &PedersenComm<P>,
+                             c3: &PedersenComm<P>) {        
+        Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta)
+    }
+    
     fn make_transcript(transcript: &mut Transcript,
                        c1: &PedersenComm<P>,
                        c2: &PedersenComm<P>,
@@ -60,11 +80,6 @@ impl <P: PedersenConfig> MulProof<P> {
         delta.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"delta", &compressed_bytes[..]);        
     }
-
-
-    fn make_challenge(transcript: &mut Transcript) -> <P as CurveConfig>::ScalarField {
-        <P as CurveConfig>::ScalarField::deserialize_compressed(&transcript.challenge_scalar(b"c")[..]).unwrap()
-    }
     
     pub fn create<T: RngCore + CryptoRng>(transcript: &mut Transcript,
                                           rng: &mut T,
@@ -72,8 +87,15 @@ impl <P: PedersenConfig> MulProof<P> {
                                           y:  &<P as CurveConfig>::ScalarField,
                                           c1: &PedersenComm<P>,
                                           c2: &PedersenComm<P>,
-                                          c3: &PedersenComm<P>) -> Self {
+                                          c3: &PedersenComm<P>) -> Self {        
+        Self::create_proof(x, y, &Self::create_intermediates(transcript, rng, c1, c2, c3), c1, c2, c3, &transcript.challenge_scalar(b"c")[..])            
+    }
 
+    pub fn create_intermediates<T: RngCore + CryptoRng>(transcript: &mut Transcript,
+                                                        rng: &mut T,                                                        
+                                                        c1: &PedersenComm<P>,
+                                                        c2: &PedersenComm<P>,
+                                                        c3: &PedersenComm<P>) -> MulProofIntermediate<P> {
         // Generate the random values.
         let b1 = <P as CurveConfig>::ScalarField::rand(rng);
         let b2 = <P as CurveConfig>::ScalarField::rand(rng);
@@ -87,25 +109,39 @@ impl <P: PedersenConfig> MulProof<P> {
 
         Self::make_transcript(transcript, c1, c2, c3, &alpha, &beta, &delta);
 
-        // Now make the challenge.
-        let chal = Self::make_challenge(transcript);
-        
+        MulProofIntermediate { b1: b1, b2: b2, b3: b3, b4: b4, b5: b5, alpha: alpha, beta: beta, delta: delta }        
+    }
+
+    pub fn create_proof(x: &<P as CurveConfig>::ScalarField, y: &<P as CurveConfig>::ScalarField,
+                        inter: &MulProofIntermediate<P>,
+                        c1: &PedersenComm<P>,
+                        c2: &PedersenComm<P>,
+                        c3: &PedersenComm<P>,
+                        chal_buf: &[u8]) -> Self {
+
+        // Make the challenge itself.
+        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
+            
         Self {
-            alpha: alpha,
-            beta: beta,
-            delta: delta,
-            z1: b1 + (chal * (x)),
-            z2: b2 + (chal * c1.r),
-            z3: b3 + (chal * (y)),
-            z4: b4 + (chal * c2.r),
-            z5: b5 + chal * (c3.r - (c1.r*(y)))
+            alpha: inter.alpha,
+            beta: inter.beta,
+            delta: inter.delta,
+            z1: inter.b1 + (chal * (x)),
+            z2: inter.b2 + (chal * c1.r),
+            z3: inter.b3 + (chal * (y)),
+            z4: inter.b4 + (chal * c2.r),
+            z5: inter.b5 + chal * (c3.r - (c1.r*(y)))
         }        
     }
 
     pub fn verify(&self, transcript: &mut Transcript, c1: &PedersenComm<P>, c2: &PedersenComm<P>, c3: &PedersenComm<P>) -> bool {
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
-        let chal = Self::make_challenge(transcript);
-        
+        self.verify_with_challenge(c1, c2, c3, &transcript.challenge_scalar(b"c")[..])
+    }
+
+
+    pub fn verify_with_challenge(&self, c1: &PedersenComm<P>, c2: &PedersenComm<P>, c3: &PedersenComm<P>, chal_buf: &[u8]) -> bool {
+        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
         (self.alpha + c1.comm.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
             (self.beta + c2.comm.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
             (self.delta + c3.comm.mul(chal) == c1.comm.mul(self.z3) + P::GENERATOR2.mul(self.z5))        
