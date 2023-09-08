@@ -43,9 +43,9 @@ impl <P: PedersenConfig> MulProof<P> {
     /// This is just to circumvent an annoying issue with Rust's current generics system. 
     pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
 
-    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &sw::Affine<P><P>,
-                       c2: &sw::Affine<P><P>,
-                             c3: &sw::Affine<P><P>) {        
+    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &sw::Affine<P>,
+                       c2: &sw::Affine<P>,
+                             c3: &sw::Affine<P>) {        
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta)
     }
     

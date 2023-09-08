@@ -122,7 +122,7 @@ macro_rules! __test_pedersen {
             
             let c3 : PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3,comm));
+            assert!(!proof.verify(&mut transcript_f, &c1.comm, &c3.comm));
         }
 
         #[test]
@@ -221,7 +221,7 @@ macro_rules! __test_pedersen {
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c3.comm));
         }
-
+        
         #[test]
         fn test_pedersen_mul() {
             // Test that the mul proof goes through.
@@ -299,7 +299,6 @@ macro_rules! __test_pedersen {
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));    
         }
-
 
         #[test]
         fn test_pedersen_point_add() {
@@ -380,7 +379,35 @@ macro_rules! __test_pedersen {
             // Now check that it verifies properly.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v));
-        }           
+
+            // Now check that an incorrect proof fails.
+            let mut t2 = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            loop {
+                if t2 != t { break; }
+                t2 = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();                             
+            }
+
+            // Make the false proof.
+            let mut transcript_f = Transcript::new(label);
+            let proof_f : ZKEPAP<Config> = ZKEPAP::create(&mut transcript_f, &mut OsRng, a.x, a.y, b.x, b.y, t2.x, t2.y);
+
+            // The rest of the invariants still hold.
+            assert!(proof_f.c1.is_on_curve());
+            assert!(proof_f.c2.is_on_curve());
+            assert!(proof_f.c3.is_on_curve());
+            assert!(proof_f.c4.is_on_curve());
+            assert!(proof_f.c5.is_on_curve());
+            assert!(proof_f.c6.is_on_curve());
+            assert!(proof_f.c8.is_on_curve());
+            assert!(proof_f.c10.is_on_curve());
+            assert!(proof_f.c11.is_on_curve());
+            assert!(proof_f.c13.is_on_curve());
+
+            // And now check it fails.
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv));
+        }
+    }
 }
 
 #[macro_export]
@@ -395,7 +422,7 @@ macro_rules! test_pedersen {
                          CurveGroup};
             use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig, equality_protocol::EqualityProof as EP,
                            opening_protocol::OpeningProof as OP, mul_protocol::MulProof as MP,
-                           ec_point_add_protocol::ECPointAddProof as EPAP};            
+                           ec_point_add_protocol::ECPointAddProof as EPAP, zk_attest_point_add_protocol::ZKAttestPointAddProof as ZKEPAP};            
             use rand_core::OsRng;
             use merlin::Transcript;
             $crate::__test_pedersen!($config, $OtherProjectiveType);            
