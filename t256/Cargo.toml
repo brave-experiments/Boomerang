@@ -19,7 +19,7 @@ merlin = { version = "3.0.0" }
 
 [dev-dependencies]
 ark-relations = { version = "0.4.0", default-features = false }
-ark-serialize = { version = "0.4.0", default-features = false }
+ark-serialize = { version = "0.4.2", default-features = false }
 ark-algebra-test-templates = { version = "0.4.0", default-features = false }
 ark-algebra-bench-templates = { version = "0.4.0", default-features = false }
 ark-curve-constraint-tests = {version = "0.4.0", default-features = false }
