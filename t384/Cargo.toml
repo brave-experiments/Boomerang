@@ -20,7 +20,7 @@ ark-secp384r1 = {default-features = false, git = "https://github.com/arkworks-rs
 [dev-dependencies]
 ark-relations = { version = "0.4.0", default-features = false }
 ark-serialize = { version = "0.4.2", default-features = false }
-ark-algebra-test-templates = { version = "0.4.0", default-features = false }
+ark-algebra-test-templates = { version = "0.4.2", default-features = false }
 ark-algebra-bench-templates = { version = "0.4.2", default-features = false }
 ark-curve-constraint-tests = {version = "0.4.0", default-features = false }
 
