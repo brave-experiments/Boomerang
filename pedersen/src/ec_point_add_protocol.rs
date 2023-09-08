@@ -137,8 +137,10 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let z6 = &c2 + &c6;
         let mp3 = MulProof::create(transcript, rng, &taua, &x3, &c7, &z5, &z6);
 
-        let op = OpeningProof::create(transcript, rng, &taua, &c7); // TODO: shouldn't this be c2?
-
+        
+        let ay_sf = <P as PedersenConfig>::from_ob_to_sf(a_y);
+        let op = OpeningProof::create(transcript, rng, &ay_sf, &c2);
+        
         // And now we just return.
         Self {
             c1: c1,
@@ -170,6 +172,6 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         self.mp1.verify(transcript, &z1, &z2, &z3)
             && self.mp2.verify(transcript, &self.c7, &self.c7, &z4)
             && self.mp3.verify(transcript, &z2, &z5, &z6)
-            && self.op.verify(transcript, &self.c7)
+            && self.op.verify(transcript, &self.c2)
     }
 }
