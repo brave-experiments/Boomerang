@@ -9,6 +9,7 @@ use ark_ec::{
 use ark_std::{UniformRand, ops::Mul};
 use std::ops;
 use rand::{RngCore, CryptoRng};
+use ark_serialize::CanonicalDeserialize;
 
 pub trait PedersenConfig : SWCurveConfig {
     /// Second generator that's used in Pedersen commitments.
@@ -23,7 +24,14 @@ pub trait PedersenConfig : SWCurveConfig {
         <Self as CurveConfig>::ScalarField::from(x_bt)
     }
 
-    fn from_ob_to_sf(x: <Self::OCurve as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;    
+    fn from_ob_to_sf(x: <Self::OCurve as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
+
+
+    /// This function turns a challenge buffer into a challenge point. This is primarily to circumvent
+    /// an issue with Merlin (which primarily deals with Ristretto points).
+    fn make_challenge_from_buffer(chal_buf: &[u8]) -> <Self as CurveConfig>::ScalarField {
+        <Self as CurveConfig>::ScalarField::deserialize_compressed(chal_buf).unwrap()
+    }    
 }
 
 #[derive(Copy, Clone)]
