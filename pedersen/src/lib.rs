@@ -5,3 +5,4 @@ pub mod opening_protocol;
 pub mod mul_protocol;
 pub mod pedersen_config;
 pub mod ec_point_add_protocol;
+pub mod zk_attest_point_add_protocol;
