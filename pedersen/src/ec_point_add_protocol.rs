@@ -207,10 +207,10 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let z6 = (self.c2.into_group() + self.c6).into_affine();
 
         // Rebuild the rest of the transcript.
-        self.mp1.add_to_transcript(transcript, &z1, &z2, &z3);
+        self.mp1.add_to_transcript(transcript, &z1, z2, &z3);
         self.mp2
             .add_to_transcript(transcript, &self.c7, &self.c7, &z4);
-        self.mp3.add_to_transcript(transcript, &z2, &z5, &z6);
+        self.mp3.add_to_transcript(transcript, z2, &z5, &z6);
         self.op.add_to_transcript(transcript, &self.c2);
 
         // Make the challenges and sub-challenges.
@@ -220,11 +220,11 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let mp3chal = &chal_buf[2 * Self::MPSIZE..3 * Self::MPSIZE];
         let opchal = &chal_buf[3 * Self::MPSIZE..];
 
-        self.mp1.verify_with_challenge(&z1, &z2, &z3, mp1chal)
+        self.mp1.verify_with_challenge(&z1, z2, &z3, mp1chal)
             && self
                 .mp2
                 .verify_with_challenge(&self.c7, &self.c7, &z4, mp2chal)
-            && self.mp3.verify_with_challenge(&z2, &z5, &z6, mp3chal)
+            && self.mp3.verify_with_challenge(z2, &z5, &z6, mp3chal)
             && self.op.verify_with_challenge(&self.c2, opchal)
     }
 }
