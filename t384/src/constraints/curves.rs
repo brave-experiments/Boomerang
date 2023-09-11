@@ -8,4 +8,3 @@ pub type GVar = ProjectiveVar<Config, FqVar>;
 fn test() {
     ark_curve_constraint_tests::curves::sw_test::<Config, GVar>().unwrap();
 }
-

@@ -7,11 +7,11 @@
 //! which are different from those that are given in the paper.
 //!
 //! Curve infomration:
-//! * Base field:   q = 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b117 
+//! * Base field:   q = 0xffffffff0000000100000000000000017e72b42b30e7317793135661b1c4b117
 //! * Scalar field: r = 0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff
 //!
 //! Note that by "base field" we mean "the characteristic of the underlying finite field" and by "scalar field" we mean
-//! "the order of the curve". 
+//! "the order of the curve".
 //!
 //! * Curve equation: y^2 = x^3 + a_4*x + a_6, where
 //!   a_4 = -3
