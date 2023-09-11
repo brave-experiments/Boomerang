@@ -1,7 +1,8 @@
 [workspace]
 members = [
   "./pedersen",
-  "./t256",
+  "./t256r1",
+  "./t256k1",
   "./t384",
   "./macros",
 ]
