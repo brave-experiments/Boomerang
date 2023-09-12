@@ -131,8 +131,18 @@ impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for &PedersenComm<P> {
 
 impl<P: PedersenConfig> PedersenComm<P> {
     pub fn new<T: RngCore + CryptoRng>(x: <P as CurveConfig>::ScalarField, rng: &mut T) -> Self {
+        Self::new_with_generators(x, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
+    }
+
+    pub fn new_with_generators<T: RngCore + CryptoRng>(
+        x: <P as CurveConfig>::ScalarField,
+        rng: &mut T,
+        g: &sw::Affine<P>,
+        q: &sw::Affine<P>,
+    ) -> Self {
+        // Returns a new pedersen commitment using fixed generators.
         let x_r = <P as CurveConfig>::ScalarField::rand(rng);
-        let x_p = <P as SWCurveConfig>::GENERATOR.mul(x) + P::GENERATOR2.mul(x_r);
+        let x_p = g.mul(x) + q.mul(x_r);
         Self {
             comm: x_p.into_affine(),
             r: x_r,

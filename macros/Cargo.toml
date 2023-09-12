@@ -1,7 +1,7 @@
 [package]
-name = "pedersen-test-templates"
+name = "cdls-macros"
 version = "0.0.1"
-description = "A macro for testing Pedersen commitments"
+description = "The macros for cdls"
 
 [dependencies]
 ark-ff = { version = "0.4.0", default-features = false }
