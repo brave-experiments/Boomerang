@@ -135,7 +135,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
             alpha = Self::get_random_p(rng);
         }
 
-        let (c1, _r1) = Self::create_commit_other(lambda, rng);
+        let (c1, r1) = Self::create_commit_other(lambda, rng);
 
         let st = ((*p).mul(alpha)).into_affine();
         let s = <P as PedersenConfig>::from_ob_to_sf(st.x);
@@ -207,7 +207,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
                 c7: c7.comm,
                 c8: c8.comm,
                 z1: alpha - *lambda,
-                z2: beta_1 - <P as PedersenConfig>::from_sf_to_os(c2.r),
+                z2: beta_1 - r1,
                 z3: beta_4,
                 z4: beta_5,
                 eap,
@@ -247,7 +247,6 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
                 && (self.c8 == PedersenComm::new_with_both(v_dash, self.z4).comm);
         }
 
-        println!("{}", worked);
         worked && self.eap.verify(transcript)
     }
 }

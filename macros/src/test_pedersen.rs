@@ -451,6 +451,26 @@ macro_rules! __test_pedersen {
 
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+
+            // Now make a fake transcript.
+            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
+            let mut transcript_f = Transcript::new(label);
+            let proof_f: ECSMP<Config> =
+                ECSMP::create(&mut transcript, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+
+            // All of the other invariants are right.
+            assert!(proof_f.c1.is_on_curve());
+            assert!(proof_f.c2.is_on_curve());
+            assert!(proof_f.c3.is_on_curve());
+            assert!(proof_f.c4.is_on_curve());
+            assert!(proof_f.c5.is_on_curve());
+            assert!(proof_f.c6.is_on_curve());
+            assert!(proof_f.c7.is_on_curve());
+            assert!(proof_f.c8.is_on_curve());
+
+            // But the verification fails.
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
         }
     };
 }
