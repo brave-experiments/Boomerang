@@ -5,7 +5,7 @@ description = "The macros for cdls"
 
 [dependencies]
 ark-ff = { version = "0.4.2", default-features = false }
-ark-ec = { version = "0.4.0", default-features = false }
+ark-ec = { version = "0.4.2", default-features = false }
 ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
 ark-std = { version = "0.4.0", default-features = false }
 pedersen = { path="../pedersen" }
