@@ -101,12 +101,18 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         PedersenComm::new(val_p, rng)
     }
 
-    pub fn create<T: RngCore + CryptoRng>(
+    pub fn create_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         a: sw::Affine<<P as PedersenConfig>::OCurve>,
         b: sw::Affine<<P as PedersenConfig>::OCurve>,
         t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &PedersenComm<P>,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
+        c4: &PedersenComm<P>,
+        c5: &PedersenComm<P>,
+        c6: &PedersenComm<P>,
     ) -> Self {
         let a_x = a.x;
         let a_y = a.y;
@@ -114,15 +120,6 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let b_x = b.x;
         let b_y = b.y;
         let t_x = t.x;
-        let t_y = t.y;
-
-        // Commit to each of the co-ordinate pairs.
-        let c1 = Self::make_commitment(a_x, rng);
-        let c2 = Self::make_commitment(a_y, rng);
-        let c3 = Self::make_commitment(b_x, rng);
-        let c4 = Self::make_commitment(b_y, rng);
-        let c5 = Self::make_commitment(t_x, rng);
-        let c6 = Self::make_commitment(t_y, rng);
 
         // c7 is the commitment to tau, the gradient.
         let tau = (b_y - a_y) * ((b_x - a_x).inverse().unwrap());
@@ -141,22 +138,22 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
 
         // These are the temporaries for the first multiplication proof, which
         // verifies that (b_x - a_x)*tau = b_y - a_y.
-        let z1 = &c3 - &c1; // This is the commitment for b_x - a_x.
-        let z2 = &c4 - &c2; // This is the commitment for b_y - a_y.
+        let z1 = c3 - c1; // This is the commitment for b_x - a_x.
+        let z2 = c4 - c2; // This is the commitment for b_y - a_y.
 
         let x1 = <P as PedersenConfig>::from_ob_to_sf(b_x - a_x);
         let mpi1 = MulProof::create_intermediates(transcript, rng, &z1, &c7, &z2);
 
         // These are the temporaries for the second multiplication proof, which verifies that
         // tau^2 = a_x + b_x + t_x.
-        let z4 = &c1 + &c3 + &c5; // This is the commitment to a_x + b_x + t_x.
+        let z4 = c1 + c3 + c5; // This is the commitment to a_x + b_x + t_x.
         let mpi2 = MulProof::create_intermediates(transcript, rng, &c7, &c7, &z4);
 
         // These are the temporaries for the third multiplication proof, which verifies that
         // tau*(a_x - t_x) = a_y + t_y.
         let x3 = <P as PedersenConfig>::from_ob_to_sf(a_x - t_x); // Value of a_x - t_x
-        let z5 = &c1 - &c5; // The commitment to a_x - t_x
-        let z6 = &c2 + &c6; // The commitment to a_y + t_y.
+        let z5 = c1 - c5; // The commitment to a_x - t_x
+        let z6 = c2 + c6; // The commitment to a_y + t_y.
         let mpi3 = MulProof::create_intermediates(transcript, rng, &c7, &z5, &z6);
 
         // And, finally, the intermediates for the Opening proof.
@@ -197,6 +194,26 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             mp3,
             op,
         }
+    }
+
+    pub fn create<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> Self {
+        // Commit to each of the co-ordinate pairs.
+        let c1 = Self::make_commitment(a.x, rng);
+        let c2 = Self::make_commitment(a.y, rng);
+        let c3 = Self::make_commitment(b.x, rng);
+        let c4 = Self::make_commitment(b.y, rng);
+        let c5 = Self::make_commitment(t.x, rng);
+        let c6 = Self::make_commitment(t.y, rng);
+
+        Self::create_with_existing_commitments(
+            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
+        )
     }
 
     pub fn verify(&self, transcript: &mut Transcript) -> bool {

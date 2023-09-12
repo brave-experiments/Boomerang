@@ -145,3 +145,29 @@ impl ZKAttestECPointAdditionTranscript for Transcript {
         buf
     }
 }
+pub trait ECScalarMulTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; EC_POINT_CHALLENGE_SIZE + 1];
+}
+
+impl ECScalarMulTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"ec-point-scalar-addition-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; EC_POINT_CHALLENGE_SIZE + 1] {
+        let mut buf = [0u8; EC_POINT_CHALLENGE_SIZE + 1];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}

@@ -7,6 +7,12 @@ use crate::{fq::Fq, fr::Fr, fr::FrConfig};
 use ark_secp384r1::Config as secp384r1conf;
 use ark_secp384r1::Fq as secp384r1Fq;
 use ark_secp384r1::FqConfig as secp384FqConfig;
+use ark_secp384r1::Fr as secp384r1Fr;
+#[allow(unused_imports)]
+// This is actually used in the macro below, but rustfmt seems to
+// be unable to deduce that...
+use ark_secp384r1::FrConfig as secp384FrConfig;
+#[warn(unused_imports)]
 use cdls_macros::derive_conversion;
 
 #[cfg(test)]
@@ -64,6 +70,10 @@ derive_conversion!(
     Fr,
     FrConfig,
     secp384r1Fq,
+    secp384r1Fr,
     secp384FqConfig,
-    Affine
+    secp384FrConfig,
+    Affine,
+    "35844451280757088535875123965116225310073208726034463360736462178210365192733738092353369333892565847293721646292008",
+    "12852303813876583228171852252822018299502069287699403243661957712124279761251434632610206218878102281645617942246021"
 );

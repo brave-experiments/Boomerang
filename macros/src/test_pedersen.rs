@@ -7,6 +7,9 @@ macro_rules! __test_pedersen {
         type SF = <$config as CurveConfig>::ScalarField;
         type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
 
+        const OGENERATOR: sw::Affine<<$config as PedersenConfig>::OCurve> =
+            <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
+
         #[test]
         fn test_pedersen() {
             // Test that committing to a random point works.
@@ -425,6 +428,30 @@ macro_rules! __test_pedersen {
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv));
         }
+
+        #[test]
+        fn test_scalar_mult() {
+            // Test that scalar multiplication works.
+            let label = b"PedersenScalarMult";
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+
+            let mut transcript = Transcript::new(label);
+            let proof: ECSMP<Config> =
+                ECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c7.is_on_curve());
+            assert!(proof.c8.is_on_curve());
+
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+        }
     };
 }
 
@@ -435,16 +462,17 @@ macro_rules! test_pedersen {
             use super::*;
             use ark_ec::{
                 models::CurveConfig,
-                short_weierstrass::{self as sw},
+                short_weierstrass::{self as sw, SWCurveConfig},
                 AffineRepr, CurveGroup,
             };
             use ark_std::UniformRand;
+            use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
                 ec_point_add_protocol::ECPointAddProof as EPAP,
                 equality_protocol::EqualityProof as EP, mul_protocol::MulProof as MP,
                 opening_protocol::OpeningProof as OP, pedersen_config::PedersenComm,
-                pedersen_config::PedersenConfig,
+                pedersen_config::PedersenConfig, scalar_mul_proof::ECScalarMulProof as ECSMP,
                 zk_attest_point_add_protocol::ZKAttestPointAddProof as ZKEPAP,
             };
             use rand_core::OsRng;

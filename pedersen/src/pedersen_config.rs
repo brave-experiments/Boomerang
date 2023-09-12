@@ -17,6 +17,8 @@ pub trait PedersenConfig: SWCurveConfig {
     /// For example, for T256 it would be P256.
     type OCurve: CurveConfig + SWCurveConfig;
 
+    const O_TWO: <Self::OCurve as CurveConfig>::ScalarField;
+
     fn from_oc(
         x: <Self::OCurve as CurveConfig>::ScalarField,
     ) -> <Self as CurveConfig>::ScalarField {
@@ -28,11 +30,22 @@ pub trait PedersenConfig: SWCurveConfig {
         x: <Self::OCurve as CurveConfig>::BaseField,
     ) -> <Self as CurveConfig>::ScalarField;
 
+    fn from_os_to_sf(
+        x: <Self::OCurve as CurveConfig>::ScalarField,
+    ) -> <Self as CurveConfig>::ScalarField;
+
+    fn from_bf_to_sf(x: <Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
+    fn from_sf_to_os(
+        x: <Self as CurveConfig>::ScalarField,
+    ) -> <Self::OCurve as CurveConfig>::ScalarField;
+
     /// This function turns a challenge buffer into a challenge point. This is primarily to circumvent
     /// an issue with Merlin (which primarily deals with Ristretto points).
     fn make_challenge_from_buffer(chal_buf: &[u8]) -> <Self as CurveConfig>::ScalarField {
         <Self as CurveConfig>::ScalarField::deserialize_compressed(chal_buf).unwrap()
     }
+
+    const OGENERATOR2: sw::Affine<Self::OCurve>;
 }
 
 #[derive(Copy, Clone)]
@@ -146,6 +159,16 @@ impl<P: PedersenConfig> PedersenComm<P> {
         Self {
             comm: x_p.into_affine(),
             r: x_r,
+        }
+    }
+
+    pub fn new_with_both(
+        x: <P as CurveConfig>::ScalarField,
+        r: <P as CurveConfig>::ScalarField,
+    ) -> Self {
+        Self {
+            comm: (<P as SWCurveConfig>::GENERATOR.mul(x) + P::GENERATOR2.mul(r)).into_affine(),
+            r,
         }
     }
 }

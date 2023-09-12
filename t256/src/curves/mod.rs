@@ -7,6 +7,12 @@ use crate::{fq::Fq, fr::Fr, fr::FrConfig};
 use ark_secp256r1::Config as secp256r1conf;
 use ark_secp256r1::Fq as secp256r1Fq;
 use ark_secp256r1::FqConfig as secp256FqConfig;
+use ark_secp256r1::Fr as secp256r1Fr;
+#[allow(unused_imports)]
+// This is actually used in the macro below, but rustfmt seems to
+// be unable to deduce that...
+use ark_secp256r1::FrConfig as secp256FrConfig;
+#[warn(unused_imports)]
 use cdls_macros::derive_conversion;
 
 #[cfg(test)]
@@ -58,6 +64,13 @@ pub const G_GENERATOR_X2: Fq = MontFp!("5");
 pub const G_GENERATOR_Y2: Fq =
     MontFp!("28281484859698624956664858566852274012236038028101624500031073655422126514829");
 
+/// The x co-ordinate of the other generator for secp256r1.
+pub const G_SECP256_O_X: &'static str = "5";
+
+/// The y co-ordinate of the other generator for secp256r1.
+pub const G_SECP256_O_Y: &'static str =
+    "31468013646237722594854082025316614106172411895747863909393730389177298123724";
+
 // Now we instantiate everything else.
 derive_conversion!(
     Config,
@@ -68,6 +81,10 @@ derive_conversion!(
     Fr,
     FrConfig,
     secp256r1Fq,
+    secp256r1Fr,
     secp256FqConfig,
-    Affine
+    secp256FrConfig,
+    Affine,
+    "5",
+    "31468013646237722594854082025316614106172411895747863909393730389177298123724"
 );
