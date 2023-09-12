@@ -9,7 +9,7 @@
 //! * Scalar field: r = 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff
 //!
 //! Note that by "base field" we mean "the characteristic of the underlying finite field" and by "scalar field" we mean
-//! "the order of the curve". 
+//! "the order of the curve".
 //!
 //! * Curve equation: y^2 = x^3 + a_4*x + a_6, where
 //!   a_4 = 0x821dfdc940e7f074ac481f8b2870c48962cce56abd72dfc42813a944cea15df78dc0a2d97fbf031ed26c9076826940ba
