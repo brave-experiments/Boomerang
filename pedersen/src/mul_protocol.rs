@@ -131,14 +131,14 @@ impl<P: PedersenConfig> MulProof<P> {
         );
 
         MulProofIntermediate {
-            b1: b1,
-            b2: b2,
-            b3: b3,
-            b4: b4,
-            b5: b5,
-            alpha: alpha,
-            beta: beta,
-            delta: delta,
+            b1,
+            b2,
+            b3,
+            b4,
+            b5,
+            alpha,
+            beta,
+            delta,
         }
     }
 

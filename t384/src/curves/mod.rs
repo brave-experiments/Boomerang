@@ -34,9 +34,9 @@ impl From<BigInt<6>> for FrStruct {
     }
 }
 
-impl Into<BigInt<6>> for FrStruct {
-    fn into(self) -> BigInt<6> {
-        FrConfig::into_bigint(self.0)
+impl From<FrStruct> for BigInt<6> {
+    fn from(val: FrStruct) -> Self {
+        FrConfig::into_bigint(val.0)
     }
 }
 
@@ -48,9 +48,9 @@ impl Secp384r1base {
     }
 }
 
-impl Into<BigInt<6>> for Secp384r1base {
-    fn into(self) -> BigInt<6> {
-        secp384FqConfig::into_bigint(self.0)
+impl From<Secp384r1base> for BigInt<6> {
+    fn from(val: Secp384r1base) -> Self {
+        secp384FqConfig::into_bigint(val.0)
     }
 }
 

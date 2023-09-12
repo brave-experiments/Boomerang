@@ -329,8 +329,7 @@ macro_rules! __test_pedersen {
             let t = (a + b).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof: EPAP<Config> =
-                EPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
+            let proof: EPAP<Config> = EPAP::create(&mut transcript, &mut OsRng, a, b, t);
 
             assert!(proof.c1.is_on_curve());
             assert!(proof.c2.is_on_curve());
@@ -355,16 +354,7 @@ macro_rules! __test_pedersen {
 
             // Now show it fails.
             let mut transcript_f1 = Transcript::new(label);
-            let proof_f: EPAP<Config> = EPAP::create(
-                &mut transcript_f1,
-                &mut OsRng,
-                a.x,
-                a.y,
-                b.x,
-                b.y,
-                tf.x,
-                tf.y,
-            );
+            let proof_f: EPAP<Config> = EPAP::create(&mut transcript_f1, &mut OsRng, a, b, tf);
 
             let mut transcript_f2 = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_f2));
@@ -388,8 +378,7 @@ macro_rules! __test_pedersen {
             // proof system breaks (this seems to be an ark_ff thing).
             let t = (a + b).into_affine();
             let mut transcript = Transcript::new(label);
-            let proof: ZKEPAP<Config> =
-                ZKEPAP::create(&mut transcript, &mut OsRng, a.x, a.y, b.x, b.y, t.x, t.y);
+            let proof: ZKEPAP<Config> = ZKEPAP::create(&mut transcript, &mut OsRng, a, b, t);
 
             // Check that all of the commitments are valid.
             assert!(proof.c1.is_on_curve());
@@ -418,16 +407,7 @@ macro_rules! __test_pedersen {
 
             // Make the false proof.
             let mut transcript_f = Transcript::new(label);
-            let proof_f: ZKEPAP<Config> = ZKEPAP::create(
-                &mut transcript_f,
-                &mut OsRng,
-                a.x,
-                a.y,
-                b.x,
-                b.y,
-                t2.x,
-                t2.y,
-            );
+            let proof_f: ZKEPAP<Config> = ZKEPAP::create(&mut transcript_f, &mut OsRng, a, b, t2);
 
             // The rest of the invariants still hold.
             assert!(proof_f.c1.is_on_curve());

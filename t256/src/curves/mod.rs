@@ -34,9 +34,9 @@ impl From<BigInt<4>> for FrStruct {
     }
 }
 
-impl Into<BigInt<4>> for FrStruct {
-    fn into(self) -> BigInt<4> {
-        FrConfig::into_bigint(self.0)
+impl From<FrStruct> for BigInt<4> {
+    fn from(val: FrStruct) -> Self {
+        FrConfig::into_bigint(val.0)
     }
 }
 
@@ -48,9 +48,9 @@ impl Secp256r1base {
     }
 }
 
-impl Into<BigInt<4>> for Secp256r1base {
-    fn into(self) -> BigInt<4> {
-        secp256FqConfig::into_bigint(self.0)
+impl From<Secp256r1base> for BigInt<4> {
+    fn from(val: Secp256r1base) -> Self {
+        secp256FqConfig::into_bigint(val.0)
     }
 }
 

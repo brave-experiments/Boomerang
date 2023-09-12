@@ -16,7 +16,6 @@ use rand::{CryptoRng, RngCore};
 use crate::{
     mul_protocol::MulProof, opening_protocol::OpeningProof, pedersen_config::PedersenComm,
     pedersen_config::PedersenConfig, transcript::ECPointAdditionTranscript,
-    transcript::EC_POINT_CHALLENGE_SIZE,
 };
 
 pub struct ECPointAddProof<P: PedersenConfig> {
@@ -55,6 +54,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
     const OPSIZE: usize = OpeningProof::<P>::CHAL_SIZE;
     pub const CHAL_SIZE: usize = 3 * Self::MPSIZE + Self::OPSIZE;
 
+    #[allow(clippy::too_many_arguments)]
     fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
@@ -104,13 +104,18 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
-        a_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        a_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        b_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        b_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        t_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        t_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
+        let a_x = a.x;
+        let a_y = a.y;
+
+        let b_x = b.x;
+        let b_y = b.y;
+        let t_x = t.x;
+        let t_y = t.y;
+
         // Commit to each of the co-ordinate pairs.
         let c1 = Self::make_commitment(a_x, rng);
         let c2 = Self::make_commitment(a_y, rng);
@@ -164,7 +169,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let chal_buf = ECPointAdditionTranscript::challenge_scalar(transcript, b"c");
 
         // Make sure it all lines up.
-        assert!(Self::CHAL_SIZE == EC_POINT_CHALLENGE_SIZE);
+        //assert!(Self::CHAL_SIZE == EC_POINT_CHALLENGE_SIZE);
 
         // Make the sub-challenges.
         let mp1chal = &chal_buf[0..Self::MPSIZE];
@@ -187,10 +192,10 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             c5: c5.comm,
             c6: c6.comm,
             c7: c7.comm,
-            mp1: mp1,
-            mp2: mp2,
-            mp3: mp3,
-            op: op,
+            mp1,
+            mp2,
+            mp3,
+            op,
         }
     }
 

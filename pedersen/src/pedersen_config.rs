@@ -15,7 +15,7 @@ pub trait PedersenConfig: SWCurveConfig {
 
     /// The curve type that maps to this PedersenConfig.
     /// For example, for T256 it would be P256.
-    type OCurve: CurveConfig;
+    type OCurve: CurveConfig + SWCurveConfig;
 
     fn from_oc(
         x: <Self::OCurve as CurveConfig>::ScalarField,

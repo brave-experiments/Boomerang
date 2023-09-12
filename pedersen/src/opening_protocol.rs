@@ -79,11 +79,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         let alpha = (P::GENERATOR.mul(t1) + P::GENERATOR2.mul(t2)).into_affine();
         Self::make_transcript(transcript, &c1.comm, &alpha);
 
-        OpenProofIntermediate {
-            t1: t1,
-            t2: t2,
-            alpha: alpha,
-        }
+        OpenProofIntermediate { t1, t2, alpha }
     }
 
     pub fn create_proof(

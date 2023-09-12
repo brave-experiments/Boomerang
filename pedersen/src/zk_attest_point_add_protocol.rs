@@ -100,13 +100,18 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
-        a_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        a_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        b_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        b_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        t_x: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        t_y: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
+        let a_x = a.x;
+        let a_y = a.y;
+
+        let b_x = b.x;
+        let b_y = b.y;
+        let t_x = t.x;
+        let t_y = t.y;
+
         // Commit to each of the co-ordinate pairs.
         let c1 = Self::make_commitment(a_x, rng);
         let c2 = Self::make_commitment(a_y, rng);
@@ -175,10 +180,10 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
             c10: c10.comm,
             c11: c11.comm,
             c13: c13.comm,
-            mp1: mp1,
-            mp2: mp2,
-            mp3: mp3,
-            mp4: mp4,
+            mp1,
+            mp2,
+            mp3,
+            mp4,
             e1: eq1,
             e2: eq2,
         }

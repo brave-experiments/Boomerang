@@ -68,7 +68,7 @@ impl<P: PedersenConfig> EqualityProof<P> {
         let r = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = P::GENERATOR2.mul(r).into_affine();
         Self::make_transcript(transcript, &c1.comm, &c2.comm, &alpha);
-        EqualityProofIntermediate { r: r, alpha: alpha }
+        EqualityProofIntermediate { r, alpha }
     }
 
     pub fn create<T: RngCore + CryptoRng>(
@@ -95,7 +95,7 @@ impl<P: PedersenConfig> EqualityProof<P> {
         let z = chal * (c1.r - c2.r) + inter.r;
         EqualityProof {
             alpha: inter.alpha,
-            z: z,
+            z,
         }
     }
 
