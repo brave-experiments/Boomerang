@@ -65,10 +65,10 @@ pub const G_GENERATOR_Y2: Fq =
     MontFp!("28281484859698624956664858566852274012236038028101624500031073655422126514829");
 
 /// The x co-ordinate of the other generator for secp256r1.
-pub const G_SECP256_O_X: &'static str = "5";
+pub const G_SECP256_O_X: &str = "5";
 
 /// The y co-ordinate of the other generator for secp256r1.
-pub const G_SECP256_O_Y: &'static str =
+pub const G_SECP256_O_Y: &str =
     "31468013646237722594854082025316614106172411895747863909393730389177298123724";
 
 // Now we instantiate everything else.

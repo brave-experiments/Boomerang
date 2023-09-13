@@ -1,10 +1,10 @@
 //! Defines a protocol for proof of elliptic curve point addition.
 //! Namely, this protocol proves that A + B = T, for A, B, T \in E(F_{q}).
-//! This protocol is the same as the protocol described in Theorem 4 of the paper.
+//! This protocol is the same as the protocol described in Theorem 4 of the CDLS paper.
 
 use ark_ec::{
     short_weierstrass::{self as sw},
-    AffineRepr, CurveConfig, CurveGroup,
+    AffineRepr, CurveGroup,
 };
 use merlin::Transcript;
 
@@ -18,21 +18,25 @@ use crate::{
     pedersen_config::PedersenConfig, transcript::ECPointAdditionTranscript,
 };
 
+/// ECPointAddProof. This struct acts as a container for an Elliptic Curve Point Addition proof.
+/// Essentially, this struct can be used to create new proofs (via ```create```), and verify
+/// existing proofs (via ```verify```).
+/// In this documentation we use the convention that we are trying to prove t = a + b.
 pub struct ECPointAddProof<P: PedersenConfig> {
-    /// c1: the commitment to a_x.
+    /// c1: the commitment to a.x.
     pub c1: sw::Affine<P>,
-    /// c2: the commitment to a_y.
+    /// c2: the commitment to a.y.
     pub c2: sw::Affine<P>,
-    /// c3: the commitment to b_x.
+    /// c3: the commitment to b.x.
     pub c3: sw::Affine<P>,
-    /// c4: the commitment to b_y.
+    /// c4: the commitment to b.y.
     pub c4: sw::Affine<P>,
-    /// c5: the commitment to t_x.
+    /// c5: the commitment to t.x.
     pub c5: sw::Affine<P>,
-    /// c6: the commitment to t_y.
+    /// c6: the commitment to t.y.
     pub c6: sw::Affine<P>,
 
-    /// c7: the commitment to tau = (b_y - a_y)/(b_x - a_x)
+    /// c7: the commitment to tau = (b.y - a.y)/(b.x - a.x)
     pub c7: sw::Affine<P>,
 
     /// mp1: the multiplication proof that verifies that equation 1 holds.
@@ -55,6 +59,11 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
     pub const CHAL_SIZE: usize = 3 * Self::MPSIZE + Self::OPSIZE;
 
     #[allow(clippy::too_many_arguments)]
+    /// make_transcript. This function simply loads all commitments `c_i` into the
+    /// `transcript` object. This can then be used for proving or verifying statements.
+    /// # Arguments
+    /// * `transcript` - the transcript object to modify.
+    /// * `c_i` - the commitments that are being added to the transcript.
     fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
@@ -93,14 +102,21 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         ECPointAdditionTranscript::append_point(transcript, b"C7", &compressed_bytes[..]);
     }
 
-    fn make_commitment<T: RngCore + CryptoRng>(
-        val: <<P as PedersenConfig>::OCurve as CurveConfig>::BaseField,
-        rng: &mut T,
-    ) -> PedersenComm<P> {
-        let val_p = <P as PedersenConfig>::from_ob_to_sf(val);
-        PedersenComm::new(val_p, rng)
-    }
-
+    /// create_with_existing_commitments. This constructor returns a new Elliptic Curve addition proof
+    /// that `t = a + b` using already existing commitments to `a`, `b`, and `t`.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
+    /// * `a` - one of the components of the sum.
+    /// * `b` - the other component of the sum.
+    /// * `t` - the target point (i.e t = a + b).
+    /// * `c1` - the commitment to a.x.
+    /// * `c2` - the commitment to a.y.
+    /// * `c3` - the commitment to b.x.
+    /// * `c4` - the commitment to a.y.
+    /// * `c5` - the commitment to t.x.
+    /// * `c6` - the commitment to t.y.    
+    #[allow(clippy::too_many_arguments)]
     pub fn create_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -114,15 +130,10 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         c5: &PedersenComm<P>,
         c6: &PedersenComm<P>,
     ) -> Self {
-        let a_x = a.x;
-        let a_y = a.y;
-
-        let b_x = b.x;
-        let b_y = b.y;
-        let t_x = t.x;
-
+        // This proof does not show work for point doubling.
+        assert!(a != b);
         // c7 is the commitment to tau, the gradient.
-        let tau = (b_y - a_y) * ((b_x - a_x).inverse().unwrap());
+        let tau = (b.y - a.y) * ((b.x - a.x).inverse().unwrap());
         let taua = <P as PedersenConfig>::from_ob_to_sf(tau);
         let c7 = PedersenComm::new(taua, rng);
 
@@ -137,29 +148,29 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         );
 
         // These are the temporaries for the first multiplication proof, which
-        // verifies that (b_x - a_x)*tau = b_y - a_y.
-        let z1 = c3 - c1; // This is the commitment for b_x - a_x.
-        let z2 = c4 - c2; // This is the commitment for b_y - a_y.
+        // verifies that (b.x - a.x)*tau = b.y - a.y.
+        let z1 = c3 - c1; // This is the commitment for b.x - a.x.
+        let z2 = c4 - c2; // This is the commitment for b.y - a.y.
 
-        let x1 = <P as PedersenConfig>::from_ob_to_sf(b_x - a_x);
+        let x1 = <P as PedersenConfig>::from_ob_to_sf(b.x - a.x);
         let mpi1 = MulProof::create_intermediates(transcript, rng, &z1, &c7, &z2);
 
         // These are the temporaries for the second multiplication proof, which verifies that
-        // tau^2 = a_x + b_x + t_x.
-        let z4 = c1 + c3 + c5; // This is the commitment to a_x + b_x + t_x.
+        // tau^2 = a.x + b.x + t.x.
+        let z4 = c1 + c3 + c5; // This is the commitment to a.x + b.x + t.x.
         let mpi2 = MulProof::create_intermediates(transcript, rng, &c7, &c7, &z4);
 
         // These are the temporaries for the third multiplication proof, which verifies that
-        // tau*(a_x - t_x) = a_y + t_y.
-        let x3 = <P as PedersenConfig>::from_ob_to_sf(a_x - t_x); // Value of a_x - t_x
-        let z5 = c1 - c5; // The commitment to a_x - t_x
-        let z6 = c2 + c6; // The commitment to a_y + t_y.
+        // tau*(a.x - t.x) = a.y + t.y.
+        let x3 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x); // Value of a.x - t.x
+        let z5 = c1 - c5; // The commitment to a.x - t.x
+        let z6 = c2 + c6; // The commitment to a.y + t.y.
         let mpi3 = MulProof::create_intermediates(transcript, rng, &c7, &z5, &z6);
 
         // And, finally, the intermediates for the Opening proof.
-        // This proves that C2 opens to a_y.
-        let ay_sf = <P as PedersenConfig>::from_ob_to_sf(a_y);
-        let opi = OpeningProof::create_intermediates(transcript, rng, &c2);
+        // This proves that C2 opens to a.y.
+        let ay_sf = <P as PedersenConfig>::from_ob_to_sf(a.y);
+        let opi = OpeningProof::create_intermediates(transcript, rng, c2);
 
         // Now we make a very large challenge and create the various proofs from the
         // intermediates.
@@ -178,7 +189,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let mp1 = MulProof::create_proof(&x1, &taua, &mpi1, &z1, &c7, &z2, mp1chal);
         let mp2 = MulProof::create_proof(&taua, &taua, &mpi2, &c7, &c7, &z4, mp2chal);
         let mp3 = MulProof::create_proof(&taua, &x3, &mpi3, &c7, &z5, &z6, mp3chal);
-        let op = OpeningProof::create_proof(&ay_sf, &opi, &c2, opchal);
+        let op = OpeningProof::create_proof(&ay_sf, &opi, c2, opchal);
 
         // And now we just return.
         Self {
@@ -196,6 +207,14 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         }
     }
 
+    /// create. This function returns a new proof of elliptic curve addition point addition
+    /// for `t = a + b`.
+    /// # Arguments
+    /// * `transcript` - the transcript object that is modified.
+    /// * `rng` - the RNG that is used. Must be cryptographically secure.
+    /// * `a` - one of the summands.
+    /// * `b` - the other summands.
+    /// * `t` - the target point (i.e `t = a + b`).
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -203,19 +222,26 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         b: sw::Affine<<P as PedersenConfig>::OCurve>,
         t: sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
+        // This proof does not show work for point doubling.
+        assert!(a != b);
         // Commit to each of the co-ordinate pairs.
-        let c1 = Self::make_commitment(a.x, rng);
-        let c2 = Self::make_commitment(a.y, rng);
-        let c3 = Self::make_commitment(b.x, rng);
-        let c4 = Self::make_commitment(b.y, rng);
-        let c5 = Self::make_commitment(t.x, rng);
-        let c6 = Self::make_commitment(t.y, rng);
+
+        let c1 = <P as PedersenConfig>::make_commitment_from_other(a.x, rng);
+        let c2 = <P as PedersenConfig>::make_commitment_from_other(a.y, rng);
+        let c3 = <P as PedersenConfig>::make_commitment_from_other(b.x, rng);
+        let c4 = <P as PedersenConfig>::make_commitment_from_other(b.y, rng);
+        let c5 = <P as PedersenConfig>::make_commitment_from_other(t.x, rng);
+        let c6 = <P as PedersenConfig>::make_commitment_from_other(t.y, rng);
 
         Self::create_with_existing_commitments(
             transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
         )
     }
 
+    /// verify. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `transcript` - the transcript object that's used.
     pub fn verify(&self, transcript: &mut Transcript) -> bool {
         Self::make_transcript(
             transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,

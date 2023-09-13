@@ -1,4 +1,8 @@
 //! Defines an Equality protocol for various PedersenConfig types.
+//! Specifically, this protocol shows in ZK that C1 and C2 are commitments to the
+//! same underlying value (i.e C1 = Comm(x, r1), C2 = Comm(x, r2)).
+//! This exact protocol comes from https://eprint.iacr.org/2017/1132.pdf, Appendix A (the "Commitment to the same value")
+//! which is folklore.
 
 use ark_ec::{
     short_weierstrass::{self as sw},
@@ -15,13 +19,24 @@ use crate::{
     transcript::CHALLENGE_SIZE,
 };
 
+/// EqualityProof. This struct acts as a container for an EqualityProof.
+/// New proof objects can be made via the `create` function, whereas existing
+/// proofs may be verified via the `verify` function.
 pub struct EqualityProof<P: PedersenConfig> {
+    /// alpha: the random point produced during setup.
     pub alpha: sw::Affine<P>,
+    /// z: the response to the challenge (i.e z = chal * (c1.r - c2.r) + r.)
     pub z: <P as CurveConfig>::ScalarField,
 }
 
+/// OpeningProofIntermediate. This struct provides a convenient wrapper
+/// for building all of the random values _before_ the challenge is generated.
+/// This struct should only be used if the transcript needs to modified in some way
+/// before the proof is generated.
 pub struct EqualityProofIntermediate<P: PedersenConfig> {
+    /// r: the random value produced by the prover.
     pub r: <P as CurveConfig>::ScalarField,
+    /// alpha: the random point produced during setup.
     pub alpha: sw::Affine<P>,
 }
 
@@ -29,6 +44,13 @@ impl<P: PedersenConfig> EqualityProof<P> {
     /// This is just to circumvent an annoying issue with Rust's current generics system.
     pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
 
+    /// add_to_transcript. This function simply adds self.alpha and the commitments `c1`, `c2` to the `transcript`
+    /// object.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript which is modified.
+    /// * `c1` - the c1 commitment that is being added to the transcript.
+    /// * `c2` - the c2 commitment that is being added to the transcript.    
     pub fn add_to_transcript(
         &self,
         transcript: &mut Transcript,
@@ -38,6 +60,12 @@ impl<P: PedersenConfig> EqualityProof<P> {
         Self::make_transcript(transcript, c1, c2, &self.alpha)
     }
 
+    /// make_transcript. This function simply adds `c1`, `c2` and `alpha_p` to the `transcript` object.
+    /// # Arguments
+    /// * `transcript` - the transcript which is modified.
+    /// * `c1` - the c1 commitment that is being added to the transcript.
+    /// * `c2` - the c2 commitment that is being added to the transcript.
+    /// * `alpha_p` - the alpha value that is being added to the transcript.
     fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
@@ -59,6 +87,12 @@ impl<P: PedersenConfig> EqualityProof<P> {
         transcript.append_point(b"alpha", &compressed_bytes[..]);
     }
 
+    /// create_intermediaries. This function returns a new set of intermediaries
+    /// for an equality proof for `c1` against `c2`.
+    /// # Arguments
+    /// * `transcript` - the transcript object that is modified.
+    /// * `c1` - the c1 commitment that is used.
+    /// * `c2` - the c2 commitment that is used.
     pub fn create_intermediates<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -71,6 +105,12 @@ impl<P: PedersenConfig> EqualityProof<P> {
         EqualityProofIntermediate { r, alpha }
     }
 
+    /// create. This function returns a new equality proof for `c1` against `c2`.
+    /// # Arguments
+    /// * `transcript` - the transcript object that is modified.
+    /// * `rng` - the RNG that is used to produce the random values. Must be cryptographically secure.
+    /// * `c1` - the c1 commitment that is used.
+    /// * `c2` - the c2 commitment that is used.
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -85,6 +125,13 @@ impl<P: PedersenConfig> EqualityProof<P> {
         )
     }
 
+    /// create_proof. This function accepts a set of intermediaries (`inter`) and proves
+    /// that `c1` and `c2` are commitments to the same value.    
+    /// # Arguments
+    /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
+    /// * `c1` - the c1 commitment.
+    /// * `c2` - the c2 commitment.
+    /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn create_proof(
         inter: &EqualityProofIntermediate<P>,
         c1: &PedersenComm<P>,
@@ -99,6 +146,13 @@ impl<P: PedersenConfig> EqualityProof<P> {
         }
     }
 
+    /// verify. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// In other words, this function returns true if c1 and c2 are commitments to the same secret value.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `transcript` - the transcript object that's used.
+    /// * `c1` - the c1 commitment.
+    /// * `c2` - the c2 commitment.
     pub fn verify(
         &self,
         transcript: &mut Transcript,
@@ -110,6 +164,14 @@ impl<P: PedersenConfig> EqualityProof<P> {
         self.verify_with_challenge(c1, c2, &transcript.challenge_scalar(b"c")[..])
     }
 
+    /// verify_with_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// In other words, this function returns true if c1 and c2 are commitments to the same secret value.
+    /// Note that this function uses the pre-existing challenge bytes supplied in `chal_buf`.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `c1` - the c1 commitment.
+    /// * `c2` - the c2 commitment.
+    /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn verify_with_challenge(
         &self,
         c1: &sw::Affine<P>,

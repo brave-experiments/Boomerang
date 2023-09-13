@@ -14,12 +14,15 @@ macro_rules! __derive_conversion {
             }};
         }
 
+        // This macro is commented out for now: we may yet need it.
+        /*
         macro_rules! StrToFr {
             ($c0:expr) => {{
                 let (is_positive, limbs) = ark_ff_macros::to_sign_and_limbs!($c0);
                 <$other_r>::from_sign_and_limbs(is_positive, &limbs)
             }};
         }
+        */
 
         struct FrStruct($fr);
         impl FrStruct {
@@ -111,14 +114,6 @@ macro_rules! __derive_conversion {
                 x_v.as_fr()
             }
 
-            fn from_sf_to_os(
-                x: <Self as CurveConfig>::ScalarField,
-            ) -> <Self::OCurve as CurveConfig>::ScalarField {
-                let x_t: BigInt<$dim> = x.into();
-                <$other_r_conf>::from_bigint(x_t).unwrap()
-            }
-
-            const O_TWO: $other_r = StrToFr!("2");
             const OGENERATOR2: sw::Affine<Self::OCurve> =
                 sw::Affine::<Self::OCurve>::new_unchecked(StrToFq!($GSX), StrToFq!($GSY));
         }

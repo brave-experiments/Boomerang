@@ -492,7 +492,7 @@ macro_rules! test_pedersen {
                 ec_point_add_protocol::ECPointAddProof as EPAP,
                 equality_protocol::EqualityProof as EP, mul_protocol::MulProof as MP,
                 opening_protocol::OpeningProof as OP, pedersen_config::PedersenComm,
-                pedersen_config::PedersenConfig, scalar_mul_proof::ECScalarMulProof as ECSMP,
+                pedersen_config::PedersenConfig, scalar_mul_protocol::ECScalarMulProof as ECSMP,
                 zk_attest_point_add_protocol::ZKAttestPointAddProof as ZKEPAP,
             };
             use rand_core::OsRng;
