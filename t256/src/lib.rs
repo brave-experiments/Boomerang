@@ -1,4 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
 
 //! This library implements the 256-bit prime order curve used inside ZKAttest.

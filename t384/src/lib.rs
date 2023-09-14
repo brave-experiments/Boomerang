@@ -1,4 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(nonstandard_style)]
 #![forbid(unsafe_code)]
 

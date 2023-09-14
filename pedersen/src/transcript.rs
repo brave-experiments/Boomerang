@@ -5,7 +5,6 @@
 
 use merlin::Transcript;
 
-// This is needed here to circumvent a rust issue.
 pub const CHALLENGE_SIZE: usize = 64;
 
 pub trait EqualityTranscript {
@@ -89,9 +88,6 @@ impl MulTranscript for Transcript {
     }
 }
 
-/// The size of the challenge for elliptic curve challenges.
-pub const EC_POINT_CHALLENGE_SIZE: usize = 4 * CHALLENGE_SIZE;
-
 pub trait ECPointAdditionTranscript {
     /// Append a domain separator.
     fn domain_sep(&mut self);
@@ -100,7 +96,7 @@ pub trait ECPointAdditionTranscript {
     fn append_point(&mut self, label: &'static [u8], point: &[u8]);
 
     /// Produce the challenge.
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; EC_POINT_CHALLENGE_SIZE];
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
 }
 
 impl ECPointAdditionTranscript for Transcript {
@@ -112,8 +108,8 @@ impl ECPointAdditionTranscript for Transcript {
         self.append_message(label, point);
     }
 
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; EC_POINT_CHALLENGE_SIZE] {
-        let mut buf = [0u8; EC_POINT_CHALLENGE_SIZE];
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
+        let mut buf = [0u8; CHALLENGE_SIZE];
         self.challenge_bytes(label, &mut buf);
         buf
     }
@@ -127,7 +123,7 @@ pub trait ZKAttestECPointAdditionTranscript {
     fn append_point(&mut self, label: &'static [u8], point: &[u8]);
 
     /// Produce the challenge.
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64];
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
 }
 
 impl ZKAttestECPointAdditionTranscript for Transcript {
@@ -139,8 +135,62 @@ impl ZKAttestECPointAdditionTranscript for Transcript {
         self.append_message(label, point);
     }
 
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64] {
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
         let mut buf = [0u8; 64];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}
+pub trait ECScalarMulTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
+}
+
+impl ECScalarMulTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"ec-point-scalar-addition-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
+        let mut buf = [0u8; CHALLENGE_SIZE];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}
+
+pub trait FSECScalarMulTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    /// N.B 16 byte challenge -> 128 bits.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 16];
+}
+
+impl FSECScalarMulTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"fs-ec-point-scalar-addition-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 16] {
+        let mut buf = [0u8; 16];
         self.challenge_bytes(label, &mut buf);
         buf
     }

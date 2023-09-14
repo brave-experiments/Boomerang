@@ -7,6 +7,15 @@ macro_rules! __test_pedersen {
         type SF = <$config as CurveConfig>::ScalarField;
         type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
 
+        const OGENERATOR: sw::Affine<<$config as PedersenConfig>::OCurve> =
+            <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
+
+        fn make_challenge(x: &SF) -> Vec<u8> {
+            let mut compressed_bytes = Vec::new();
+            x.serialize_compressed(&mut compressed_bytes).unwrap();
+            compressed_bytes
+        }
+
         #[test]
         fn test_pedersen() {
             // Test that committing to a random point works.
@@ -126,6 +135,35 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
+        fn test_pedersen_equality_other_challenge() {
+            // Test that the equality proof fails if the wrong challenge is used.
+            let label = b"PedersenEq";
+            let a = OSF::rand(&mut OsRng);
+            let c1: PC = PC::new(<$config as PedersenConfig>::from_oc(a), &mut OsRng);
+            let c2: PC = PC::new(<$config as PedersenConfig>::from_oc(a), &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+
+            // Build the proof.
+            let proof_i = EP::create_intermediates(&mut transcript, &mut OsRng, &c1, &c2);
+
+            // Now we pre-specify the challenge to be the CM1 point.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            // Pass that challenge into the create_proof function.
+            let proof = EP::create_proof(&proof_i, &c1, &c2, &c[..]);
+
+            assert!(proof.alpha.is_on_curve());
+
+            // Check that the proof passes with the same challenge.
+            assert!(proof.verify_with_challenge(&c1.comm, &c2.comm, &c[..]));
+
+            // But that it fails with the other.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_with_challenge(&c1.comm, &c2.comm, &cf[..]));
+        }
+
+        #[test]
         fn test_pedersen_equality_nist() {
             // Test that the equality proof goes through.
             let label = b"PedersenEq";
@@ -162,6 +200,37 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
+        fn test_pedersen_equality_nist_other_challenge() {
+            // Test that the equality proof fails if the wrong challenge is used.
+            // Test that the equality proof fails if the wrong challenge is used.
+            let label = b"PedersenEq";
+
+            let a = OSF::rand(&mut OsRng);
+            let c1: PC = PC::new(<$config as PedersenConfig>::from_oc(a), &mut OsRng);
+            let c2: PC = PC::new(<$config as PedersenConfig>::from_oc(a), &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+
+            // Build the proof.
+            let proof_i = EP::create_intermediates(&mut transcript, &mut OsRng, &c1, &c2);
+
+            // Now we pre-specify the challenge to be the CM1 point.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            // Pass that challenge into the create_proof function.
+            let proof = EP::create_proof(&proof_i, &c1, &c2, &c[..]);
+
+            assert!(proof.alpha.is_on_curve());
+
+            // Check that the proof passes with the same challenge.
+            assert!(proof.verify_with_challenge(&c1.comm, &c2.comm, &c[..]));
+
+            // But that it fails with the other.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_with_challenge(&c1.comm, &c2.comm, &cf[..]));
+        }
+
+        #[test]
         fn test_pedersen_opening() {
             // Test that the opening proof goes through.
             let label = b"PedersenOpen";
@@ -191,6 +260,31 @@ macro_rules! __test_pedersen {
             let c3: PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c3.comm));
+        }
+
+        #[test]
+        fn test_pedersen_opening_other_challenge() {
+            // Test that the proof fails if the wrong challenge is used.
+            let label = b"PedersenOpen";
+
+            let a = SF::rand(&mut OsRng);
+            let c1: PC = PC::new(a, &mut OsRng);
+            let mut transcript = Transcript::new(label);
+
+            let proof_i = OP::create_intermediates(&mut transcript, &mut OsRng, &c1);
+
+            // Specify the challenge.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            let proof = OP::create_proof(&a, &proof_i, &c1, &c[..]);
+            assert!(proof.alpha.is_on_curve());
+
+            // Now check that the proof verifies correctly.
+            assert!(proof.verify_proof(&c1.comm, &c[..]));
+
+            // And now check that it fails on a different challenge.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&c1.comm, &cf[..]));
         }
 
         #[test]
@@ -226,6 +320,33 @@ macro_rules! __test_pedersen {
             let c3: PC = PC::new(b, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c3.comm));
+        }
+
+        #[test]
+        fn test_pedersen_opening_nist_other_challenge() {
+            // Test that the proof does not verify if the challenge is changed.
+            let label = b"PedersenOpen";
+
+            let a_t = OSF::rand(&mut OsRng);
+            let a = <$config as PedersenConfig>::from_oc(a_t);
+            let c1: PC = PC::new(a, &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+
+            let proof_i = OP::create_intermediates(&mut transcript, &mut OsRng, &c1);
+
+            // Specify the challenge.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            let proof = OP::create_proof(&a, &proof_i, &c1, &c[..]);
+            assert!(proof.alpha.is_on_curve());
+
+            // Now check that the proof verifies correctly.
+            assert!(proof.verify_proof(&c1.comm, &c[..]));
+
+            // And now check that it fails on a different challenge.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&c1.comm, &cf[..]));
         }
 
         #[test]
@@ -265,6 +386,40 @@ macro_rules! __test_pedersen {
             let c4: PC = PC::new(d, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));
+        }
+
+        #[test]
+        fn test_pedersen_mul_other_challenge() {
+            // Check that the mul proof fails if the wrong challenge is used.
+            // Test that the mul proof goes through.
+            let label = b"PedersenMul";
+
+            let a = SF::rand(&mut OsRng);
+            let b = SF::rand(&mut OsRng);
+            let z = a * b;
+
+            let c1: PC = PC::new(a, &mut OsRng);
+            let c2: PC = PC::new(b, &mut OsRng);
+            let c3: PC = PC::new(z, &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+
+            let proof_i = MP::create_intermediates(&mut transcript, &mut OsRng, &c1, &c2, &c3);
+
+            // Now we pre-specify the challenge to be the CM1 point.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            let proof = MP::create_proof(&a, &b, &proof_i, &c1, &c2, &c3, &c[..]);
+            assert!(proof.alpha.is_on_curve());
+            assert!(proof.beta.is_on_curve());
+            assert!(proof.delta.is_on_curve());
+
+            // Now check that the proof verifies on the same challenge.
+            assert!(proof.verify_proof(&c1.comm, &c2.comm, &c3.comm, &c[..]));
+
+            // And that it fails on the other one.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&c1.comm, &c2.comm, &c3.comm, &cf[..]));
         }
 
         #[test]
@@ -308,6 +463,43 @@ macro_rules! __test_pedersen {
             let c4: PC = PC::new(d, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_f, &c1.comm, &c2.comm, &c4.comm));
+        }
+
+        #[test]
+        fn test_pedersen_mul_nist_other_challenge() {
+            // Check that the mul proof fails if the wrong challenge is used.
+            // Test that the mul proof goes through.
+            let label = b"PedersenMul";
+
+            let a_t = OSF::rand(&mut OsRng);
+            let b_t = OSF::rand(&mut OsRng);
+
+            let a = <$config as PedersenConfig>::from_oc(a_t);
+            let b = <$config as PedersenConfig>::from_oc(b_t);
+            let z = a * b;
+
+            let c1: PC = PC::new(a, &mut OsRng);
+            let c2: PC = PC::new(b, &mut OsRng);
+            let c3: PC = PC::new(z, &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+
+            let proof_i = MP::create_intermediates(&mut transcript, &mut OsRng, &c1, &c2, &c3);
+
+            // Now we pre-specify the challenge to be the CM1 point.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            let proof = MP::create_proof(&a, &b, &proof_i, &c1, &c2, &c3, &c[..]);
+            assert!(proof.alpha.is_on_curve());
+            assert!(proof.beta.is_on_curve());
+            assert!(proof.delta.is_on_curve());
+
+            // Now check that the proof verifies on the same challenge.
+            assert!(proof.verify_proof(&c1.comm, &c2.comm, &c3.comm, &c[..]));
+
+            // And that it fails on the other one.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&c1.comm, &c2.comm, &c3.comm, &cf[..]));
         }
 
         #[test]
@@ -358,6 +550,48 @@ macro_rules! __test_pedersen {
 
             let mut transcript_f2 = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_f2));
+        }
+
+        #[test]
+        fn test_pedersen_point_add_other_challenge() {
+            // Test that the point addition proof fails on an incorrect challenge.
+            let label = b"PedersenECPointAdd";
+            let a = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            let mut b = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+
+            loop {
+                if b != a {
+                    break;
+                }
+                b = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            }
+
+            // Note: this needs to be forced into affine too, or the underlying
+            // proof system breaks (this seems to be an ark_ff thing).
+            let t = (a + b).into_affine();
+
+            let mut transcript = Transcript::new(label);
+            let proof_i: EPAI<Config> =
+                EPAP::create_intermediates(&mut transcript, &mut OsRng, a, b, t);
+
+            // Now fix the challenge.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+
+            let proof: EPAP<Config> = EPAP::create_proof(a, b, t, &proof_i, &c[..]);
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c7.is_on_curve());
+
+            // Now check that it verifies.
+            assert!(proof.verify_proof(&c[..]));
+
+            // And that it fails on the wrong one.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&cf[..]));
         }
 
         #[test]
@@ -425,6 +659,108 @@ macro_rules! __test_pedersen {
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv));
         }
+
+        #[test]
+        fn test_scalar_mult() {
+            // Test that scalar multiplication works.
+            let label = b"PedersenScalarMult";
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+
+            let mut transcript = Transcript::new(label);
+            let proof: ECSMP<Config> =
+                ECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c7.is_on_curve());
+            assert!(proof.c8.is_on_curve());
+
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+
+            // Now make a fake transcript.
+            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
+            let mut transcript_f = Transcript::new(label);
+            let proof_f: ECSMP<Config> =
+                ECSMP::create(&mut transcript, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+
+            // All of the other invariants are right.
+            assert!(proof_f.c1.is_on_curve());
+            assert!(proof_f.c2.is_on_curve());
+            assert!(proof_f.c3.is_on_curve());
+            assert!(proof_f.c4.is_on_curve());
+            assert!(proof_f.c5.is_on_curve());
+            assert!(proof_f.c6.is_on_curve());
+            assert!(proof_f.c7.is_on_curve());
+            assert!(proof_f.c8.is_on_curve());
+
+            // But the verification fails.
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
+        }
+
+        #[test]
+        fn test_scalar_mult_other_challenge() {
+            // Test that scalar multiplication fails on an incorrect challenge.
+            let label = b"PedersenScalarMult";
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+
+            let mut transcript = Transcript::new(label);
+            let proof_i: ECSMPI<Config> =
+                ECSMP::create_intermediates(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            // Make the fixed challenge.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+            let proof: ECSMP<Config> =
+                ECSMP::create_proof(&s, &lambda, &OGENERATOR, &proof_i, &c[..]);
+
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c7.is_on_curve());
+            assert!(proof.c8.is_on_curve());
+
+            // Now check it verifies.
+            assert!(proof.verify_proof(&OGENERATOR, &c[..]));
+
+            // And that it fails on the other one.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&OGENERATOR, &cf[..]));
+        }
+
+        #[test]
+        fn test_fs_ec_scalar_mult() {
+            // Test that the Fiat-Shamir scalar multiplication works.
+            let label = b"PedersenFSScalarMult";
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+            let mut transcript = Transcript::new(label);
+
+            let proof: FSECMP<Config> =
+                FSECMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            // Check it passes.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+
+            // Now make a fake transcript.
+            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
+            let mut transcript_f = Transcript::new(label);
+
+            let proof_f: FSECMP<Config> =
+                FSECMP::create(&mut transcript, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
+        }
     };
 }
 
@@ -435,16 +771,24 @@ macro_rules! test_pedersen {
             use super::*;
             use ark_ec::{
                 models::CurveConfig,
-                short_weierstrass::{self as sw},
+                short_weierstrass::{self as sw, SWCurveConfig},
                 AffineRepr, CurveGroup,
             };
+            use ark_serialize::CanonicalSerialize;
             use ark_std::UniformRand;
+            use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
-                ec_point_add_protocol::ECPointAddProof as EPAP,
-                equality_protocol::EqualityProof as EP, mul_protocol::MulProof as MP,
-                opening_protocol::OpeningProof as OP, pedersen_config::PedersenComm,
+                ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
+                equality_protocol::EqualityProof as EP,
+                fs_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
+                mul_protocol::MulProof as MP,
+                opening_protocol::OpeningProof as OP,
+                pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
+                scalar_mul_protocol::{
+                    ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
+                },
                 zk_attest_point_add_protocol::ZKAttestPointAddProof as ZKEPAP,
             };
             use rand_core::OsRng;
