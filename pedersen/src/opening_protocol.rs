@@ -37,7 +37,7 @@ pub struct OpeningProof<P: PedersenConfig> {
 /// for building all of the random values _before_ the challenge is generated.
 /// This struct should only be used if the transcript needs to modified in some way
 /// before the proof is generated.
-pub struct OpenProofIntermediate<P: PedersenConfig> {
+pub struct OpeningProofIntermediate<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,
     /// t1: a uniformly random value.
@@ -111,17 +111,16 @@ impl<P: PedersenConfig> OpeningProof<P> {
         transcript: &mut Transcript,
         rng: &mut T,
         c1: &PedersenComm<P>,
-    ) -> OpenProofIntermediate<P> {
+    ) -> OpeningProofIntermediate<P> {
         let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let t2 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (P::GENERATOR.mul(t1) + P::GENERATOR2.mul(t2)).into_affine();
         Self::make_transcript(transcript, &c1.comm, &alpha);
-
-        OpenProofIntermediate { t1, t2, alpha }
+        OpeningProofIntermediate { t1, t2, alpha }
     }
 
     /// create_proof. This function accepts a set of intermediaries (`inter`) and proves
-    /// that `x` acts as a valid opening for `c1`.
+    /// that `x` acts as a valid opening for `c1` using an existing buffer of challenge bytes (`chal_buf`).
     /// # Arguments
     /// * `x` - the value that is used to show an opening of  `c1`.
     /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
@@ -129,16 +128,32 @@ impl<P: PedersenConfig> OpeningProof<P> {
     /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn create_proof(
         x: &<P as CurveConfig>::ScalarField,
-        inter: &OpenProofIntermediate<P>,
+        inter: &OpeningProofIntermediate<P>,
         c1: &PedersenComm<P>,
         chal_buf: &[u8],
     ) -> Self {
         // Make the challenge itself.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
+        Self::create_proof_with_challenge(x, inter, c1, &chal)
+    }
+
+    /// create_proof_with_challenge. This function accepts a set of intermediaries (`inter`) and proves
+    /// that `x` acts as a valid opening for `c1` using an existing challenge `chal`.
+    /// # Arguments
+    /// * `x` - the value that is used to show an opening of  `c1`.
+    /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
+    /// * `c1` - the commitment that is opened.
+    /// * `chal` - the challenge.
+    pub fn create_proof_with_challenge(
+        x: &<P as CurveConfig>::ScalarField,
+        inter: &OpeningProofIntermediate<P>,
+        c1: &PedersenComm<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
         Self {
             alpha: inter.alpha,
-            z1: *x * chal + inter.t1,
-            z2: c1.r * chal + inter.t2,
+            z1: *x * (*chal) + inter.t1,
+            z2: c1.r * (*chal) + inter.t2,
         }
     }
 
@@ -152,18 +167,32 @@ impl<P: PedersenConfig> OpeningProof<P> {
         self.add_to_transcript(transcript, c1);
 
         // Now check make the challenge and delegate.
-        self.verify_with_challenge(c1, &transcript.challenge_scalar(b"c")[..])
+        self.verify_proof(c1, &transcript.challenge_scalar(b"c")[..])
     }
 
-    /// verify_with_challenge. This function verifies that `c1` is a valid opening
-    /// of the proof held by `self`, but with a pre-existing challenge `c1`.
+    /// verify_proof. This function verifies that `c1` is a valid opening
+    /// of the proof held by `self`, but with a pre-existing challenge `chal_buf`.
     /// # Arguments
     /// * `self` - the proof that is being verified.
     /// * `c1` - the commitment whose opening is being proved by this function.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
-    pub fn verify_with_challenge(&self, c1: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
+    pub fn verify_proof(&self, c1: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(chal) + self.alpha
+        self.verify_with_challenge(c1, &chal)
+    }
+
+    /// verify_with_challenge. This function verifies that `c1` is a valid opening
+    /// of the proof held by `self`, but with a pre-existing challenge `chal`.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `c1` - the commitment whose opening is being proved by this function.
+    /// * `chal` - the challenge.
+    pub fn verify_with_challenge(
+        &self,
+        c1: &sw::Affine<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> bool {
+        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(*chal) + self.alpha
     }
 }

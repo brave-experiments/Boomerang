@@ -7,22 +7,19 @@ macro_rules! __derive_conversion {
         type OtherBaseField = <$OtherCurve as CurveConfig>::BaseField;
         type OtherScalarField = <$OtherCurve as CurveConfig>::ScalarField;
 
-        macro_rules! StrToFq {
+        macro_rules! StrToOtherFq {
             ($c0:expr) => {{
                 let (is_positive, limbs) = ark_ff_macros::to_sign_and_limbs!($c0);
                 <$other_q>::from_sign_and_limbs(is_positive, &limbs)
             }};
         }
 
-        // This macro is commented out for now: we may yet need it.
-        /*
         macro_rules! StrToFr {
             ($c0:expr) => {{
                 let (is_positive, limbs) = ark_ff_macros::to_sign_and_limbs!($c0);
-                <$other_r>::from_sign_and_limbs(is_positive, &limbs)
+                <$fr>::from_sign_and_limbs(is_positive, &limbs)
             }};
         }
-        */
 
         struct FrStruct($fr);
         impl FrStruct {
@@ -114,8 +111,19 @@ macro_rules! __derive_conversion {
                 x_v.as_fr()
             }
 
+            fn make_single_bit_challenge(v: u8) -> <$config as CurveConfig>::ScalarField {
+                match v {
+                    0 => Self::CM1,
+                    1 => Self::CP1,
+                    _ => panic!("Invalid bit in make_single_bit_challenge {}", v),
+                }
+            }
+
             const OGENERATOR2: sw::Affine<Self::OCurve> =
-                sw::Affine::<Self::OCurve>::new_unchecked(StrToFq!($GSX), StrToFq!($GSY));
+                sw::Affine::<Self::OCurve>::new_unchecked(StrToOtherFq!($GSX), StrToOtherFq!($GSY));
+
+            const CM1: Self::ScalarField = StrToFr!("-1");
+            const CP1: Self::ScalarField = StrToFr!("1");
         }
     };
 }

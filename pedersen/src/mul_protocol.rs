@@ -15,7 +15,6 @@ use rand::{CryptoRng, RngCore};
 
 use crate::{
     pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::MulTranscript,
-    transcript::CHALLENGE_SIZE,
 };
 
 /// MulProof. This struct acts as a container for a MulProof.
@@ -69,9 +68,6 @@ pub struct MulProofIntermediate<P: PedersenConfig> {
 }
 
 impl<P: PedersenConfig> MulProof<P> {
-    /// This is just to circumvent an annoying issue with Rust's current generics system.
-    pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
-
     /// add_to_transcript. This function simply adds self.alpha and the commitment `c1` to the `transcript`
     /// object.
     /// # Arguments
@@ -159,7 +155,7 @@ impl<P: PedersenConfig> MulProof<P> {
         )
     }
 
-    /// create_intermediaries. This function returns a new set of intermediaries
+    /// create_intermediates. This function returns a new set of intermediates
     /// for a multiplication proof. Namely, this function proves that `c3` is a commitment for
     /// `z = x * y`.
     /// # Arguments
@@ -204,15 +200,17 @@ impl<P: PedersenConfig> MulProof<P> {
     }
 
     /// create_proof. This function returns a new multiplication proof
-    /// usign the previously collected intermediaries. Namely, this function proves that `c3` is a commitment for
-    /// `z = x * y`.
+    /// usign the previously collected intermediates. Namely, this function proves that `c3` is a commitment for
+    /// `z = x * y`. Note that this function builds the challenge from the bytes supplied in `chal_buf`.
+    ///
     /// # Arguments
     /// * `x` - one of the multiplicands.
     /// * `y` - the other multiplicand.
-    /// * `inter` - the intermediary values produced by a call to `create_intermediaries`.
+    /// * `inter` - the intermediary values produced by a call to `create_intermediates`.
     /// * `c1` - the commitment to `x`.
     /// * `c2` - the commitment to `y`.
     /// * `c3` - the commitment to `z = x * y`.
+    /// * `chal_buf` - the pre-determined challenge bytes.
     pub fn create_proof(
         x: &<P as CurveConfig>::ScalarField,
         y: &<P as CurveConfig>::ScalarField,
@@ -224,16 +222,39 @@ impl<P: PedersenConfig> MulProof<P> {
     ) -> Self {
         // Make the challenge itself.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
+        Self::create_proof_with_challenge(x, y, inter, c1, c2, c3, &chal)
+    }
 
+    /// create_proof_with_challenge. This function creates a proof of multiplication
+    /// using the pre-existing challenge `chal`. This function should only be used when the
+    /// challenge is fixed across multiple, separate proofs.
+    ///
+    /// # Arguments
+    /// * `x` - one of the multiplicands.
+    /// * `y` - the other multiplicand.
+    /// * `inter` - the intermediary values produced by a call to `create_intermediates`.
+    /// * `c1` - the commitment to `x`.
+    /// * `c2` - the commitment to `y`.
+    /// * `c3` - the commitment to `z = x * y`.
+    /// * `chal` - the challenge.
+    pub fn create_proof_with_challenge(
+        x: &<P as CurveConfig>::ScalarField,
+        y: &<P as CurveConfig>::ScalarField,
+        inter: &MulProofIntermediate<P>,
+        c1: &PedersenComm<P>,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
         Self {
             alpha: inter.alpha,
             beta: inter.beta,
             delta: inter.delta,
-            z1: inter.b1 + (chal * (x)),
-            z2: inter.b2 + (chal * c1.r),
-            z3: inter.b3 + (chal * (y)),
-            z4: inter.b4 + (chal * c2.r),
-            z5: inter.b5 + chal * (c3.r - (c1.r * (y))),
+            z1: inter.b1 + (*chal * (x)),
+            z2: inter.b2 + (*chal * c1.r),
+            z3: inter.b3 + (*chal * (y)),
+            z4: inter.b4 + (*chal * c2.r),
+            z5: inter.b5 + *chal * (c3.r - (c1.r * (y))),
         }
     }
 
@@ -254,10 +275,10 @@ impl<P: PedersenConfig> MulProof<P> {
         c3: &sw::Affine<P>,
     ) -> bool {
         Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
-        self.verify_with_challenge(c1, c2, c3, &transcript.challenge_scalar(b"c")[..])
+        self.verify_proof(c1, c2, c3, &transcript.challenge_scalar(b"c")[..])
     }
 
-    /// verify_with_challenge. This function simply verifies that the proof held by `self` is a valid
+    /// verify_proof. This function simply verifies that the proof held by `self` is a valid
     /// multiplication proof. Put differently, this function returns true if c3 is a valid
     /// commitment to a multiplied value and false otherwise. Notably, this function
     /// uses the pre-existing challenge bytes supplied in `chal_buf`.
@@ -266,8 +287,7 @@ impl<P: PedersenConfig> MulProof<P> {
     /// * `c1` - the c1 commitment. This acts as a commitment to `x`.
     /// * `c2` - the c2 commitment. This acts as a commitment to `y`.
     /// * `c3` - the c3 commitment. This acts as a commitment to `z = x * y`.
-    /// * `chal_buf` - the buffer that contains the challenge bytes.
-    pub fn verify_with_challenge(
+    pub fn verify_proof(
         &self,
         c1: &sw::Affine<P>,
         c2: &sw::Affine<P>,
@@ -275,8 +295,28 @@ impl<P: PedersenConfig> MulProof<P> {
         chal_buf: &[u8],
     ) -> bool {
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        (self.alpha + c1.mul(chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
-            && (self.beta + c2.mul(chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
-            && (self.delta + c3.mul(chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
+        self.verify_with_challenge(c1, c2, c3, &chal)
+    }
+
+    /// verify_with_challenge. This function simply verifies that the proof held by `self` is a valid
+    /// multiplication proof. Put differently, this function returns true if c3 is a valid
+    /// commitment to a multiplied value and false otherwise. Notably, this function
+    /// uses the pre-existing challenge supplied in `chal`.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `c1` - the c1 commitment. This acts as a commitment to `x`.
+    /// * `c2` - the c2 commitment. This acts as a commitment to `y`.
+    /// * `c3` - the c3 commitment. This acts as a commitment to `z = x * y`.
+    /// * `chal` - the challenge.
+    pub fn verify_with_challenge(
+        &self,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> bool {
+        (self.alpha + c1.mul(*chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
+            && (self.beta + c2.mul(*chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
+            && (self.delta + c3.mul(*chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
     }
 }

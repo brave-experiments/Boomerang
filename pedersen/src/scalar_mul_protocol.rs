@@ -16,8 +16,10 @@ use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
 use crate::{
-    ec_point_add_protocol::ECPointAddProof, pedersen_config::PedersenComm,
-    pedersen_config::PedersenConfig, transcript::ECScalarMulTranscript,
+    ec_point_add_protocol::{ECPointAddIntermediate, ECPointAddProof},
+    pedersen_config::PedersenComm,
+    pedersen_config::PedersenConfig,
+    transcript::ECScalarMulTranscript,
 };
 
 /// ECScalarMulProof. This struct acts as a container for the Scalar multiplication proof.
@@ -54,6 +56,39 @@ pub struct ECScalarMulProof<P: PedersenConfig> {
     /// eap: the elliptic curve addition proof. This proof is used to show that
     /// αP = λP + ((α-λ)P).
     pub eap: ECPointAddProof<P>,
+}
+
+/// ECScalarMulProofIntermediate. This struct acts as a container for all of the intermediate
+/// values that are produced during the initial proof creation process (i.e before the challenge is
+/// created). This exists to allow easier separation between the creation of the initial, random values
+/// and later values.
+pub struct ECScalarMulProofIntermediate<P: PedersenConfig> {
+    /// c1: the commitment to λ. This commitment is made over the original curve, and not the T curve.
+    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
+    /// r1: the randomness associated with the commitment c1.
+    pub r1: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+    /// alpha: the randomly generated scalar (produced during setup).
+    pub alpha: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+    /// c2: the commitment to the x co-ordinate of S.
+    pub c2: PedersenComm<P>,
+    /// c3: the commitment to the y co-ordinate of S.
+    pub c3: PedersenComm<P>,
+    /// c4: the commitment to the random value α.
+    pub c4: sw::Affine<<P as PedersenConfig>::OCurve>,
+    /// r4: the randomness associated with the commitment to α.
+    pub r4: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+
+    /// c5: the commitment to the x co-ordinate of αP.
+    pub c5: PedersenComm<P>,
+    /// c6: the commitment to the y co-ordinate of αP.
+    pub c6: PedersenComm<P>,
+    /// c7: the commitment to the x co-ordinate of (α-λ)P.
+    pub c7: PedersenComm<P>,
+    /// c8: the commitment to the y co-ordinate of (α-λ)P.
+    pub c8: PedersenComm<P>,
+
+    /// eapi: the intermediates for the elliptic curve addition proof.
+    pub eapi: ECPointAddIntermediate<P>,
 }
 
 impl<P: PedersenConfig> ECScalarMulProof<P> {
@@ -177,6 +212,33 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
+        // Make the intermediates and then immediately make the challenge.
+        let inter = Self::create_intermediates(transcript, rng, s, lambda, p);
+
+        // Now challenge.
+        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
+
+        // And now just return the result of the proof.
+        Self::create_proof(s, lambda, p, &inter, &chal_buf)
+    }
+
+    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
+    /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `rng` - the cryptographically secure RNG.
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    pub fn create_intermediates<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> ECScalarMulProofIntermediate<P> {
         // Part 1: make the various commitments.
         // To begin, we commit to lambda.
         let (c1, r1) = Self::create_commit_other(lambda, rng);
@@ -227,37 +289,100 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
             transcript, &c1, &c2.comm, &c3.comm, &c4, &c5.comm, &c6.comm, &c7.comm, &c8.comm,
         );
 
-        // Because we've already generated the randomness, we now extract those values to use
-        // in our challenges.
-        let beta_1 = r4;
-        let beta_2 = c5.r;
-        let beta_3 = c6.r;
-        let beta_4 = c7.r;
-        let beta_5 = c8.r;
-
-        // Now produce the challenge. Here we only use a single bit (c) to match the
-        // CDLS construction.
-        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
-        let c = chal_buf.last().unwrap() & 1;
-
-        // Prove that αP = λP + ((α-λ)P) using our existing commitments.
-        let eap = ECPointAddProof::create_with_existing_commitments(
+        // Now make the EC point addition intermediates.
+        let eapi = ECPointAddProof::create_intermediates_with_existing_commitments(
             transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6,
         );
 
+        // Now return the intermediates.
+        ECScalarMulProofIntermediate {
+            c1,
+            r1,
+            alpha,
+            c2,
+            c3,
+            c4,
+            r4,
+            c5,
+            c6,
+            c7,
+            c8,
+            eapi,
+        }
+    }
+
+    /// create_proof. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied buffer (`chal_buf`) for creating
+    /// the underlying challenge.
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `chal_buf` - the buffer of challenge bytes.
+    pub fn create_proof(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ECScalarMulProofIntermediate<P>,
+        chal_buf: &[u8],
+    ) -> Self {
+        Self::create_proof_with_challenge(
+            s,
+            lambda,
+            p,
+            inter,
+            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
+        )
+    }
+
+    /// create_proof_with_challenge. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `chal_buf` - the buffer of challenge bytes.
+    pub fn create_proof_with_challenge(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ECScalarMulProofIntermediate<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
+        // Because we've already generated the randomness, we now extract those values to use
+        // in our challenges.
+        let beta_1 = inter.r4;
+        let beta_2 = inter.c5.r;
+        let beta_3 = inter.c6.r;
+        let beta_4 = inter.c7.r;
+        let beta_5 = inter.c8.r;
+
+        // Now we compute the co-ordinates of αP.
+        // Note that, unlike in other functions, we only need the points themselves (i.e
+        // we do not need to separately label the co-ordinates).
+        let ap = ((*p).mul(inter.alpha)).into_affine();
+
+        // We now do the same with (α-λ)P. We label (α-λ)P = amlp as before.
+        let amlp = ((*p).mul(inter.alpha - lambda)).into_affine();
+
+        // Prove that αP = λP + ((α-λ)P) using our existing commitments and challenge.
+        let eap = ECPointAddProof::create_proof_with_challenge(*s, amlp, ap, &inter.eapi, chal);
+
         // And, finally, construct the proof.
         // Note that c can only be 0 or 1 here.
-        if c == 0 {
+        if (*chal) == <P as PedersenConfig>::CM1 {
             Self {
-                c1,
-                c2: c2.comm,
-                c3: c3.comm,
-                c4,
-                c5: c5.comm,
-                c6: c6.comm,
-                c7: c7.comm,
-                c8: c8.comm,
-                z1: alpha,
+                c1: inter.c1,
+                c2: inter.c2.comm,
+                c3: inter.c3.comm,
+                c4: inter.c4,
+                c5: inter.c5.comm,
+                c6: inter.c6.comm,
+                c7: inter.c7.comm,
+                c8: inter.c8.comm,
+                z1: inter.alpha,
                 z2: beta_1,
                 z3: beta_2,
                 z4: beta_3,
@@ -265,21 +390,38 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
             }
         } else {
             Self {
-                c1,
-                c2: c2.comm,
-                c3: c3.comm,
-                c4,
-                c5: c5.comm,
-                c6: c6.comm,
-                c7: c7.comm,
-                c8: c8.comm,
-                z1: alpha - *lambda,
-                z2: beta_1 - r1,
+                c1: inter.c1,
+                c2: inter.c2.comm,
+                c3: inter.c3.comm,
+                c4: inter.c4,
+                c5: inter.c5.comm,
+                c6: inter.c6.comm,
+                c7: inter.c7.comm,
+                c8: inter.c8.comm,
+                z1: inter.alpha - *lambda,
+                z2: beta_1 - inter.r1,
                 z3: beta_4,
                 z4: beta_5,
                 eap,
             }
         }
+    }
+
+    /// add_to_transcript. This function adds all of the underlying proof information to the
+    /// `transcript` object. This function is typically called externally when this proof
+    /// forms part of a larger proof object.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.
+    pub fn add_to_transcript(&self, transcript: &mut Transcript) {
+        // Part 1: restore the transcript from the known values.
+        Self::make_transcript(
+            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
+            &self.c8,
+        );
+
+        // Make the sub-transcripts, too.
+        self.eap.add_to_transcript(transcript);
     }
 
     /// verify. This function verifies that the proof in `self` holds. This function returns
@@ -293,20 +435,51 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         transcript: &mut Transcript,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> bool {
-        // Part 1: restore the transcript from the known values.
-        Self::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
-            &self.c8,
-        );
+        // Re-initialise the transcript.
+        self.add_to_transcript(transcript);
 
-        // Now produce the challenge. As before, we only use the lowest bit.
+        // Now produce the challenge and delegate.
         let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
-        let c = chal_buf.last().unwrap() & 1;
+        self.verify_proof(p, &chal_buf)
+    }
 
+    /// verify_proof. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
+    /// Notably, this function builds its challenge from a pre-determined buffer (`chal_buf`).
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `p` - the publicly known point.
+    /// * `chal_buf` - the buffer of challenge bytes.
+    pub fn verify_proof(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal_buf: &[u8],
+    ) -> bool {
+        // We just make the challenge and call into the more general routine.
+        self.verify_with_challenge(
+            p,
+            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
+        )
+    }
+
+    /// verify_with_challenge. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
+    /// Notably, this function uses a pre-determined binary challenge (`chal`).
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `p` - the publicly known point.
+    /// * `chal` - the challenge.
+    pub fn verify_with_challenge(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> bool {
         // z1_p = z1P, which is used in both verifier computations.
         let z1_p = p.mul(&self.z1).into_affine();
+        // The challenge must be binary.
+        assert!(*chal == <P as PedersenConfig>::CM1 || *chal == <P as PedersenConfig>::CP1);
 
-        let worked: bool = if c == 0 {
+        let worked: bool = if *chal == <P as PedersenConfig>::CM1 {
             let s_dash = <P as PedersenConfig>::from_ob_to_sf(z1_p.x);
             let t_dash = <P as PedersenConfig>::from_ob_to_sf(z1_p.y);
             (self.c4 == Self::new_other_with_both(&self.z1, &self.z2))
@@ -320,6 +493,6 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
                 && (self.c8 == PedersenComm::new_with_both(v_dash, self.z4).comm)
         };
 
-        worked && self.eap.verify(transcript)
+        worked && self.eap.verify_with_challenge(chal)
     }
 }

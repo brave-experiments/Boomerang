@@ -155,7 +155,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         let z1 = <P as PedersenConfig>::from_ob_to_sf(b.x - a.x);
         let z2 = <P as PedersenConfig>::from_ob_to_sf((b.x - a.x).inverse().unwrap());
 
-        let c7 = &c3 - &c1;
+        let c7 = c3 - c1;
         let c8 = PedersenComm::new(z2, rng);
 
         // Make the multiplication proof for c8.
@@ -167,7 +167,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         // Proof of c10
         let z3 = <P as PedersenConfig>::from_ob_to_sf(b.y - a.y);
-        let c9 = &c4 - &c2;
+        let c9 = c4 - c2;
 
         let z4 = z3 * z2; // b.y - a.y / b.x - a.x
         let c10 = PedersenComm::new(z4, rng);
@@ -181,7 +181,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
 
         // Proof of c13.
         let z6 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x);
-        let c12 = &c1 - &c5;
+        let c12 = c1 - c5;
 
         let z7 = z4 * z6; // z4 = b.y - a.y / (b.x - a.x), z6 = (a.x - t.x)
         let c13 = PedersenComm::new(z7, rng);
@@ -189,11 +189,11 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         let mp4 = MulProof::create(transcript, rng, &z4, &z6, &c10, &c12, &c13);
 
         // And now the remaining equality proofs.
-        let c14 = &c5 + &c1 + &c3;
+        let c14 = c5 + c1 + c3;
         let eq1 = EqualityProof::create(transcript, rng, &c14, &c11);
 
         // This is the corrected one.
-        let c15 = &c6 + &c2;
+        let c15 = c6 + c2;
         let eq2 = EqualityProof::create(transcript, rng, &c13, &c15);
 
         Self {

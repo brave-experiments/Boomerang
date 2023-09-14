@@ -75,12 +75,25 @@ pub trait PedersenConfig: SWCurveConfig {
         PedersenComm::new(Self::from_ob_to_sf(val), rng)
     }
 
+    /// make_single_bit_challenge. This function accepts a single bit value `v` and returns:
+    /// * -1 (in the ScalarField) if `v == 0`.
+    /// *  1 (in the ScalarField) if `v == 1`.
+    /// For any other value of `v` this function panics.
+    /// # Arguments
+    /// * `v` - the single bit challenge.
+    fn make_single_bit_challenge(v: u8) -> <Self as CurveConfig>::ScalarField;
+
     /// OGENERATOR2. This acts as a second generator for OCurve. The reason why this
     /// exists is to allow Pedersen Commitments over OCurve to be easy to form.
     const OGENERATOR2: sw::Affine<Self::OCurve>;
+
+    /// CP1. This constant is the representation of "1" in the ScalarField of `Self`.
+    const CP1: Self::ScalarField;
+
+    /// CM1. This constant is the representation of "-1" in the ScalarField of `Self`.
+    const CM1: Self::ScalarField;
 }
 
-#[derive(Copy, Clone)]
 /// PedersenComm. This struct acts as a convenient wrapper for Pedersen Commitments.
 /// At a high-level, this struct is meant to be used whilst producing Pedersen Commitments
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
@@ -91,6 +104,15 @@ pub struct PedersenComm<P: PedersenConfig> {
     pub comm: sw::Affine<P>,
     /// r: the randomness used to generate `comm`. Should not be serialised.
     pub r: <P as CurveConfig>::ScalarField,
+}
+
+// This is here because #[Derive(Clone, Copy)] doesn't
+// appear to work properly for generic structs...
+impl<P: PedersenConfig> Copy for PedersenComm<P> {}
+impl<P: PedersenConfig> Clone for PedersenComm<P> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<P: PedersenConfig> ops::Add<PedersenComm<P>> for PedersenComm<P> {
