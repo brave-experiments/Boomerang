@@ -3,63 +3,17 @@ use ark_ec::{
     short_weierstrass::{self as sw, SWCurveConfig},
 };
 
-use pedersen::pedersen_config::PedersenConfig;
-
-use ark_ff::BigInt;
-use ark_ff::{Field, MontConfig, MontFp};
-
 use crate::{fq::Fq, fr::Fr, fr::FrConfig};
-
 use ark_secp256r1::Config as secp256r1conf;
 use ark_secp256r1::Fq as secp256r1Fq;
 use ark_secp256r1::FqConfig as secp256FqConfig;
-type OtherBaseField = <secp256r1conf as CurveConfig>::BaseField;
-
-// Define the various conversion structs.
-struct FrStruct(Fr);
-impl FrStruct {
-    pub fn new(x: Fr) -> FrStruct {
-        FrStruct(x)
-    }
-
-    pub fn as_fr(&self) -> Fr {
-        self.0
-    }
-}
-
-impl From<BigInt<4>> for FrStruct {
-    fn from(x: BigInt<4>) -> Self {
-        let x_t = FrConfig::from_bigint(x).unwrap();
-        FrStruct::new(x_t)
-    }
-}
-
-impl Into<BigInt<4>> for FrStruct {
-    fn into(self) -> BigInt<4> {
-        FrConfig::into_bigint(self.0)
-    }
-}
-
-struct Secp256r1base(OtherBaseField);
-
-impl Secp256r1base {
-    pub fn new(x: secp256r1Fq) -> Secp256r1base {
-        Secp256r1base(x)
-    }
-}
-
-impl Into<BigInt<4>> for Secp256r1base {
-    fn into(self) -> BigInt<4> {
-        secp256FqConfig::into_bigint(self.0)
-    }
-}
-
-impl From<BigInt<4>> for Secp256r1base {
-    fn from(x: BigInt<4>) -> Self {
-        let x_t = secp256FqConfig::from_bigint(x).unwrap();
-        Secp256r1base::new(x_t)
-    }
-}
+use ark_secp256r1::Fr as secp256r1Fr;
+#[allow(unused_imports)]
+// This is actually used in the macro below, but rustfmt seems to
+// be unable to deduce that...
+use ark_secp256r1::FrConfig as secp256FrConfig;
+#[warn(unused_imports)]
+use cdls_macros::derive_conversion;
 
 #[cfg(test)]
 mod tests;
@@ -96,19 +50,6 @@ impl SWCurveConfig for Config {
     const GENERATOR: Affine = Affine::new_unchecked(G_GENERATOR_X, G_GENERATOR_Y);
 }
 
-impl PedersenConfig for Config {
-    type OCurve = secp256r1conf;
-
-    /// GENERATOR2 = (G_GENERATOR_X2, G_GENERATOR_Y2)
-    const GENERATOR2: Affine = Affine::new_unchecked(G_GENERATOR_X2, G_GENERATOR_Y2);
-
-    fn from_ob_to_sf(x: OtherBaseField) -> <Config as CurveConfig>::ScalarField {
-        let x_t: BigInt<4> = x.into();
-        let x_v: FrStruct = FrStruct::from(x_t);
-        x_v.as_fr()
-    }
-}
-
 /// G_GENERATOR_X = 3
 pub const G_GENERATOR_X: Fq = MontFp!("3");
 
@@ -120,11 +61,30 @@ pub const G_GENERATOR_Y: Fq =
 pub const G_GENERATOR_X2: Fq = MontFp!("5");
 
 /// G_GENERATOR_Y2 = 28281484859698624956664858566852274012236038028101624500031073655422126514829
-
 pub const G_GENERATOR_Y2: Fq =
     MontFp!("28281484859698624956664858566852274012236038028101624500031073655422126514829");
 
-// We also need to define the ability to convert between points on the NIST curve and points on the Tom Curve,
-// which means that we need to be able to take BaseField values from P256 and turn them into ScalarField values
-// on T256.
-// This is not supported by arkworks, so we'll do it manually.
+/// The x co-ordinate of the other generator for secp256r1.
+pub const G_SECP256_O_X: &str = "5";
+
+/// The y co-ordinate of the other generator for secp256r1.
+pub const G_SECP256_O_Y: &str =
+    "31468013646237722594854082025316614106172411895747863909393730389177298123724";
+
+// Now we instantiate everything else.
+derive_conversion!(
+    Config,
+    4,
+    secp256r1conf,
+    G_GENERATOR_X2,
+    G_GENERATOR_Y2,
+    Fr,
+    FrConfig,
+    secp256r1Fq,
+    secp256r1Fr,
+    secp256FqConfig,
+    secp256FrConfig,
+    Affine,
+    "5",
+    "31468013646237722594854082025316614106172411895747863909393730389177298123724"
+);
