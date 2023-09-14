@@ -1,35 +1,15 @@
-prog :=xnixperms
-
-debug ?=
-
-$(info debug is $(debug))
-
-ifdef debug
-  release :=
-  target :=debug
-  extension :=debug
-else
-  release :=--release
-  target :=release
-  extension :=
-endif
-
 build:
-	cargo build $(release)
+	cargo build
 
-install:
-	cp target/$(target)/$(prog) ~/bin/$(prog)-$(extension)
-
-all: build install
+all: build
 
 help:
 	@echo "usage: make $(prog) [debug=1]"
 
 run:
-	cargo build $(release)
+	cargo build
 	cargo run
 
 test:
-	cargo build $(release)
-	cargo run
+	cargo build
 	cargo test

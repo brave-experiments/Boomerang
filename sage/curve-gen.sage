@@ -342,7 +342,7 @@ def find_curve_of_order(n):
         S = [ legendre_symbol(-1, p)*p for p in prime_range(max(3,r*logn), (r+1)*logn) if legendre_symbol(n, p) == 1]
         for i in range(1, len(S)):
             for L in combinations(S, i):
-                D = prod(L)
+                D = prod(L) # The discriminant
                 if D % 8 != 5 or D >= (r*logn)^2:
                     continue
                 solution = cornacchia(-D, 4*n)
@@ -355,6 +355,7 @@ def find_curve_of_order(n):
                     p = n+1-x
                 else:
                     continue
+                # The usual CM method
                 P = hilbert_class_polynomial(D)
                 roots = P.roots(ring=GF(p))
                 if len(roots) > 0:
@@ -364,8 +365,6 @@ def find_curve_of_order(n):
                     else:
                         return E.quadratic_twist()
         r += 1
-
-
 
 def find_order(characteristic: int, loud: bool):
     """
