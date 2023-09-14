@@ -156,11 +156,11 @@ macro_rules! __test_pedersen {
             assert!(proof.alpha.is_on_curve());
 
             // Check that the proof passes with the same challenge.
-            assert!(proof.verify_with_challenge(&c1.comm, &c2.comm, &c[..]));
+            assert!(proof.verify_proof(&c1.comm, &c2.comm, &c[..]));
 
             // But that it fails with the other.
             let cf = make_challenge(&<$config as PedersenConfig>::CP1);
-            assert!(!proof.verify_with_challenge(&c1.comm, &c2.comm, &cf[..]));
+            assert!(!proof.verify_proof(&c1.comm, &c2.comm, &cf[..]));
         }
 
         #[test]
@@ -223,11 +223,11 @@ macro_rules! __test_pedersen {
             assert!(proof.alpha.is_on_curve());
 
             // Check that the proof passes with the same challenge.
-            assert!(proof.verify_with_challenge(&c1.comm, &c2.comm, &c[..]));
+            assert!(proof.verify_proof(&c1.comm, &c2.comm, &c[..]));
 
             // But that it fails with the other.
             let cf = make_challenge(&<$config as PedersenConfig>::CP1);
-            assert!(!proof.verify_with_challenge(&c1.comm, &c2.comm, &cf[..]));
+            assert!(!proof.verify_proof(&c1.comm, &c2.comm, &cf[..]));
         }
 
         #[test]
@@ -661,6 +661,52 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
+        fn test_zkattest_point_add_other_challenge() {
+            // Test that the ZKAttest point addition proofs only verify on the right challenge.
+            let label = b"PedersenZKAttestECPointAdd";
+            let a = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            let mut b = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+
+            loop {
+                if b != a {
+                    break;
+                }
+                b = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
+            }
+
+            // Note: this needs to be forced into affine too, or the underlying
+            // proof system breaks (this seems to be an ark_ff thing).
+            let t = (a + b).into_affine();
+            let mut transcript = Transcript::new(label);
+
+            let proof_i: ZKEPAPI<Config> =
+                ZKEPAP::create_intermediates(&mut transcript, &mut OsRng, a, b, t);
+
+            // Fix the challenge.
+            let c = make_challenge(&<$config as PedersenConfig>::CM1);
+            let proof: ZKEPAP<Config> = ZKEPAP::create_proof(a, b, t, &proof_i, &c[..]);
+
+            // Check that all of the commitments are valid.
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.c6.is_on_curve());
+            assert!(proof.c8.is_on_curve());
+            assert!(proof.c10.is_on_curve());
+            assert!(proof.c11.is_on_curve());
+            assert!(proof.c13.is_on_curve());
+
+            // Now check that it verifies properly.
+            assert!(proof.verify_proof(&c[..]));
+
+            // And now check that it fails with another challenge.
+            let cf = make_challenge(&<$config as PedersenConfig>::CP1);
+            assert!(!proof.verify_proof(&cf[..]));
+        }
+
+        #[test]
         fn test_scalar_mult() {
             // Test that scalar multiplication works.
             let label = b"PedersenScalarMult";
@@ -757,7 +803,78 @@ macro_rules! __test_pedersen {
             let mut transcript_f = Transcript::new(label);
 
             let proof_f: FSECMP<Config> =
-                FSECMP::create(&mut transcript, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+                FSECMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
+        }
+
+        #[test]
+        fn test_zk_attest_scalar_mult() {
+            // Test that the ZKAttest scalar multiplication proof goes through.
+            let label = b"PedersenZkAttestScalarMult";
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+            let mut transcript = Transcript::new(label);
+
+            let proof: ZKECSMP<Config> =
+                ZKECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            // Check everything lies on the curve.
+            assert!(proof.c1.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+            assert!(proof.c4.is_on_curve());
+            assert!(proof.c5.is_on_curve());
+            assert!(proof.a1.is_on_curve());
+            assert!(proof.a2.is_on_curve());
+            assert!(proof.a3.is_on_curve());
+
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+
+            // Now make a fake transcript.
+            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
+            let mut transcript_f = Transcript::new(label);
+            let proof_f: ECSMP<Config> =
+                ECSMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+
+            // All of the other invariants are right.
+            assert!(proof_f.c1.is_on_curve());
+            assert!(proof_f.c2.is_on_curve());
+            assert!(proof_f.c3.is_on_curve());
+            assert!(proof_f.c4.is_on_curve());
+            assert!(proof_f.c5.is_on_curve());
+            assert!(proof_f.c6.is_on_curve());
+            assert!(proof_f.c7.is_on_curve());
+            assert!(proof_f.c8.is_on_curve());
+
+            // But the verification fails.
+            let mut transcript_fv = Transcript::new(label);
+            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
+        }
+
+        #[test]
+        fn test_fs_zk_ec_scalar_mult() {
+            // Test that the Fiat-Shamir scalar multiplication works.
+            let label = b"PedersenFsZkAttestScalarMult";
+
+            let lambda = OSF::rand(&mut OsRng);
+            let s = (OGENERATOR.mul(lambda)).into_affine();
+            let mut transcript = Transcript::new(label);
+
+            let proof: FSZKECSMP<Config> =
+                FSZKECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+
+            // Check it passes.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &OGENERATOR));
+
+            // Now make a fake transcript.
+            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
+            let mut transcript_f = Transcript::new(label);
+
+            let proof_f: FSZKECSMP<Config> =
+                FSZKECSMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
         }
@@ -782,6 +899,7 @@ macro_rules! test_pedersen {
                 ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
                 equality_protocol::EqualityProof as EP,
                 fs_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
+                fs_zk_attest_scalar_mul_protocol::FSZKAttestECScalarMulProof as FSZKECSMP,
                 mul_protocol::MulProof as MP,
                 opening_protocol::OpeningProof as OP,
                 pedersen_config::PedersenComm,
@@ -789,7 +907,13 @@ macro_rules! test_pedersen {
                 scalar_mul_protocol::{
                     ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
                 },
-                zk_attest_point_add_protocol::ZKAttestPointAddProof as ZKEPAP,
+                zk_attest_point_add_protocol::{
+                    ZKAttestPointAddProof as ZKEPAP, ZKAttestPointAddProofIntermediate as ZKEPAPI,
+                },
+                zk_attest_scalar_mul_protocol::{
+                    ZKAttestECScalarMulProof as ZKECSMP,
+                    ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
+                },
             };
             use rand_core::OsRng;
             $crate::__test_pedersen!($config, $OtherProjectiveType);

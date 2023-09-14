@@ -18,7 +18,6 @@ use rand::{CryptoRng, RngCore};
 
 use crate::{
     pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::OpeningTranscript,
-    transcript::CHALLENGE_SIZE,
 };
 
 /// OpeningProof. This struct acts as a container for an OpeningProof.
@@ -46,18 +45,45 @@ pub struct OpeningProofIntermediate<P: PedersenConfig> {
     pub t2: <P as CurveConfig>::ScalarField,
 }
 
-impl<P: PedersenConfig> OpeningProof<P> {
-    /// This is just to circumvent an annoying issue with Rust's current generics system.
-    pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
+// We need to implement these manually for generic structs.
+impl<P: PedersenConfig> Copy for OpeningProofIntermediate<P> {}
+impl<P: PedersenConfig> Clone for OpeningProofIntermediate<P> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
+/// OpeningProofIntermediateTranscript. This struct provides a wrapper for every input
+/// into the transcript i.e everything that's in `OpeningProofIntermediate` except from
+/// the randomness values.
+pub struct OpeningProofIntermediateTranscript<P: PedersenConfig> {
+    /// alpha. The random value that is used as a challenge.
+    pub alpha: sw::Affine<P>,
+}
+
+/// OpeningProofTranscriptable. This trait provides a notion of `Transcriptable`, which implies
+/// that the particular struct can be, in some sense, added to the transcript for an opening proof.
+pub trait OpeningProofTranscriptable {
+    /// Affine: the type of random point.
+    type Affine;
     /// add_to_transcript. This function simply adds self.alpha and the commitment `c1` to the `transcript`
     /// object.
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript which is modified.
-    /// * `c1` - the commitment that is being added to the transcript.
-    pub fn add_to_transcript(&self, transcript: &mut Transcript, c1: &sw::Affine<P>) {
-        Self::make_transcript(transcript, c1, &self.alpha)
+    /// * `c1` - the commitment that is being added to the transcript.    
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine);
+}
+
+impl<P: PedersenConfig> OpeningProof<P> {
+    /// make_intermediate_transcript. This function accepts a set of intermediates and builds an intermediate
+    /// transcript from those intermediates.
+    /// # Arguments
+    /// * `inter` - the intermediate values to use.
+    pub fn make_intermediate_transcript(
+        inter: OpeningProofIntermediate<P>,
+    ) -> OpeningProofIntermediateTranscript<P> {
+        OpeningProofIntermediateTranscript { alpha: inter.alpha }
     }
 
     /// make_transcript. This function simply adds `c1` and `alpha_p` to the `transcript` object.
@@ -65,7 +91,11 @@ impl<P: PedersenConfig> OpeningProof<P> {
     /// * `transcript` - the transcript which is modified.
     /// * `c1` - the commitment that is being added to the transcript.
     /// * `alpha_p` - the alpha value that is being added to the transcript.
-    fn make_transcript(transcript: &mut Transcript, c1: &sw::Affine<P>, alpha_p: &sw::Affine<P>) {
+    pub fn make_transcript(
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        alpha_p: &sw::Affine<P>,
+    ) {
         // This function just builds the transcript out of the various input values.
         // N.B Because of how we define the serialisation API to handle different numbers,
         // we use a temporary buffer here.
@@ -194,5 +224,26 @@ impl<P: PedersenConfig> OpeningProof<P> {
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
         P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(*chal) + self.alpha
+    }
+}
+
+impl<P: PedersenConfig> OpeningProofTranscriptable for OpeningProof<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
+        OpeningProof::make_transcript(transcript, c1, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> OpeningProofTranscriptable for OpeningProofIntermediate<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
+        OpeningProof::make_transcript(transcript, c1, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> OpeningProofTranscriptable for OpeningProofIntermediateTranscript<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
+        OpeningProof::make_transcript(transcript, c1, &self.alpha);
     }
 }
