@@ -126,7 +126,6 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
     /// * `b`: the other summand.
     /// * `t`: the target point (i.e `t = a + b`).
     /// * `rng`: the RNG that is used. Must be cryptographically secure.
-    // It's not _that_ complicated, Clippy.
     #[allow(clippy::type_complexity)]
     fn create_commitments_to_coords<T: RngCore + CryptoRng>(
         a: sw::Affine<<P as PedersenConfig>::OCurve>,
