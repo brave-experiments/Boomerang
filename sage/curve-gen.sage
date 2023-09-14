@@ -19,7 +19,6 @@ SECP384R1_FIELD_CHARACTERISTIC = 0xfffffffffffffffffffffffffffffffffffffffffffff
 # This is also known as P-521
 SECP521R1_FIELD_CHARACTERISTIC = 0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
-
 def cornacchia(d, m):
 	Q = gp.Qfb(1,0,d)
 	sol = list(Q.qfbsolve(m))
@@ -27,14 +26,14 @@ def cornacchia(d, m):
 		return None
 	return [ZZ(sol[0]), ZZ(sol[1])]
 
-def find_curve_of_order(n):
+def find_curve_of_prescribed_order(n):
 	r = 0
 	logn = int(log(n,2).n())
 	while True:
 		S = [ legendre_symbol(-1, p)*p for p in prime_range(max(3,r*logn), (r+1)*logn) if legendre_symbol(n, p) == 1]
 		for i in range(1, len(S)):
 			for L in combinations(S, i):
-				D = prod(L)
+				D = prod(L) # the smallest discriminant
 				if D % 8 != 5 or D >= (r*logn)^2:
 					continue
 				solution = cornacchia(-D, 4*n)
@@ -47,7 +46,8 @@ def find_curve_of_order(n):
 					p = n+1-x
 				else:
 					continue
-				P = hilbert_class_polynomial(D)
+                                # From here on, it is the usual CM method
+				P = hilbert_class_polynomial(D) # archemedian one
 				roots = P.roots(ring=GF(p))
 				if len(roots) > 0:
 					E = EllipticCurve_from_j(roots[0][0]).change_ring(GF(p))
@@ -69,7 +69,7 @@ def find_order(characteristic: int):
     print("Finding order: ")
 
     start = timer()
-    E = find_curve_of_order(characteristic)
+    E = find_curve_of_prescribed_order(characteristic)
     end = timer()
     if E.order() == characteristic:
         print(E)
@@ -95,4 +95,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
