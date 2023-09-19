@@ -1,5 +1,4 @@
-//! Defines a protocol for EC scalar multiplication with Fiat-Shamir.
-//! Essentially, this protocol is a repeated variant of Construction 4.1.
+//! Defines a protocol for the ZKAttest EC scalar multiplication protocol with Fiat-Shamir.
 
 use ark_ec::{
     short_weierstrass::{self as sw},
@@ -11,18 +10,19 @@ use rand::{CryptoRng, RngCore};
 
 use crate::{
     pedersen_config::PedersenConfig,
-    scalar_mul_protocol::{ECScalarMulProof, ECScalarMulProofTranscriptable},
-    transcript::FSECScalarMulTranscript,
+    transcript::ZKAttestFSECScalarMulTranscript,
+    zk_attest_scalar_mul_protocol::{ZKAttestECScalarMulProof, ZKAttestECScalarMulTranscriptable},
 };
 
-/// FSECScalarMulProof. This struct acts as a container for the Fiat-Shamir scalar multiplication proof.
-/// Essentially, this struct can be used to create new proofs (via ```create```), and verify existing proofs (via ```verify```).
-pub struct FSECScalarMulProof<P: PedersenConfig> {
+/// FSZKAttestECScalarMulProof. This struct acts as a container for
+/// the repeated (i.e Fiat-Shamir) variant of the ZKAttest Scalar multiplication
+/// protocol.
+pub struct FSZKAttestECScalarMulProof<P: PedersenConfig> {
     /// proofs: the sub-proofs.
-    proofs: Vec<ECScalarMulProof<P>>,
+    proofs: Vec<ZKAttestECScalarMulProof<P>>,
 }
 
-impl<P: PedersenConfig> FSECScalarMulProof<P> {
+impl<P: PedersenConfig> FSZKAttestECScalarMulProof<P> {
     /// create. This function creates a new scalar multiplication proof for s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -44,7 +44,7 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
 
         let mut intermediates = Vec::with_capacity(128);
         for _ in 0..128 {
-            intermediates.push(ECScalarMulProof::create_intermediates(
+            intermediates.push(ZKAttestECScalarMulProof::create_intermediates(
                 transcript, rng, s, lambda, p,
             ));
         }
@@ -56,23 +56,22 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
 
         for (i, c) in chal_buf.iter().enumerate() {
             let mut byte = *c;
-            for j in 0..8 {
-                // Extract the lowest bit of byte.
-                let bit = byte & 1;
-                // Use that to make a challenge.
-                let chal = <P as PedersenConfig>::make_single_bit_challenge(bit);
-                proofs.push(ECScalarMulProof::create_proof_with_challenge(
+            for j in 0..4 {
+                // Extract the c0 and c1 challenges.
+                let c0 = <P as PedersenConfig>::make_single_bit_challenge(byte & 1);
+                let c1 = <P as PedersenConfig>::make_single_bit_challenge((byte & 2) >> 1);
+                proofs.push(ZKAttestECScalarMulProof::create_proof_with_challenge(
                     s,
                     lambda,
                     p,
-                    &intermediates[i * 8 + j],
-                    &chal,
+                    &intermediates[i * 4 + j],
+                    &c0,
+                    &c1,
                 ));
-                byte >>= 1;
+                byte >>= 2;
             }
         }
 
-        // And finally just return the proofs.
         Self { proofs }
     }
 
@@ -105,13 +104,12 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
             // Take the current challenge byte.
             let mut byte = *c;
 
-            for j in 0..8 {
-                // Extract the lowest bit of byte.
-                let bit = byte & 1;
-                // Use that to make a challenge.
-                let chal = <P as PedersenConfig>::make_single_bit_challenge(bit);
-                worked &= self.proofs[i * 8 + j].verify_with_challenge(p, &chal);
-                byte >>= 1;
+            for j in 0..4 {
+                // Extract the challenges.
+                let c0 = <P as PedersenConfig>::make_single_bit_challenge(byte & 1);
+                let c1 = <P as PedersenConfig>::make_single_bit_challenge((byte & 2) >> 1);
+                worked &= self.proofs[i * 4 + j].verify_with_challenge(p, &c0, &c1);
+                byte >>= 2;
             }
         }
 

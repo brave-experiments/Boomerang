@@ -154,7 +154,34 @@ pub trait ECScalarMulTranscript {
 
 impl ECScalarMulTranscript for Transcript {
     fn domain_sep(&mut self) {
-        self.append_message(b"dom-sep", b"ec-point-scalar-addition-proof");
+        self.append_message(b"dom-sep", b"ec-point-scalar-mul-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
+        let mut buf = [0u8; CHALLENGE_SIZE];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}
+
+pub trait ZKAttestECScalarMulTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
+}
+
+impl ZKAttestECScalarMulTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"zk-attest-ec-point-scalar-mul-proof");
     }
 
     fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
@@ -191,6 +218,34 @@ impl FSECScalarMulTranscript for Transcript {
 
     fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 16] {
         let mut buf = [0u8; 16];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}
+
+pub trait ZKAttestFSECScalarMulTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    /// N.B 16 byte challenge -> 256 bits.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 32];
+}
+
+impl ZKAttestFSECScalarMulTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"fs-zk-attest-ec-point-scalar-mul-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 32] {
+        let mut buf = [0u8; 32];
         self.challenge_bytes(label, &mut buf);
         buf
     }

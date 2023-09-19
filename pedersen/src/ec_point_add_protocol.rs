@@ -14,12 +14,29 @@ use ark_serialize::CanonicalSerialize;
 use rand::{CryptoRng, RngCore};
 
 use crate::{
-    mul_protocol::{MulProof, MulProofIntermediate},
-    opening_protocol::{OpeningProof, OpeningProofIntermediate},
+    mul_protocol::{
+        MulProof, MulProofIntermediate, MulProofIntermediateTranscript, MulProofTranscriptable,
+    },
+    opening_protocol::{
+        OpeningProof, OpeningProofIntermediate, OpeningProofIntermediateTranscript,
+        OpeningProofTranscriptable,
+    },
     pedersen_config::PedersenComm,
     pedersen_config::PedersenConfig,
     transcript::ECPointAdditionTranscript,
 };
+
+/// ECPointAddProofTranscriptable. This trait provides a notion of `Transcriptable` which implies that
+/// a particular struct can be, in some sense, added to the transcript for a point addition proof.
+pub trait ECPointAddProofTranscriptable {
+    /// add_to_transcript. This function adds all sub-proof information to the transcript
+    /// object. This is typically used when the ECPointAddProtocol is invoked as part of a larger
+    /// proof.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object that's used.
+    fn add_to_transcript(&self, transcript: &mut Transcript);
+}
 
 /// ECPointAddProof. This struct acts as a container for an Elliptic Curve Point Addition proof.
 /// Essentially, this struct can be used to create new proofs (via ```create```), and verify
@@ -59,28 +76,92 @@ pub struct ECPointAddProof<P: PedersenConfig> {
 /// addition proof. Essentially, this struct should be used when the ECPointAddProof is a sub-portion of a larger
 /// protocol.
 pub struct ECPointAddIntermediate<P: PedersenConfig> {
+    /// c1: the commitment to a.x.
     pub c1: PedersenComm<P>,
+    /// c2: the commitment to a.y.
     pub c2: PedersenComm<P>,
+    /// c3: the commitment to b.x.
     pub c3: PedersenComm<P>,
+    /// c4: the commitment to b.y.
     pub c4: PedersenComm<P>,
+    /// c5: the commitment to t.x.
     pub c5: PedersenComm<P>,
+    /// c6: the commitment to t.y.
     pub c6: PedersenComm<P>,
+
+    /// c7: the commitment to tau = (b.y - a.y)/(b.x - a.x)
     pub c7: PedersenComm<P>,
 
+    /// mpi1: the intermediates for verifying equation 1.
     pub mpi1: MulProofIntermediate<P>,
+    /// mpi2: the intermediates for verifying equation 2.
     pub mpi2: MulProofIntermediate<P>,
+    /// mpi3: the intermediates for verifying equation 3.
     pub mpi3: MulProofIntermediate<P>,
+    /// opi: the intermediates for verifying the opening of C2.
     pub opi: OpeningProofIntermediate<P>,
 }
 
+/// ECPointAddIntermediateTranscript. This struct provides a wrapper for every input
+/// into the transcript i.e everything that's in `ECPointAddIntermediate` except from
+/// the randomness values.
+pub struct ECPointAddIntermediateTranscript<P: PedersenConfig> {
+    /// c1: the commitment to a.x.
+    pub c1: sw::Affine<P>,
+    /// c2: the commitment to a.y.
+    pub c2: sw::Affine<P>,
+    /// c3: the commitment to b.x.
+    pub c3: sw::Affine<P>,
+    /// c4: the commitment to b.y.
+    pub c4: sw::Affine<P>,
+    /// c5: the commitment to t.x.
+    pub c5: sw::Affine<P>,
+    /// c6: the commitment to t.y.
+    pub c6: sw::Affine<P>,
+
+    /// c7: the commitment to tau = (b.y - a.y)/(b.x - a.x)
+    pub c7: sw::Affine<P>,
+
+    /// mpi1: the intermediates for verifying equation 1.
+    pub mpi1: MulProofIntermediateTranscript<P>,
+    /// mpi2: the intermediates for verifying equation 2.
+    pub mpi2: MulProofIntermediateTranscript<P>,
+    /// mpi3: the intermediates for verifying equation 3.
+    pub mpi3: MulProofIntermediateTranscript<P>,
+    /// opi: the intermediates for verifying the opening of C2.
+    pub opi: OpeningProofIntermediateTranscript<P>,
+}
+
 impl<P: PedersenConfig> ECPointAddProof<P> {
+    /// make_intermediate_transcript. This function accepts a set of intermediate values (`inter`)
+    /// and builds a new ECPointAddProofIntermediateTranscript from `inter`.
+    /// # Arguments
+    /// * `inter` - the intermediate values to use.
+    pub fn make_intermediate_transcript(
+        inter: ECPointAddIntermediate<P>,
+    ) -> ECPointAddIntermediateTranscript<P> {
+        ECPointAddIntermediateTranscript {
+            c1: inter.c1.comm,
+            c2: inter.c2.comm,
+            c3: inter.c3.comm,
+            c4: inter.c4.comm,
+            c5: inter.c5.comm,
+            c6: inter.c6.comm,
+            c7: inter.c7.comm,
+            mpi1: MulProof::make_intermediate_transcript(inter.mpi1),
+            mpi2: MulProof::make_intermediate_transcript(inter.mpi2),
+            mpi3: MulProof::make_intermediate_transcript(inter.mpi3),
+            opi: OpeningProof::make_intermediate_transcript(inter.opi),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     /// make_transcript. This function simply loads all commitments `c_i` into the
     /// `transcript` object. This can then be used for proving or verifying statements.
     /// # Arguments
     /// * `transcript` - the transcript object to modify.
     /// * `c_i` - the commitments that are being added to the transcript.
-    fn make_transcript(
+    pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         c2: &sw::Affine<P>,
@@ -118,38 +199,6 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         ECPointAdditionTranscript::append_point(transcript, b"C7", &compressed_bytes[..]);
     }
 
-    /// create_commitments_to_coords. This function accepts a series of affine points (from the underyling OCurve)
-    /// and creates commitments to each co-ordinate of each point, returning the results as a tuple.
-    /// The formed commitments are commitments over the relevant T Curve.
-    /// # Arguments
-    /// * `a`: one of the summands.
-    /// * `b`: the other summand.
-    /// * `t`: the target point (i.e `t = a + b`).
-    /// * `rng`: the RNG that is used. Must be cryptographically secure.
-    #[allow(clippy::type_complexity)]
-    fn create_commitments_to_coords<T: RngCore + CryptoRng>(
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-        rng: &mut T,
-    ) -> (
-        PedersenComm<P>,
-        PedersenComm<P>,
-        PedersenComm<P>,
-        PedersenComm<P>,
-        PedersenComm<P>,
-        PedersenComm<P>,
-    ) {
-        (
-            <P as PedersenConfig>::make_commitment_from_other(a.x, rng),
-            <P as PedersenConfig>::make_commitment_from_other(a.y, rng),
-            <P as PedersenConfig>::make_commitment_from_other(b.x, rng),
-            <P as PedersenConfig>::make_commitment_from_other(b.y, rng),
-            <P as PedersenConfig>::make_commitment_from_other(t.x, rng),
-            <P as PedersenConfig>::make_commitment_from_other(t.y, rng),
-        )
-    }
-
     /// create_intermediates. This function returns a new set of intermediaries for a proof that
     /// `t = a + b` using already existing commitments to `a`, `b`, and `t`. This function
     /// will generate new commitments to `a`, `b`, and `t`.
@@ -166,7 +215,8 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         b: sw::Affine<<P as PedersenConfig>::OCurve>,
         t: sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> ECPointAddIntermediate<P> {
-        let (c1, c2, c3, c4, c5, c6) = Self::create_commitments_to_coords(a, b, t, rng);
+        let (c1, c2, c3, c4, c5, c6) =
+            <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
         Self::create_intermediates_with_existing_commitments(
             transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
         )
@@ -350,6 +400,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             &z2,
             chal,
         );
+
         let mp2 = MulProof::create_proof_with_challenge(
             &taua,
             &taua,
@@ -359,6 +410,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             &z4,
             chal,
         );
+
         let mp3 = MulProof::create_proof_with_challenge(
             &taua,
             &x3,
@@ -404,36 +456,53 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         // This proof does not show work for point doubling.
         assert!(a != b);
         // Commit to each of the co-ordinate pairs.
-        let (c1, c2, c3, c4, c5, c6) = Self::create_commitments_to_coords(a, b, t, rng);
+        let (c1, c2, c3, c4, c5, c6) =
+            <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
         Self::create_with_existing_commitments(
             transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
         )
     }
 
-    /// add_to_transcript. This function adds all sub-proof information to the transcript
-    /// object. This is typically used when the ECPointAddProtocol is invoked as part of a larger
+    /// make_subproof_transcripts. This function instantiates the transcripts for the
+    /// subproofs. This is typically used when multiple sub-proofs comprise a larger
     /// proof.
     /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the transcript object that's used.
-    pub fn add_to_transcript(&self, transcript: &mut Transcript) {
-        Self::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
-        );
+    /// * `transcript` - the transcript object.
+    /// * `ci` - the commitments to the various portions of the ECPointAddProof.
+    /// * `mp1` - the multiplication proof sub-object that verifies Equation 1.
+    /// * `mp2` - the multiplication proof sub-object that verifies Equation 2.
+    /// * `mp3` - the multiplication proof sub-object that verifies Equation 3.
+    /// * `op`  - the opening proof sub-object that verifies knowledge of C2.
+    #[allow(clippy::too_many_arguments)]
+    pub fn make_subproof_transcripts<
+        MP: MulProofTranscriptable<Affine = sw::Affine<P>>,
+        OP: OpeningProofTranscriptable<Affine = sw::Affine<P>>,
+    >(
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        c4: &sw::Affine<P>,
+        c5: &sw::Affine<P>,
+        c6: &sw::Affine<P>,
+        c7: &sw::Affine<P>,
+        mp1: &MP,
+        mp2: &MP,
+        mp3: &MP,
+        op: &OP,
+    ) {
+        let z1 = (c3.into_group() - c1).into_affine();
+        let z2 = &c7;
+        let z3 = (c4.into_group() - c2).into_affine();
+        let z4 = (c1.into_group() + c3 + c5).into_affine();
+        let z5 = (c1.into_group() - c5).into_affine();
+        let z6 = (c2.into_group() + c6).into_affine();
 
-        let z1 = (self.c3.into_group() - self.c1).into_affine();
-        let z2 = &self.c7;
-        let z3 = (self.c4.into_group() - self.c2).into_affine();
-        let z4 = (self.c1 + self.c3 + self.c5).into_affine();
-        let z5 = (self.c1.into_group() - self.c5).into_affine();
-        let z6 = (self.c2.into_group() + self.c6).into_affine();
-
-        // Rebuild the rest of the transcript.
-        self.mp1.add_to_transcript(transcript, &z1, z2, &z3);
-        self.mp2
-            .add_to_transcript(transcript, &self.c7, &self.c7, &z4);
-        self.mp3.add_to_transcript(transcript, z2, &z5, &z6);
-        self.op.add_to_transcript(transcript, &self.c2);
+        // Just instantiate each sub-portion together.
+        mp1.add_to_transcript(transcript, &z1, z2, &z3);
+        mp2.add_to_transcript(transcript, c7, c7, &z4);
+        mp3.add_to_transcript(transcript, z2, &z5, &z6);
+        op.add_to_transcript(transcript, c2);
     }
 
     /// verify. This function returns true if the proof held by `self` is valid, and false otherwise.
@@ -484,5 +553,61 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
                 .verify_with_challenge(&self.c7, &self.c7, &z4, chal)
             && self.mp3.verify_with_challenge(z2, &z5, &z6, chal)
             && self.op.verify_with_challenge(&self.c2, chal)
+    }
+}
+
+impl<P: PedersenConfig> ECPointAddProofTranscriptable for ECPointAddProof<P> {
+    fn add_to_transcript(&self, transcript: &mut Transcript) {
+        // Just build each bit in turn.
+        ECPointAddProof::make_transcript(
+            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
+        );
+        ECPointAddProof::make_subproof_transcripts(
+            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
+            &self.mp1, &self.mp2, &self.mp3, &self.op,
+        );
+    }
+}
+
+impl<P: PedersenConfig> ECPointAddProofTranscriptable for ECPointAddIntermediate<P> {
+    fn add_to_transcript(&self, transcript: &mut Transcript) {
+        // Just build each bit in turn.
+        ECPointAddProof::make_transcript(
+            transcript,
+            &self.c1.comm,
+            &self.c2.comm,
+            &self.c3.comm,
+            &self.c4.comm,
+            &self.c5.comm,
+            &self.c6.comm,
+            &self.c7.comm,
+        );
+        ECPointAddProof::make_subproof_transcripts(
+            transcript,
+            &self.c1.comm,
+            &self.c2.comm,
+            &self.c3.comm,
+            &self.c4.comm,
+            &self.c5.comm,
+            &self.c6.comm,
+            &self.c7.comm,
+            &self.mpi1,
+            &self.mpi2,
+            &self.mpi3,
+            &self.opi,
+        );
+    }
+}
+
+impl<P: PedersenConfig> ECPointAddProofTranscriptable for ECPointAddIntermediateTranscript<P> {
+    fn add_to_transcript(&self, transcript: &mut Transcript) {
+        // Just build each bit in turn.
+        ECPointAddProof::make_transcript(
+            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
+        );
+        ECPointAddProof::make_subproof_transcripts(
+            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
+            &self.mpi1, &self.mpi2, &self.mpi3, &self.opi,
+        );
     }
 }

@@ -16,7 +16,6 @@ use rand::{CryptoRng, RngCore};
 
 use crate::{
     pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::EqualityTranscript,
-    transcript::CHALLENGE_SIZE,
 };
 
 /// EqualityProof. This struct acts as a container for an EqualityProof.
@@ -29,7 +28,7 @@ pub struct EqualityProof<P: PedersenConfig> {
     pub z: <P as CurveConfig>::ScalarField,
 }
 
-/// OpeningProofIntermediate. This struct provides a convenient wrapper
+/// EqualityProofIntermediate. This struct provides a convenient wrapper
 /// for building all of the random values _before_ the challenge is generated.
 /// This struct should only be used if the transcript needs to modified in some way
 /// before the proof is generated.
@@ -40,9 +39,48 @@ pub struct EqualityProofIntermediate<P: PedersenConfig> {
     pub alpha: sw::Affine<P>,
 }
 
+/// EqualityProofIntermediateTranscript. This struct provides a wrapper for every input
+/// into the transcript i.e everything that's in `EqualityProofIntermediate` except from
+/// the randomness values.
+pub struct EqualityProofIntermediateTranscript<P: PedersenConfig> {
+    /// alpha: the random point produced during setup.
+    pub alpha: sw::Affine<P>,
+}
+
+/// EqualityProofTranscriptable. This trait provides a notion of `Transcriptable`, which implies
+/// that the particular struct can be, in some sense, added to the transcript for an equality proof.
+pub trait EqualityProofTranscriptable {
+    /// Affine: the type of random point.
+    type Affine;
+    /// add_to_transcript. This function simply adds the commitments `c1`, `c2` to the `transcript`
+    /// object, along with the internal `alpha` value.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript which is modified.
+    /// * `c1` - the c1 commitment that is being added to the transcript.
+    /// * `c2` - the c2 commitment that is being added to the transcript.    
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine, c2: &Self::Affine);
+}
+
+// We need to implement these for generic structs.
+impl<P: PedersenConfig> Copy for EqualityProofIntermediate<P> {}
+impl<P: PedersenConfig> Clone for EqualityProofIntermediate<P> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 impl<P: PedersenConfig> EqualityProof<P> {
-    /// This is just to circumvent an annoying issue with Rust's current generics system.
-    pub const CHAL_SIZE: usize = CHALLENGE_SIZE;
+    /// make_intermediate_transcript. This function turns some of equality proof intermediates into
+    /// a transcriptable object. This is typically only useful for proofs that only conditionally construct
+    /// equality proofs.
+    /// # Arguments
+    /// * `inter` - the intermediates to be converted.
+    pub fn make_intermediate_transcript(
+        inter: EqualityProofIntermediate<P>,
+    ) -> EqualityProofIntermediateTranscript<P> {
+        EqualityProofIntermediateTranscript { alpha: inter.alpha }
+    }
 
     /// add_to_transcript. This function simply adds self.alpha and the commitments `c1`, `c2` to the `transcript`
     /// object.
@@ -66,7 +104,7 @@ impl<P: PedersenConfig> EqualityProof<P> {
     /// * `c1` - the c1 commitment that is being added to the transcript.
     /// * `c2` - the c2 commitment that is being added to the transcript.
     /// * `alpha_p` - the alpha value that is being added to the transcript.
-    fn make_transcript(
+    pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         c2: &sw::Affine<P>,
@@ -138,11 +176,31 @@ impl<P: PedersenConfig> EqualityProof<P> {
         c2: &PedersenComm<P>,
         chal_buf: &[u8],
     ) -> Self {
-        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        let z = chal * (c1.r - c2.r) + inter.r;
+        Self::create_proof_with_challenge(
+            inter,
+            c1,
+            c2,
+            &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),
+        )
+    }
+
+    /// create_proof_with_challenge. This function accepts a set of intermediaries (`inter`) and creates
+    /// a proof that `c1` and `c2` are commitments to the same value. This function creates this proof using
+    /// the challenge `chal`.
+    /// # Arguments
+    /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
+    /// * `c1` - the c1 commitment.
+    /// * `c2` - the c2 commitment.
+    /// * `chal` - the challenge to be used.    
+    pub fn create_proof_with_challenge(
+        inter: &EqualityProofIntermediate<P>,
+        c1: &PedersenComm<P>,
+        c2: &PedersenComm<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
         EqualityProof {
             alpha: inter.alpha,
-            z,
+            z: *chal * (c1.r - c2.r) + inter.r,
         }
     }
 
@@ -161,10 +219,10 @@ impl<P: PedersenConfig> EqualityProof<P> {
     ) -> bool {
         // Make the transcript.
         self.add_to_transcript(transcript, c1, c2);
-        self.verify_with_challenge(c1, c2, &transcript.challenge_scalar(b"c")[..])
+        self.verify_proof(c1, c2, &transcript.challenge_scalar(b"c")[..])
     }
 
-    /// verify_with_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// verify_proof. This function returns true if the proof held by `self` is valid, and false otherwise.
     /// In other words, this function returns true if c1 and c2 are commitments to the same secret value.
     /// Note that this function uses the pre-existing challenge bytes supplied in `chal_buf`.
     /// # Arguments
@@ -172,13 +230,54 @@ impl<P: PedersenConfig> EqualityProof<P> {
     /// * `c1` - the c1 commitment.
     /// * `c2` - the c2 commitment.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
+    pub fn verify_proof(&self, c1: &sw::Affine<P>, c2: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
+        self.verify_with_challenge(
+            c1,
+            c2,
+            &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),
+        )
+    }
+
+    /// verify_with_challenge. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if c1 and c2 are commitments to the same secret value.
+    /// Note that this function uses the pre-existing challenge bytes supplied in `chal_buf`.
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `c1` - the c1 commitment.
+    /// * `c2` - the c2 commitment.
+    /// * `chal` - the buffer that contains the challenge.
     pub fn verify_with_challenge(
         &self,
         c1: &sw::Affine<P>,
         c2: &sw::Affine<P>,
-        chal_buf: &[u8],
+        chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        P::GENERATOR2.mul(self.z) == (c1.into_group() - c2).mul(chal) + self.alpha
+        P::GENERATOR2.mul(self.z) == (c1.into_group() - c2).mul(*chal) + self.alpha
+    }
+}
+
+impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProof<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine, c2: &Self::Affine) {
+        EqualityProof::make_transcript(transcript, c1, c2, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProofIntermediate<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine, c2: &Self::Affine) {
+        EqualityProof::make_transcript(transcript, c1, c2, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProofIntermediateTranscript<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+    ) {
+        EqualityProof::make_transcript(transcript, c1, c2, &self.alpha);
     }
 }

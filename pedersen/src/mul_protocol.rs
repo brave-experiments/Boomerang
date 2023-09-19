@@ -17,6 +17,27 @@ use crate::{
     pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::MulTranscript,
 };
 
+/// MulProofTranscriptable. This trait provides a notion of `Transcriptable`, which implies
+/// that the particular struct can be, in some sense, added to the transcript for a multiplication proof.
+pub trait MulProofTranscriptable {
+    /// Affine: the type of random point.
+    type Affine;
+    /// add_to_transcript. This function simply adds  the commitment various commitments to the `transcript`
+    /// object.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `c1` - the c1 commitment that is being added to the transcript.
+    /// * `c2` - the c2 commitment that is being added to the transcript.
+    /// * `c3` - the c3 commitment that is being added to the transcript.
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &Self::Affine,
+        c2: &Self::Affine,
+        c3: &Self::Affine,
+    );
+}
+
 /// MulProof. This struct acts as a container for a MulProof.
 /// Essentially, a new proof object can be created by calling `create`, whereas
 /// an existing proof can be verified by calling `verify`.
@@ -67,22 +88,39 @@ pub struct MulProofIntermediate<P: PedersenConfig> {
     pub b5: <P as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<P: PedersenConfig> Copy for MulProofIntermediate<P> {}
+impl<P: PedersenConfig> Clone for MulProofIntermediate<P> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+/// MulProofIntermediateTranscript. This struct provides a wrapper for every input
+/// into the transcript i.e everything that's in `MulProofIntermediate` except from
+/// the randomness values.
+pub struct MulProofIntermediateTranscript<P: PedersenConfig> {
+    /// alpha: a random point produced by the prover during setup.
+    pub alpha: sw::Affine<P>,
+    /// beta: a random point produced by the prover during setup.
+    pub beta: sw::Affine<P>,
+    /// delta: a random point produced by the prover during setup.
+    pub delta: sw::Affine<P>,
+}
+
 impl<P: PedersenConfig> MulProof<P> {
-    /// add_to_transcript. This function simply adds self.alpha and the commitment `c1` to the `transcript`
-    /// object.
+    /// make_intermediate_transcript. This function accepts a set of intermediate values (`inter`)
+    /// and builds a new MulProofIntermediateTranscript from `inter`.
     /// # Arguments
-    /// * `self` - the proof object.
-    /// * `c1` - the c1 commitment that is being added to the transcript.
-    /// * `c2` - the c2 commitment that is being added to the transcript.
-    /// * `c3` - the c3 commitment that is being added to the transcript.
-    pub fn add_to_transcript(
-        &self,
-        transcript: &mut Transcript,
-        c1: &sw::Affine<P>,
-        c2: &sw::Affine<P>,
-        c3: &sw::Affine<P>,
-    ) {
-        Self::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta)
+    /// * `inter` - the intermediate values to use.
+    pub fn make_intermediate_transcript(
+        inter: MulProofIntermediate<P>,
+    ) -> MulProofIntermediateTranscript<P> {
+        MulProofIntermediateTranscript {
+            alpha: inter.alpha,
+            beta: inter.beta,
+            delta: inter.delta,
+        }
     }
 
     /// make_transcript. This function simply adds `c1`, `c2`, `c3` and `alpha_p` to the `transcript` object.
@@ -91,8 +129,10 @@ impl<P: PedersenConfig> MulProof<P> {
     /// * `c1` - the c1 commitment that is being added to the transcript.
     /// * `c2` - the c2 commitment that is being added to the transcript.
     /// * `c3` - the c3 commitment that is being added to the transcript.
-    /// * `alpha_p` - the alpha value that is being added to the transcript.
-    fn make_transcript(
+    /// * `alpha` - the alpha value that is being added to the transcript.
+    /// * `beta` - the beta value that is being added to the transcript.
+    /// * `delta` - the delta value that is being added to the transcript.
+    pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         c2: &sw::Affine<P>,
@@ -318,5 +358,44 @@ impl<P: PedersenConfig> MulProof<P> {
         (self.alpha + c1.mul(*chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
             && (self.beta + c2.mul(*chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
             && (self.delta + c3.mul(*chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
+    }
+}
+
+impl<P: PedersenConfig> MulProofTranscriptable for MulProof<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &Self::Affine,
+        c2: &Self::Affine,
+        c3: &Self::Affine,
+    ) {
+        MulProof::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
+    }
+}
+
+impl<P: PedersenConfig> MulProofTranscriptable for MulProofIntermediate<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
+        MulProof::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
+    }
+}
+
+impl<P: PedersenConfig> MulProofTranscriptable for MulProofIntermediateTranscript<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
+        MulProof::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
     }
 }
