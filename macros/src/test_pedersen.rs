@@ -108,7 +108,6 @@ macro_rules! __test_pedersen {
             let c2: PC = PC::new(a, &mut OsRng);
 
             let mut transcript = Transcript::new(label);
-
             // Build the proof.
             let proof = EP::create(&mut transcript, &mut OsRng, &c1, &c2);
             assert!(proof.alpha.is_on_curve());
