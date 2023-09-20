@@ -82,22 +82,6 @@ impl<P: PedersenConfig> EqualityProof<P> {
         EqualityProofIntermediateTranscript { alpha: inter.alpha }
     }
 
-    /// add_to_transcript. This function simply adds self.alpha and the commitments `c1`, `c2` to the `transcript`
-    /// object.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the transcript which is modified.
-    /// * `c1` - the c1 commitment that is being added to the transcript.
-    /// * `c2` - the c2 commitment that is being added to the transcript.    
-    pub fn add_to_transcript(
-        &self,
-        transcript: &mut Transcript,
-        c1: &sw::Affine<P>,
-        c2: &sw::Affine<P>,
-    ) {
-        Self::make_transcript(transcript, c1, c2, &self.alpha)
-    }
-
     /// make_transcript. This function simply adds `c1`, `c2` and `alpha_p` to the `transcript` object.
     /// # Arguments
     /// * `transcript` - the transcript which is modified.

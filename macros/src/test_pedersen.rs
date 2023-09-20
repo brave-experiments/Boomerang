@@ -877,6 +877,58 @@ macro_rules! __test_pedersen {
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
         }
+
+        #[test]
+        fn test_gk_zero_one_zero() {
+            // Test that the GK zero-one proof works on a value of 0.
+            let label = b"PedersenZeroOne";
+            let m = SF::ZERO;
+            let c: PC = PC::new(m, &mut OsRng);
+
+            // Make the proof object.
+            let mut transcript = Transcript::new(label);
+            let proof: ZOP<Config> = ZOP::create(&mut transcript, &mut OsRng, &m, &c);
+
+            // Now check the proof is fine.
+            assert!(proof.ca.is_on_curve());
+            assert!(proof.cb.is_on_curve());
+            
+            // And now check that it passes.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &c.comm));
+
+            // Check that it would fail on a commitment to one.
+            let n = SF::ONE;
+            let cf: PC = PC::new(n, &mut OsRng);
+            transcript_v = Transcript::new(label);
+            assert!(!proof.verify(&mut transcript_v, &cf.comm));            
+        }
+
+        #[test]
+        fn test_gk_zero_one_one() {
+            // Test that the GK zero-one proof works on a value of 1.
+            let label = b"PedersenZeroOne";
+            let m = SF::ONE;
+            let c: PC = PC::new(m, &mut OsRng);
+
+            // Make the proof object.
+            let mut transcript = Transcript::new(label);
+            let proof: ZOP<Config> = ZOP::create(&mut transcript, &mut OsRng, &m, &c);
+
+            // Now check the proof is fine.
+            assert!(proof.ca.is_on_curve());
+            assert!(proof.cb.is_on_curve());
+            
+            // And now check that it passes.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &c.comm));
+
+            // Check that it would fail on a commitment to zero.
+            let n = SF::ZERO;
+            let cf: PC = PC::new(n, &mut OsRng);
+            transcript_v = Transcript::new(label);
+            assert!(!proof.verify(&mut transcript_v, &cf.comm));            
+        }
     };
 }
 
@@ -892,6 +944,7 @@ macro_rules! test_pedersen {
             };
             use ark_serialize::CanonicalSerialize;
             use ark_std::UniformRand;
+            use ark_ff::Field;
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
@@ -913,6 +966,7 @@ macro_rules! test_pedersen {
                     ZKAttestECScalarMulProof as ZKECSMP,
                     ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
                 },
+                gk_zero_one_protocol::{ZeroOneProof as ZOP, ZeroOneProofIntermediate as ZOPI},
             };
             use rand_core::OsRng;
             $crate::__test_pedersen!($config, $OtherProjectiveType);

@@ -250,3 +250,30 @@ impl ZKAttestFSECScalarMulTranscript for Transcript {
         buf
     }
 }
+
+pub trait GKZeroOneTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
+}
+
+impl GKZeroOneTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"gk-zero-one-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
+        let mut buf = [0u8; CHALLENGE_SIZE];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}

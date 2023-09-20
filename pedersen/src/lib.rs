@@ -10,3 +10,4 @@ pub mod scalar_mul_protocol;
 pub mod transcript;
 pub mod zk_attest_point_add_protocol;
 pub mod zk_attest_scalar_mul_protocol;
+pub mod gk_zero_one_protocol;
