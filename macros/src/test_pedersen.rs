@@ -796,7 +796,8 @@ macro_rules! __test_pedersen {
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));
-
+            println!("Our size: {}", proof.serialized_size());
+            
             // Now make a fake transcript.
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
             let mut transcript_f = Transcript::new(label);
@@ -864,6 +865,8 @@ macro_rules! __test_pedersen {
             let proof: FSZKECSMP<Config> =
                 FSZKECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
 
+            println!("ZKAttest size: {}", proof.serialized_size());
+            
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));

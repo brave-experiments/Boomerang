@@ -255,6 +255,11 @@ impl<P: PedersenConfig> EqualityProof<P> {
         
         P::GENERATOR2.mul(self.z) - self.alpha == rhs
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.z.compressed_size() + self.alpha.compressed_size()
+    }
 }
 
 impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProof<P> {
@@ -280,5 +285,12 @@ impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProofIntermediat
         c2: &sw::Affine<P>,
     ) {
         EqualityProof::make_transcript(transcript, c1, c2, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> EqualityProofIntermediateTranscript<P> {
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.alpha.compressed_size()
     }
 }

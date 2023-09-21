@@ -117,4 +117,9 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
 
         worked
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.proofs.len() * self.proofs[0].serialized_size()
+    }
 }

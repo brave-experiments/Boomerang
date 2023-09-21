@@ -541,6 +541,25 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
                 == PedersenComm::new_with_both(<P as PedersenConfig>::from_ob_to_sf(t.y), self.z4)
                     .comm)
     }
+
+    
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        let lhs = self.c1.compressed_size() + self.c2.compressed_size() +
+            self.c3.compressed_size() + self.alpha.compressed_size() +
+            self.a1.compressed_size() + self.a2.compressed_size() +
+            self.a3.compressed_size() + self.c4.compressed_size() +
+            self.c5.compressed_size() + self.z1.compressed_size() +
+            self.z2.compressed_size() + self.z4.compressed_size();
+
+        if let Some(proof) = &self.pi {
+            lhs + proof.serialized_size()
+        } else if let Some(pii) = &self.pii {
+            lhs + pii.serialized_size()
+        } else {
+            panic!("Cannot have both proofand pii not set!");
+        }
+    }
 }
 
 impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable for ZKAttestECScalarMulProof<P> {

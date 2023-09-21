@@ -240,6 +240,11 @@ impl<P: PedersenConfig> OpeningProof<P> {
         
         P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == rhs            
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.alpha.compressed_size() + self.z1.compressed_size() + self.z2.compressed_size()
+    }
 }
 
 impl<P: PedersenConfig> OpeningProofTranscriptable for OpeningProof<P> {

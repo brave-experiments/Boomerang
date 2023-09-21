@@ -115,4 +115,9 @@ impl<P: PedersenConfig> FSZKAttestECScalarMulProof<P> {
 
         worked
     }
+    
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.proofs.iter().map(|p| p.serialized_size()).sum()
+    }
 }

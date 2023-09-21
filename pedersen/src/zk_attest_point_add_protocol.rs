@@ -700,6 +700,14 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         let sixth = self.e2.verify_with_challenge(&self.c13, &c15, chal);
         first && second && third && fourth && fifth && sixth
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+            + self.c5.compressed_size() + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
+            + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
+            + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
+    }
 }
 
 impl<P: PedersenConfig> ZKAttestPointAddProofTranscriptable for ZKAttestPointAddProof<P> {
@@ -767,5 +775,15 @@ impl<P: PedersenConfig> ZKAttestPointAddProofTranscriptable
             &self.c10, &self.c11, &self.c13, &self.mp1, &self.mp2, &self.mp3, &self.mp4, &self.e1,
             &self.e2,
         );
+    }
+}
+
+impl<P: PedersenConfig> ZKAttestPointAddProofIntermediateTranscript<P> {
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+            + self.c5.compressed_size() + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
+            + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
+            + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
     }
 }

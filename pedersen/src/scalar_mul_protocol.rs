@@ -504,6 +504,14 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
 
         worked && self.eap.verify_with_challenge(chal)
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size()
+            + self.c4.compressed_size() + self.c5.compressed_size() + self.c6.compressed_size() + self.c7.compressed_size()
+            + self.c8.compressed_size() + self.z1.compressed_size() + self.z2.compressed_size() + self.z3.compressed_size()
+            + self.z4.compressed_size() + self.eap.serialized_size()
+    }
 }
 
 impl<P: PedersenConfig> ECScalarMulProofTranscriptable for ECScalarMulProof<P> {

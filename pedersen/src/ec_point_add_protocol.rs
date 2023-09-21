@@ -64,7 +64,7 @@ pub struct ECPointAddProof<P: PedersenConfig> {
 
     /// mp2: the multiplication proof that verifies that equation 2 holds.
     pub mp2: MulProof<P>,
-
+    
     /// mp3: the multiplication proof that verifies that equation 3 holds.
     pub mp3: MulProof<P>,
 
@@ -553,6 +553,13 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
                 .verify_with_challenge(&self.c7, &self.c7, &z4, chal)
             && self.mp3.verify_with_challenge(z2, &z5, &z6, chal)
             && self.op.verify_with_challenge(&self.c2, chal)
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+            + self.c5.compressed_size() + self.c6.compressed_size() + self.c7.compressed_size() + self.mp1.serialized_size()
+            + self.mp2.serialized_size() + self.mp3.serialized_size() + self.op.serialized_size()
     }
 }
 

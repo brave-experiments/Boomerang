@@ -375,6 +375,13 @@ impl<P: PedersenConfig> MulProof<P> {
                 && (self.delta + c3.mul(*chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
         }
     }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.alpha.compressed_size() + self.beta.compressed_size() + self.delta.compressed_size() +
+            self.z1.compressed_size() + self.z2.compressed_size() +
+            self.z3.compressed_size() + self.z4.compressed_size() + self.z5.compressed_size() 
+    }
 }
 
 impl<P: PedersenConfig> MulProofTranscriptable for MulProof<P> {
@@ -415,3 +422,11 @@ impl<P: PedersenConfig> MulProofTranscriptable for MulProofIntermediateTranscrip
         MulProof::make_transcript(transcript, c1, c2, c3, &self.alpha, &self.beta, &self.delta);
     }
 }
+
+impl<P: PedersenConfig> MulProofIntermediateTranscript<P> {
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.alpha.compressed_size() + self.beta.compressed_size() + self.delta.compressed_size()
+    }
+}
+
