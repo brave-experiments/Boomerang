@@ -182,9 +182,17 @@ impl<P: PedersenConfig> EqualityProof<P> {
         c2: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
+        let z = if *chal == P::CM1 {
+            inter.r - (c1.r - c2.r)                
+        } else if *chal == P::CP1 {
+            (c1.r - c2.r) + inter.r
+        } else {
+            *chal * (c1.r - c2.r) + inter.r
+        };
+        
         EqualityProof {
             alpha: inter.alpha,
-            z: *chal * (c1.r - c2.r) + inter.r,
+            z
         }
     }
 
@@ -236,7 +244,16 @@ impl<P: PedersenConfig> EqualityProof<P> {
         c2: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        P::GENERATOR2.mul(self.z) == (c1.into_group() - c2).mul(*chal) + self.alpha
+
+        let rhs = if *chal == P::CP1 {
+            (c1.into_group() - c2).into_affine()            
+        } else if *chal == P::CM1 {
+            (c2.into_group() - c1).into_affine()                
+        } else {
+            ((c1.into_group() - c2).mul(*chal)).into_affine()                
+        };
+        
+        P::GENERATOR2.mul(self.z) - self.alpha == rhs
     }
 }
 

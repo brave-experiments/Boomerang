@@ -319,13 +319,13 @@ macro_rules! bench_tcurve_scalar_mul_verifier_time {
             let s = (OGENERATOR.mul(lambda)).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof: ECSMP<Config> =
-                ECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
-
+            let proof_i = ECSMP::create_intermediates(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+            let chal = <$config as PedersenConfig>::make_single_bit_challenge(ECScalarMulTranscript::challenge_scalar(&mut transcript, b"c").last().unwrap() & 1);
+            let proof : ECSMP<$config> = ECSMP::create_proof_with_challenge(&s, &lambda, &OGENERATOR, &proof_i, &chal);
+            
             c.bench_function(concat!($curve_name, " scalar mul verifier time"), |b| {
                 b.iter(|| {
-                    let mut transcript_v = Transcript::new(label);
-                    proof.verify(&mut transcript_v, &OGENERATOR);
+                    proof.verify_with_challenge(&OGENERATOR, &chal);
                 });
             });
         }
@@ -444,15 +444,17 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_verifier_time {
             let s = (OGENERATOR.mul(lambda)).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof =
-                ZKECSMP::<$config>::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
-
+            let proof_i =
+                ZKECSMP::create_intermediates(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+            let c0 = <$config as PedersenConfig>::CP1;
+            let c1 = <$config as PedersenConfig>::make_single_bit_challenge(ZKAttestECScalarMulTranscript::challenge_scalar(&mut transcript, b"c").last().unwrap() & 1);
+            let proof = ZKECSMP::<$config>::create_proof_with_challenge(&s, &lambda, &OGENERATOR, &proof_i, &c0, &c1);
+            
             c.bench_function(
                 concat!($curve_name, " zk attest scalar mul verifier time"),
                 |b| {
-                    b.iter(|| {
-                        let mut transcript_v = Transcript::new(label);
-                        proof.verify(&mut transcript_v, &OGENERATOR);
+                    b.iter(|| {                       
+                        proof.verify_with_challenge(&OGENERATOR, &c0, &c1);
                     });
                 },
             );
@@ -528,6 +530,60 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
 }
 
 #[macro_export]
+macro_rules! bench_tcurve_gk_zero_one_prover_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            type PC = PedersenComm<$config>;
+            type SF = <$config as CurveConfig>::ScalarField;
+            type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
+            const OGENERATOR: sw::Affine<<$config as PedersenConfig>::OCurve> =
+                <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
+
+            let label = b"PedersenGKZeroOne";
+            let m = SF::ONE;
+            let com: PC = PC::new(m, &mut OsRng);
+
+            c.bench_function(concat!($curve_name, " gk zero-one prover time"),
+                             |b| {
+                                 b.iter(|| {
+                                     let mut transcript = Transcript::new(label);
+                                     ZOP::<$config>::create(&mut transcript, &mut OsRng, &m, &com);
+                                 });
+                             });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_gk_zero_one_verifier_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            type PC = PedersenComm<$config>;
+            type SF = <$config as CurveConfig>::ScalarField;
+            type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
+            const OGENERATOR: sw::Affine<<$config as PedersenConfig>::OCurve> =
+                <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
+
+            let label = b"PedersenGKZeroOne";
+            let m = SF::ONE;
+            let com: PC = PC::new(m, &mut OsRng);
+
+            let mut transcript = Transcript::new(label);
+            let proof = ZOP::<$config>::create(&mut transcript, &mut OsRng, &m, &com);
+            
+
+            c.bench_function(concat!($curve_name, " gk zero-one verifier time"),
+                             |b| {
+                                 b.iter(|| {
+                                     let mut transcript_v = Transcript::new(label);
+                                     proof.verify(&mut transcript_v, &com.comm);
+                                 });
+                             });
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! bench_tcurve_import_everything {
     () => {
         use ark_ec::{
@@ -536,6 +592,7 @@ macro_rules! bench_tcurve_import_everything {
             AffineRepr, CurveGroup,
         };
         use ark_std::UniformRand;
+        use ark_ff::fields::Field;
         use core::ops::Mul;
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
         use merlin::Transcript;
@@ -558,8 +615,11 @@ macro_rules! bench_tcurve_import_everything {
                 ZKAttestECScalarMulProof as ZKECSMP,
                 ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
             },
+            gk_zero_one_protocol::{ZeroOneProof as ZOP},
+            transcript::{ZKAttestECScalarMulTranscript, ECScalarMulTranscript},
         };
         use rand_core::OsRng;
+        use std::time::Duration;
     };
 }
 
@@ -636,6 +696,7 @@ macro_rules! bench_tcurve_make_all {
             $curve_name,
             $OtherProjectiveType
         );
+        
         $crate::bench_tcurve_scalar_mul_verifier_time!(
             $config,
             scalar_mul_verification,
@@ -682,6 +743,9 @@ macro_rules! bench_tcurve_make_all {
             $OtherProjectiveType
         );
 
+        $crate::bench_tcurve_gk_zero_one_prover_time!($config, gk_zero_one_creation, $curve_name);
+        $crate::bench_tcurve_gk_zero_one_verifier_time!($config, gk_zero_one_verification, $curve_name);
+
         criterion_group!(
             benches,
             open_proof_creation,
@@ -701,8 +765,36 @@ macro_rules! bench_tcurve_make_all {
             zk_attest_scalar_mul_creation,
             zk_attest_scalar_mul_verification,
             fs_zk_attest_scalar_mul_creation,
-            fs_zk_attest_scalar_mul_verification
+            fs_zk_attest_scalar_mul_verification,
+            gk_zero_one_creation, gk_zero_one_verification,
         );
+        criterion_main!(benches);
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_make_scalar_mul_verifier {
+    ($config: ty, $curve_name: tt, $OtherProjectiveType: ty) => {
+        $crate::bench_tcurve_import_everything!();
+
+        $crate::bench_tcurve_scalar_mul_verifier_time!(
+            $config,
+            scalar_mul_verification,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        
+        $crate::bench_tcurve_zk_attest_scalar_mul_verifier_time!(
+            $config,
+            zk_attest_scalar_mul_verification,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        
+        criterion_group!(
+            name = benches;
+            config = Criterion::default().sample_size(10000).measurement_time(Duration::from_secs(30));                
+            targets = scalar_mul_verification, zk_attest_scalar_mul_verification);
         criterion_main!(benches);
     };
 }

@@ -924,7 +924,7 @@ macro_rules! __test_pedersen {
             assert!(proof.verify(&mut transcript_v, &c.comm));
 
             // Check that it would fail on a commitment to zero.
-            let n = SF::ZERO;
+            let n = SF::ONE;
             let cf: PC = PC::new(n, &mut OsRng);
             transcript_v = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_v, &cf.comm));            

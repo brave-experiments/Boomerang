@@ -30,7 +30,8 @@ pub trait ZeroOneProofTranscriptable {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript which is modified.
-    fn add_to_transcript(&self, transcript: &mut Transcript);
+    /// * `c` - the pre-existing commitment to `m`.
+    fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine);
 }
 
 /// ZeroOneProof. This struct acts as a container for a zero-one proof.
@@ -73,6 +74,14 @@ pub struct ZeroOneProofIntermediate<P: PedersenConfig> {
     pub t: <P as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<P: PedersenConfig> Copy for ZeroOneProofIntermediate<P> {}
+impl<P: PedersenConfig> Clone for ZeroOneProofIntermediate<P> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 /// ZeroOneProofIntermediateTranscript. This struct provides a wrapper for 
 /// every input into the transcript i.e everything that's in `ZeroOneProofIntermediate` except
 /// for the random values.
@@ -86,46 +95,84 @@ pub struct ZeroOneProofIntermediateTranscript<P: PedersenConfig> {
 
 impl<P: PedersenConfig> ZeroOneProof<P> {
 
+    /// make_intermediate_tarnscript. This function accepts a set of intermediate values and converts it into a 
+    /// immediate transcript for a ZeroOneProof.
+    /// # Arguments
+    /// * `inter` - the set of intermediate values.
     pub fn make_intermediate_transcript(inter: ZeroOneProofIntermediate<P>) -> ZeroOneProofIntermediateTranscript<P> {
         ZeroOneProofIntermediateTranscript { ca: inter.ca.comm, cb: inter.cb.comm } 
     }
 
-    pub fn make_transcript(transcript: &mut Transcript, ca: &sw::Affine<P>, cb: &sw::Affine<P>) {
+    /// make_transcript. This function just adds the affine commitments `ca`, `cb` to the
+    /// `transcript` object.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `ca` - the ca commitment.
+    /// * `cb` - the cb commitment.
+    /// * `c` - the existing commitment to `m`.
+    pub fn make_transcript(transcript: &mut Transcript, ca: &sw::Affine<P>, cb: &sw::Affine<P>, c: &sw::Affine<P>) {
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
+        c.serialize_compressed(&mut compressed_bytes).unwrap();
+        transcript.append_point(b"c0", &compressed_bytes[..]);
+        
         ca.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"ca", &compressed_bytes[..]);
 
         cb.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"cb", &compressed_bytes[..]);
     }
-    
+
+    /// create_intermediates. This function creates a new set of intermediate values for the zero/one proof.
+    /// This function should be called before a challenge is generated.
+    /// # Arguments
+    /// * `transcript` - the transcript object. The intermediate commitments are added to this transcript.
+    /// * `rng` - the random number generator to use. Must be cryptographically random.
+    /// * `m` - the 0/1 value to which we are committing.
+    /// * `c` - a pre-existing commitment to `m`.
     pub fn create_intermediates<T: RngCore + CryptoRng>(transcript: &mut Transcript,
                                                         rng: &mut T,
-                                                        m: &<P as CurveConfig>::ScalarField) -> ZeroOneProofIntermediate<P> {
-        
+                                                        m: &<P as CurveConfig>::ScalarField,
+                                                        c: &PedersenComm<P>) -> ZeroOneProofIntermediate<P> {
+
+        // Make the initial random values.
         let a = <P as CurveConfig>::ScalarField::rand(rng);
         let s = <P as CurveConfig>::ScalarField::rand(rng);
         let t = <P as CurveConfig>::ScalarField::rand(rng);
 
         let ca = PedersenComm::new_with_both(a, s);
         let cb = PedersenComm::new_with_both(a * m, t);
-        Self::make_transcript(transcript, &ca.comm, &cb.comm);
+
+        // Add them to the transcript and then just return the intermediate object.
+        Self::make_transcript(transcript, &ca.comm, &cb.comm, &c.comm);
         ZeroOneProofIntermediate { ca, cb, a, s, t}        
     }
 
+    /// create. This function creates a new ZeroOneProof on `m`, returning the result.
+    /// # Arguments
+    /// * `transcript` - the transcript object. The intermediate commitments etc are added to this transcript.
+    /// * `rng` - the random number generator to use. Must be cryptographically random.
+    /// * `m` - the 0/1 value to which we are committing.
+    /// * `c` - a pre-existing commitment to `m`.
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         m: &<P as CurveConfig>::ScalarField,
         c: &PedersenComm<P>) -> Self {
 
-        Self::create_proof(&Self::create_intermediates(transcript, rng, m),
+        Self::create_proof(&Self::create_intermediates(transcript, rng, m, c),
                            m,
                            c,
                            &transcript.challenge_scalar(b"c")[..],)
     }
 
+    /// create_proof. This function returns a new ZeroOneProof on `m`, returning the result. Note that this
+    /// function uses the challenge in `chal_buf` to generate the proof.
+    /// # Arguments
+    /// * `inter` - the intermediate values.
+    /// * `m` - the 0/1 value to which we are committing.
+    /// * `c` - a pre-existing commitment to `m`.
+    /// * `chal_buf` - a buffer of existing challenge bytes.
     pub fn create_proof(inter: &ZeroOneProofIntermediate<P>,
                         m: &<P as CurveConfig>::ScalarField,
                         c: &PedersenComm<P>,
@@ -133,6 +180,13 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
         Self::create_proof_with_challenge(inter, m, c, &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),)
     }
 
+    /// create_proof_with_challenge. This function returns a new ZeroOneProof on `m`, returning the result. Note that this
+    /// function uses the challenge `chal` to generate the proof.
+    /// # Arguments
+    /// * `inter` - the intermediate values.
+    /// * `m` - the 0/1 value to which we are committing.
+    /// * `c` - a pre-existing commitment to `m`.
+    /// * `chal` - a pre-existing challenge.    
     pub fn create_proof_with_challenge(inter: &ZeroOneProofIntermediate<P>,
                         m: &<P as CurveConfig>::ScalarField,
                         c: &PedersenComm<P>,
@@ -148,15 +202,32 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
         }
     }
 
+    /// verify. This function verifies that the proof held by `self` is valid, returning true if so.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.
+    /// * `c` - the already-received commitment to `m`.
     pub fn verify(&self, transcript: &mut Transcript, c: &sw::Affine<P>) -> bool {
-        self.add_to_transcript(transcript);
+        self.add_to_transcript(transcript, c);
         self.verify_proof(c, &transcript.challenge_scalar(b"c")[..])
     }
 
+    /// verify_proof. This function verifies that the proof held by `self` is valid, returning true if so.
+    /// This function uses the challenge bytes `chal_buf` to make the challenge.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `c` - the already-received commitment to `m`.
+    /// * `chal_buf` - the challenge bytes to use.
     pub fn verify_proof(&self, c: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
         self.verify_with_challenge(c, &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),)
     }
 
+    /// verify_proof. This function verifies that the proof held by `self` is valid, returning true if so.
+    /// This function uses the challenge `chal`.    
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `c` - the already-received commitment to `m`.
+    /// * `chal` - the challenge to use.
     pub fn verify_with_challenge(&self, c: &sw::Affine<P>, chal: &<P as CurveConfig>::ScalarField) -> bool {
         (self.ca + c.mul(*chal) == PedersenComm::new_with_both(self.f, self.z_a).comm) &&
             (self.cb + c.mul(*chal - self.f) == PedersenComm::new_with_both(<P as CurveConfig>::ScalarField::ZERO, self.z_b).comm)
@@ -165,7 +236,24 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
 
 impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProof<P> {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
-        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb);
+    fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
+        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, &c);
     }
 }
+
+impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProofIntermediateTranscript<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
+        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, &c);
+    }
+}
+
+
+impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProofIntermediate<P> {
+    type Affine = sw::Affine<P>;
+    fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
+        ZeroOneProof::make_transcript(transcript, &self.ca.comm, &self.cb.comm, &c);
+    }
+}
+
+

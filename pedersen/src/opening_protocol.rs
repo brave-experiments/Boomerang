@@ -180,10 +180,17 @@ impl<P: PedersenConfig> OpeningProof<P> {
         c1: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
+        let (z1, z2) = if *chal == P::CM1 {
+            (inter.t1 - *x, inter.t2 - c1.r)
+        } else if *chal == P::CP1 {
+            (inter.t1 + *x, inter.t2 + c1.r)
+        } else {
+            (*x * (*chal) + inter.t1, c1.r * (*chal) + inter.t2)
+        };
+        
         Self {
             alpha: inter.alpha,
-            z1: *x * (*chal) + inter.t1,
-            z2: c1.r * (*chal) + inter.t2,
+            z1, z2
         }
     }
 
@@ -223,7 +230,15 @@ impl<P: PedersenConfig> OpeningProof<P> {
         c1: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == c1.mul(*chal) + self.alpha
+        let rhs = if *chal == P::CM1 {
+            self.alpha - c1
+        } else if *chal == P::CP1 {
+            self.alpha + c1
+        } else {
+            c1.mul(*chal) + self.alpha
+        };
+        
+        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == rhs            
     }
 }
 

@@ -286,15 +286,21 @@ impl<P: PedersenConfig> MulProof<P> {
         c3: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
+
+        let (z1, z2, z3, z4, z5) = if *chal == P::CM1 {
+            (inter.b1 - x, inter.b2 - c1.r, inter.b3 - y, inter.b4 - c2.r, inter.b5 - (c3.r - (c1.r * y)))
+        } else if *chal == P::CP1 {
+            (inter.b1 + x, inter.b2 + c1.r, inter.b3 + y, inter.b4 + c2.r, inter.b5 + (c3.r - (c1.r * y)))
+        } else {
+            (inter.b1 + (*chal * (x)), inter.b2 + (*chal * c1.r), inter.b3 + (*chal * y), inter.b4 + (*chal * c2.r),
+             inter.b5 + *chal * (c3.r - (c1.r * (y))))
+        };
+                        
         Self {
             alpha: inter.alpha,
             beta: inter.beta,
             delta: inter.delta,
-            z1: inter.b1 + (*chal * (x)),
-            z2: inter.b2 + (*chal * c1.r),
-            z3: inter.b3 + (*chal * (y)),
-            z4: inter.b4 + (*chal * c2.r),
-            z5: inter.b5 + *chal * (c3.r - (c1.r * (y))),
+            z1, z2, z3, z4, z5
         }
     }
 
@@ -355,9 +361,19 @@ impl<P: PedersenConfig> MulProof<P> {
         c3: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        (self.alpha + c1.mul(*chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
-            && (self.beta + c2.mul(*chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
-            && (self.delta + c3.mul(*chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
+        if *chal == P::CM1 {
+            (self.alpha - c1 == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
+                 (self.beta - c2 == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
+                 (self.delta - c3 == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))                
+        } else if *chal == P::CP1 {
+            (self.alpha + c1 == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2)) &&
+                (self.beta + c2 == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4)) &&
+                (self.delta + c3 == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))              
+        } else {        
+            (self.alpha + c1.mul(*chal) == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
+                && (self.beta + c2.mul(*chal) == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
+                && (self.delta + c3.mul(*chal) == c1.mul(self.z3) + P::GENERATOR2.mul(self.z5))
+        }
     }
 }
 
