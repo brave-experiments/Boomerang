@@ -101,6 +101,10 @@ pub struct ZKAttestPointAddProof<P: PedersenConfig> {
     pub e1: EqualityProof<P>,
     /// e2: the equality proof for showing that c6 + c2 and c13 are commitments to the same value.
     pub e2: EqualityProof<P>,
+
+    /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
+    /// we assume that they were stored elsewhere. 
+    pub stored_comms: bool,
 }
 
 /// ZKAttestPointAddProofIntermediate. This struct acts as a temporary container for the intermediate
@@ -162,6 +166,10 @@ pub struct ZKAttestPointAddProofIntermediate<P: PedersenConfig> {
     pub ei1: EqualityProofIntermediate<P>,
     /// ei2: the equality proof's intermediates for showing that c6 + c2 and c13 are commitments to the same value.
     pub ei2: EqualityProofIntermediate<P>,
+
+    /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
+    /// we assume that they were stored elsewhere. 
+    pub stored_comms: bool,
 }
 
 impl<P: PedersenConfig> Copy for ZKAttestPointAddProofIntermediate<P> {}
@@ -230,6 +238,10 @@ pub struct ZKAttestPointAddProofIntermediateTranscript<P: PedersenConfig> {
     pub e1: EqualityProofIntermediateTranscript<P>,
     /// e2: the values produced during the equality proof for showing that c6 + c2 and c13 are commitments to the same value.
     pub e2: EqualityProofIntermediateTranscript<P>,
+
+    /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
+    /// we assume that they were stored elsewhere. 
+    pub stored_comms: bool,
 }
 
 impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
@@ -342,6 +354,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
     /// * `t` - the target point (i.e t = a + b).
     /// * `ci` - the commitments to the points. In particular, c0 and c1 are commitments
     ///    to a.x and a.y. The same pattern holds for the others.
+    /// * `stored_comms` - true if we treat the produced object as holding the commitments, false if they are stored elsewhere.
     #[allow(clippy::too_many_arguments)]
     pub fn create_intermediates_from_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
@@ -355,6 +368,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         c4: &PedersenComm<P>,
         c5: &PedersenComm<P>,
         c6: &PedersenComm<P>,
+        stored_comms: bool,
     ) -> ZKAttestPointAddProofIntermediate<P> {
         // We require that a != b.
         assert!(a != b);
@@ -425,6 +439,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
             mpi4,
             ei1,
             ei2,
+            stored_comms, 
         }
     }
 
@@ -449,7 +464,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         let (c1, c2, c3, c4, c5, c6) =
             <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
         Self::create_intermediates_from_existing_commitments(
-            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
+            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6, true
         )
     }
 
@@ -499,6 +514,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
             mp4: MulProof::make_intermediate_transcript(inter.mpi4),
             e1: EqualityProof::make_intermediate_transcript(inter.ei1),
             e2: EqualityProof::make_intermediate_transcript(inter.ei2),
+            stored_comms: inter.stored_comms, 
         }
     }
 
@@ -625,6 +641,7 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
             mp4,
             e1: eq1,
             e2: eq2,
+            stored_comms: inter.stored_comms, 
         }
     }
 
@@ -703,8 +720,14 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     pub fn serialized_size(&self) -> usize {
-        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
-            + self.c5.compressed_size() + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
+        let lhs = if self.stored_comms {
+            self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+            + self.c5.compressed_size() + self.c6.compressed_size()
+        } else {
+            0
+        };
+
+        lhs + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
             + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
             + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
     }
@@ -781,8 +804,14 @@ impl<P: PedersenConfig> ZKAttestPointAddProofTranscriptable
 impl<P: PedersenConfig> ZKAttestPointAddProofIntermediateTranscript<P> {
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     pub fn serialized_size(&self) -> usize {
-        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
-            + self.c5.compressed_size() + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
+        let lhs = if self.stored_comms {
+            self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+                + self.c5.compressed_size() + self.c6.compressed_size()
+        } else {
+            0
+        };
+
+        lhs + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
             + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
             + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
     }

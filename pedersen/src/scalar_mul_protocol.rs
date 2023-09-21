@@ -305,7 +305,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
 
         // Now make the EC point addition intermediates.
         let eapi = ECPointAddProof::create_intermediates_with_existing_commitments(
-            transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6,
+            transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6, false
         );
 
         // Now return the intermediates.

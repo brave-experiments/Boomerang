@@ -305,7 +305,7 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         );
 
         let pi = ZKAttestPointAddProof::create_intermediates_from_existing_commitments(
-            transcript, rng, amlp, *s, gamma, &c4, &c5, &c2, &c3, &a2, &a3,
+            transcript, rng, amlp, *s, gamma, &c4, &c5, &c2, &c3, &a2, &a3, false,
         );
 
         ZKAttestECScalarMulProofIntermediate {

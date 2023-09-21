@@ -70,6 +70,10 @@ pub struct ECPointAddProof<P: PedersenConfig> {
 
     /// op: the opening proof of C2.
     pub op: OpeningProof<P>,
+
+    /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
+    /// we assume that they were stored elsewhere. 
+    pub stored_comms: bool,
 }
 
 /// ECPointAddIntermediate. This struct acts as a container for the intermediate values of an Elliptic Curve Point
@@ -100,6 +104,10 @@ pub struct ECPointAddIntermediate<P: PedersenConfig> {
     pub mpi3: MulProofIntermediate<P>,
     /// opi: the intermediates for verifying the opening of C2.
     pub opi: OpeningProofIntermediate<P>,
+
+    /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
+    /// we assume that they were stored elsewhere. 
+    pub stored_comms: bool,
 }
 
 /// ECPointAddIntermediateTranscript. This struct provides a wrapper for every input
@@ -218,7 +226,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         let (c1, c2, c3, c4, c5, c6) =
             <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
         Self::create_intermediates_with_existing_commitments(
-            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6,
+            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6, true,
         )
     }
 
@@ -235,7 +243,8 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
     /// * `c3` - the commitment to b.x.
     /// * `c4` - the commitment to a.y.
     /// * `c5` - the commitment to t.x.
-    /// * `c6` - the commitment to t.y.    
+    /// * `c6` - the commitment to t.y.
+    /// * `stored_comms` - true if this intermediate should be seen as storing the commitments, false otherwise. 
     #[allow(clippy::too_many_arguments)]
     pub fn create_intermediates_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
@@ -249,6 +258,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         c4: &PedersenComm<P>,
         c5: &PedersenComm<P>,
         c6: &PedersenComm<P>,
+        stored_comms: bool,
     ) -> ECPointAddIntermediate<P> {
         // This proof does not show work for point doubling.
         assert!(a != b);
@@ -298,6 +308,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             mpi2,
             mpi3,
             opi,
+            stored_comms,
         }
     }
 
@@ -325,7 +336,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
         c6: &PedersenComm<P>,
     ) -> Self {
         let inter = Self::create_intermediates_with_existing_commitments(
-            transcript, rng, a, b, t, c1, c2, c3, c4, c5, c6,
+            transcript, rng, a, b, t, c1, c2, c3, c4, c5, c6, false,
         );
 
         // Make the challenge.
@@ -435,6 +446,7 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
             mp2,
             mp3,
             op,
+            stored_comms: inter.stored_comms,
         }
     }
 
@@ -557,8 +569,14 @@ impl<P: PedersenConfig> ECPointAddProof<P> {
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     pub fn serialized_size(&self) -> usize {
-        self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
-            + self.c5.compressed_size() + self.c6.compressed_size() + self.c7.compressed_size() + self.mp1.serialized_size()
+        let comm_size = if self.stored_comms {
+            self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
+            + self.c5.compressed_size() + self.c6.compressed_size()
+        } else {
+            0
+        };
+
+        comm_size + self.c7.compressed_size() + self.mp1.serialized_size()
             + self.mp2.serialized_size() + self.mp3.serialized_size() + self.op.serialized_size()
     }
 }
