@@ -13,3 +13,7 @@ run:
 test:
 	cargo build
 	cargo test
+
+bench:
+	cargo build
+	cargo bench
