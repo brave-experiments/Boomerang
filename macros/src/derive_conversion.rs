@@ -88,6 +88,8 @@ macro_rules! __derive_conversion {
         // Define the Pedersen commitment type.
         impl PedersenConfig for $config {
             type OCurve = $OtherCurve;
+            type BigInt = BigInt<$dim>;
+            
             /// GENERATOR2 = (G2_X, G2_Y)
             const GENERATOR2: $affine = <$affine>::new_unchecked($G2_X, $G2_Y);
 
@@ -117,6 +119,12 @@ macro_rules! __derive_conversion {
                     1 => Self::CP1,
                     _ => panic!("Invalid bit in make_single_bit_challenge {}", v),
                 }
+            }
+
+            fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField {
+                let x_t = Self::BigInt::from(x);
+                let x_v = FrStruct::from(x_t);
+                x_v.as_fr()
             }
 
             const OGENERATOR2: sw::Affine<Self::OCurve> =

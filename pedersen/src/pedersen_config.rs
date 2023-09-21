@@ -19,6 +19,8 @@ pub trait PedersenConfig: SWCurveConfig {
     /// structures) and a SWCurveConfig (so we can access the generators).
     type OCurve: CurveConfig + SWCurveConfig;
 
+    type BigInt;
+
     /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
     /// * `x` - the element ∈ OCurve's ScalarField.
@@ -52,6 +54,8 @@ pub trait PedersenConfig: SWCurveConfig {
     /// Returns `x` as an element of Self::ScalarField.
     fn from_bf_to_sf(x: <Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
 
+    fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField;
+    
     /// make_challenge_from_buffer. This function accepts a challenge slice (ideally produced by a transcript)
     /// and converts it into an element of Self::ScalarField.
     /// This function exists primarily to circumvent an API issue with Merlin.

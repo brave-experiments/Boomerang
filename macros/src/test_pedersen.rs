@@ -924,10 +924,52 @@ macro_rules! __test_pedersen {
             assert!(proof.verify(&mut transcript_v, &c.comm));
 
             // Check that it would fail on a commitment to zero.
-            let n = SF::ONE;
+            let n = SF::ZERO;
             let cf: PC = PC::new(n, &mut OsRng);
             transcript_v = Transcript::new(label);
             assert!(!proof.verify(&mut transcript_v, &cf.comm));            
+        }
+
+        #[test]
+        fn test_interpolation() {            
+            // Test that the polynomial interpolation works.
+            // Simple case: y = 3x.
+            {
+                let x : [SF; 2] = [SF::ZERO, SF::ONE];
+                let y : [SF; 2] = [SF::ZERO,  <$config>::from_u64_to_sf(3)];                                
+                let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
+                assert!(coeffs.len() == 2);
+                assert!(coeffs[0] == SF::ZERO);
+                assert!(coeffs[1] == <$config>::from_u64_to_sf(3));            
+            }
+
+            // More complicated case: y = 3x^2 + x + 1.
+            {
+                let x : [SF; 3] = [SF::ZERO, SF::ONE, SF::ONE+SF::ONE];
+                let y : [SF; 3] = [SF::ONE,  <$config>::from_u64_to_sf(5), <$config>::from_u64_to_sf(15)];
+                                
+                let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
+                assert!(coeffs.len() == 3);
+                assert!(coeffs[0] == SF::ONE);
+                assert!(coeffs[1] == SF::ONE);
+                assert!(coeffs[2] == <$config>::from_u64_to_sf(3));
+            }
+
+            // And even more: this time, y = x^4 + x^2 + 1.
+            {
+                let mut x : [SF; 5] = [SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO];
+                let mut y : [SF; 5] = [SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO];
+
+                for i in 0..5 {
+                    x[i] = <$config>::from_u64_to_sf(i as u64);
+                    y[i] = (x[i]*x[i]*x[i]*x[i]) + (x[i]*x[i]) + SF::ONE;                    
+                }
+
+                let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
+                assert!(coeffs.len() == 5);
+                assert!(coeffs[0] == coeffs[2] && coeffs[2] == coeffs[4] && coeffs[4] == SF::ONE);
+                assert!(coeffs[1] == coeffs[3] && coeffs[3] == SF::ZERO);
+            }
         }
     };
 }
@@ -967,6 +1009,7 @@ macro_rules! test_pedersen {
                     ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
                 },
                 gk_zero_one_protocol::{ZeroOneProof as ZOP, ZeroOneProofIntermediate as ZOPI},
+                interpolate::{PolynomialInterpolation},
             };
             use rand_core::OsRng;
             $crate::__test_pedersen!($config, $OtherProjectiveType);
