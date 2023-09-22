@@ -42,8 +42,8 @@ impl<P: PedersenConfig> FSZKAttestECScalarMulProof<P> {
         // Initialise the transcript.
         transcript.domain_sep();
 
-        let mut intermediates = Vec::with_capacity(128);
-        for _ in 0..128 {
+        let mut intermediates = Vec::with_capacity(P::SECPARAM);        
+        for _ in 0..P::SECPARAM {
             intermediates.push(ZKAttestECScalarMulProof::create_intermediates(
                 transcript, rng, s, lambda, p,
             ));
@@ -52,7 +52,7 @@ impl<P: PedersenConfig> FSZKAttestECScalarMulProof<P> {
         // Now make the challenge.
         let chal_buf = transcript.challenge_scalar(b"c");
 
-        let mut proofs = Vec::with_capacity(128);
+        let mut proofs = Vec::with_capacity(P::SECPARAM);
 
         for (i, c) in chal_buf.iter().enumerate() {
             let mut byte = *c;
@@ -88,7 +88,7 @@ impl<P: PedersenConfig> FSZKAttestECScalarMulProof<P> {
     ) -> bool {
         // Initialise the transcript.
         transcript.domain_sep();
-        assert!(self.proofs.len() == 128);
+        assert!(self.proofs.len() == P::SECPARAM);
 
         // Now use the existing elements to build up the rest of the transcript.
         for proof in &self.proofs {

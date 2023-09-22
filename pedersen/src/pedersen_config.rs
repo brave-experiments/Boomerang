@@ -19,8 +19,11 @@ pub trait PedersenConfig: SWCurveConfig {
     /// structures) and a SWCurveConfig (so we can access the generators).
     type OCurve: CurveConfig + SWCurveConfig;
 
-    type BigInt;
-
+    /// The security level associated with this particular Pedersen Config. This should
+    /// be set from the user side. For NIST curves, a prime of bit size |p| provides approximately
+    /// |p|/2 bits of security.
+    const SECPARAM: usize;
+    
     /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
     /// * `x` - the element ∈ OCurve's ScalarField.

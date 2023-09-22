@@ -18,7 +18,7 @@ use crate::{
 /// FSECScalarMulProof. This struct acts as a container for the Fiat-Shamir scalar multiplication proof.
 /// Essentially, this struct can be used to create new proofs (via ```create```), and verify existing proofs (via ```verify```).
 pub struct FSECScalarMulProof<P: PedersenConfig> {
-    /// proofs: the sub-proofs.
+    /// proofs: the sub-proofs.    
     proofs: Vec<ECScalarMulProof<P>>,
 }
 
@@ -42,8 +42,8 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
         // Initialise the transcript.
         transcript.domain_sep();
 
-        let mut intermediates = Vec::with_capacity(128);
-        for _ in 0..128 {
+        let mut intermediates = Vec::with_capacity(P::SECPARAM);
+        for _ in 0..<P as PedersenConfig>::SECPARAM {
             intermediates.push(ECScalarMulProof::create_intermediates(
                 transcript, rng, s, lambda, p,
             ));
@@ -51,9 +51,8 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
 
         // Now make the challenge.
         let chal_buf = transcript.challenge_scalar(b"c");
-
-        let mut proofs = Vec::with_capacity(128);
-
+        let mut proofs = Vec::with_capacity(P::SECPARAM);
+        
         for (i, c) in chal_buf.iter().enumerate() {
             let mut byte = *c;
             for j in 0..8 {
@@ -89,8 +88,8 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
     ) -> bool {
         // Initialise the transcript.
         transcript.domain_sep();
-        assert!(self.proofs.len() == 128);
-
+        assert!(self.proofs.len() == P::SECPARAM);
+        
         // Now use the existing elements to build up the rest of the transcript.
         for proof in &self.proofs {
             proof.add_to_transcript(transcript);
