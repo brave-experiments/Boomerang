@@ -23,6 +23,7 @@ use crate::{
         MulProof, MulProofIntermediate, MulProofIntermediateTranscript, MulProofTranscriptable,
     },
     pedersen_config::{PedersenComm, PedersenConfig},
+    point_add::PointAddProtocol,
     transcript::ZKAttestECPointAdditionTranscript,
 };
 
@@ -103,7 +104,7 @@ pub struct ZKAttestPointAddProof<P: PedersenConfig> {
     pub e2: EqualityProof<P>,
 
     /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
-    /// we assume that they were stored elsewhere. 
+    /// we assume that they were stored elsewhere.
     pub stored_comms: bool,
 }
 
@@ -168,7 +169,7 @@ pub struct ZKAttestPointAddProofIntermediate<P: PedersenConfig> {
     pub ei2: EqualityProofIntermediate<P>,
 
     /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
-    /// we assume that they were stored elsewhere. 
+    /// we assume that they were stored elsewhere.
     pub stored_comms: bool,
 }
 
@@ -240,8 +241,448 @@ pub struct ZKAttestPointAddProofIntermediateTranscript<P: PedersenConfig> {
     pub e2: EqualityProofIntermediateTranscript<P>,
 
     /// stored_comms. If this is true, then we assume that this object stored the commitments c1...c6. Otherwise,
-    /// we assume that they were stored elsewhere. 
+    /// we assume that they were stored elsewhere.
     pub stored_comms: bool,
+}
+
+impl<P: PedersenConfig> PointAddProtocol<P> for ZKAttestPointAddProof<P> {
+    type Intermediate = ZKAttestPointAddProofIntermediate<P>;
+    type IntermediateTranscript = ZKAttestPointAddProofIntermediateTranscript<P>;
+
+    /// make_intermediate_transcript. This function accepts a set of intermediates (`inter`) and builds
+    /// a new intermediate transcript object from `inter`.
+    /// # Arguments
+    /// * `inter` - the intermediate objects.
+    fn make_intermediate_transcript(
+        inter: ZKAttestPointAddProofIntermediate<P>,
+    ) -> ZKAttestPointAddProofIntermediateTranscript<P> {
+        ZKAttestPointAddProofIntermediateTranscript {
+            c1: inter.c1.comm,
+            c2: inter.c2.comm,
+            c3: inter.c3.comm,
+            c4: inter.c4.comm,
+            c5: inter.c5.comm,
+            c6: inter.c6.comm,
+            c8: inter.c8.comm,
+            c10: inter.c10.comm,
+            c11: inter.c11.comm,
+            c13: inter.c13.comm,
+            mp1: MulProof::make_intermediate_transcript(inter.mpi1),
+            mp2: MulProof::make_intermediate_transcript(inter.mpi2),
+            mp3: MulProof::make_intermediate_transcript(inter.mpi3),
+            mp4: MulProof::make_intermediate_transcript(inter.mpi4),
+            e1: EqualityProof::make_intermediate_transcript(inter.ei1),
+            e2: EqualityProof::make_intermediate_transcript(inter.ei2),
+            stored_comms: inter.stored_comms,
+        }
+    }
+
+    /// create_intermediates. This function returns all of the intermediate values for a proof
+    /// that `t = a + b`. This is primarily useful when the transcript that will be used to derive
+    /// challenges has not yet been fully filled.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
+    /// * `a` - one of the components of the sum.
+    /// * `b` - the other component of the sum.
+    /// * `t` - the target point (i.e t = a + b).
+    fn create_intermediates<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> ZKAttestPointAddProofIntermediate<P> {
+        // This proof requires that a != b.
+        assert!(a != b);
+        let (c1, c2, c3, c4, c5, c6) =
+            <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
+        Self::create_intermediates_with_existing_commitments(
+            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6, true,
+        )
+    }
+
+    /// create. This function returns a new proof that `t = a + b`.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
+    /// * `a` - one of the components of the sum.
+    /// * `b` - the other component of the sum.
+    /// * `t` - the target point (i.e t = a + b).
+    fn create<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> Self {
+        // Make the intermediate objects.
+        let proof_i = Self::create_intermediates(transcript, rng, a, b, t);
+
+        // Now make the challenge object.
+        let chal_buf = ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c");
+        Self::create_proof(a, b, t, &proof_i, &chal_buf[..])
+    }
+
+    /// create_intermediates_with_existing_commitments. This function returns all of the intermediate
+    /// values for a proof that `t = a + b` using an existing set of commitments.
+    /// This is primarily useful when the transcript that will be used to derive
+    /// challenges has not yet been fully filled.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
+    /// * `a` - one of the components of the sum.
+    /// * `b` - the other component of the sum.
+    /// * `t` - the target point (i.e t = a + b).
+    /// * `ci` - the commitments to the points. In particular, c0 and c1 are commitments
+    ///    to a.x and a.y. The same pattern holds for the others.
+    /// * `stored_comms` - true if we treat the produced object as holding the commitments, false if they are stored elsewhere.
+    #[allow(clippy::too_many_arguments)]
+    fn create_intermediates_with_existing_commitments<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &PedersenComm<P>,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
+        c4: &PedersenComm<P>,
+        c5: &PedersenComm<P>,
+        c6: &PedersenComm<P>,
+        stored_comms: bool,
+    ) -> ZKAttestPointAddProofIntermediate<P> {
+        // We require that a != b.
+        assert!(a != b);
+
+        // Make the transcripts and build the relevant sub-proofs.
+        Self::make_transcript(
+            transcript, &c1.comm, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &c6.comm,
+        );
+
+        // Now make the proof that there's an inverse for b.x - a.x.
+        let z2 = <P as PedersenConfig>::from_ob_to_sf((b.x - a.x).inverse().unwrap());
+
+        let c7 = c3 - c1;
+        let c8 = PedersenComm::new(z2, rng);
+
+        // Make the multiplication proof for c8.
+        let commit_one = PedersenComm {
+            comm: <P as SWCurveConfig>::GENERATOR,
+            r: <P as CurveConfig>::ScalarField::ZERO,
+        };
+
+        let mpi1 = MulProof::create_intermediates(transcript, rng, &c7, &c8, &commit_one);
+
+        // Proof of c10
+        let z3 = <P as PedersenConfig>::from_ob_to_sf(b.y - a.y);
+        let c9 = c4 - c2;
+
+        let z4 = z3 * z2; // b.y - a.y / b.x - a.x
+        let c10 = PedersenComm::new(z4, rng);
+        let mpi2 = MulProof::create_intermediates(transcript, rng, &c9, &c8, &c10);
+
+        // Proof of c11
+        let z5 = z4 * z4;
+        let c11 = PedersenComm::new(z5, rng);
+        let mpi3 = MulProof::create_intermediates(transcript, rng, &c10, &c10, &c11);
+
+        // Proof of c13.
+        let z6 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x);
+        let c12 = c1 - c5;
+
+        let z7 = z4 * z6; // z4 = b.y - a.y / (b.x - a.x), z6 = (a.x - t.x)
+        let c13 = PedersenComm::new(z7, rng);
+
+        let mpi4 = MulProof::create_intermediates(transcript, rng, &c10, &c12, &c13);
+
+        // And now the remaining equality proofs.
+        let c14 = c5 + c1 + c3;
+        let ei1 = EqualityProof::create_intermediates(transcript, rng, &c14, &c11);
+
+        // This is the corrected one.
+        let c15 = c6 + c2;
+        let ei2 = EqualityProof::create_intermediates(transcript, rng, &c13, &c15);
+
+        ZKAttestPointAddProofIntermediate {
+            c1: *c1,
+            c2: *c2,
+            c3: *c3,
+            c4: *c4,
+            c5: *c5,
+            c6: *c6,
+            c8,
+            c10,
+            c11,
+            c13,
+            mpi1,
+            mpi2,
+            mpi3,
+            mpi4,
+            ei1,
+            ei2,
+            stored_comms,
+        }
+    }
+
+    /// create_with_existing_commitments. This function returns a new proof of elliptic curve point addition
+    /// for `t = a + b` using the existing commitments `c1,...,c6`.
+    /// # Arguments
+    /// * `transcript` - the transcript object that is modified.
+    /// * `rng` - the RNG that is used. Must be cryptographically secure.
+    /// * `a` - one of the summands.
+    /// * `b` - the other summands.
+    /// * `t` - the target point (i.e `t = a + b`).
+    /// * `ci` - the commitments.
+    #[allow(clippy::too_many_arguments)]
+    fn create_with_existing_commitments<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &PedersenComm<P>,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
+        c4: &PedersenComm<P>,
+        c5: &PedersenComm<P>,
+        c6: &PedersenComm<P>,
+    ) -> Self {
+        let inter = Self::create_intermediates_with_existing_commitments(
+            transcript, rng, a, b, t, c1, c2, c3, c4, c5, c6, false,
+        );
+
+        // Make the challenge.
+        let chal_buf = ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c");
+
+        // Now just delegate to the other proof routines.
+        Self::create_proof(a, b, t, &inter, &chal_buf)
+    }
+
+    /// create_proof. This function produces a ZKAttest point addition proof
+    /// for `t = a + b` using the challenge bytes in `chal_buf`.
+    /// # Arguments
+    /// * `a` - one of the summands.
+    /// * `b` - the other summand.
+    /// * `t` - the target point (e.g `t = a + b`).
+    /// * `inter` - the intermediate values.
+    /// * `chal_buf` - the challenge buffer.
+    fn create_proof(
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ZKAttestPointAddProofIntermediate<P>,
+        chal_buf: &[u8],
+    ) -> Self {
+        Self::create_proof_with_challenge(
+            a,
+            b,
+            t,
+            inter,
+            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
+        )
+    }
+
+    /// create_proof_with_challenge. This function produces a ZKAttest point addition proof
+    /// for `t = a + b` using the challenge `chal`.
+    /// # Arguments
+    /// * `a` - one of the summands.
+    /// * `b` - the other summand.
+    /// * `t` - the target point (e.g `t = a + b`).
+    /// * `inter` - the intermediate values.
+    /// * `chal` - the challenge.
+    fn create_proof_with_challenge(
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ZKAttestPointAddProofIntermediate<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
+        // Now make the proof that there's an inverse for b.x - a.x.
+        let z1 = <P as PedersenConfig>::from_ob_to_sf(b.x - a.x);
+        let z2 = <P as PedersenConfig>::from_ob_to_sf((b.x - a.x).inverse().unwrap());
+
+        let c7 = inter.c3 - inter.c1;
+        // Make the multiplication proof for c8.
+        let commit_one = PedersenComm {
+            comm: <P as SWCurveConfig>::GENERATOR,
+            r: <P as CurveConfig>::ScalarField::ZERO,
+        };
+
+        let mp1 = MulProof::create_proof_with_challenge(
+            &z1,
+            &z2,
+            &inter.mpi1,
+            &c7,
+            &inter.c8,
+            &commit_one,
+            chal,
+        );
+
+        // Proof of c10
+        let z3 = <P as PedersenConfig>::from_ob_to_sf(b.y - a.y);
+        let c9 = inter.c4 - inter.c2;
+        let z4 = z3 * z2; // b.y - a.y / b.x - a.x
+        let mp2 = MulProof::create_proof_with_challenge(
+            &z3,
+            &z2,
+            &inter.mpi2,
+            &c9,
+            &inter.c8,
+            &inter.c10,
+            chal,
+        );
+
+        // Proof of c11
+        let mp3 = MulProof::create_proof_with_challenge(
+            &z4,
+            &z4,
+            &inter.mpi3,
+            &inter.c10,
+            &inter.c10,
+            &inter.c11,
+            chal,
+        );
+
+        // Proof of c13.
+        let z6 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x);
+        let c12 = inter.c1 - inter.c5;
+        let mp4 = MulProof::create_proof_with_challenge(
+            &z4,
+            &z6,
+            &inter.mpi4,
+            &inter.c10,
+            &c12,
+            &inter.c13,
+            chal,
+        );
+
+        // And now for the remaining equality proofs.
+        let c14 = inter.c5 + inter.c1 + inter.c3;
+        let eq1 = EqualityProof::create_proof_with_challenge(&inter.ei1, &c14, &inter.c11, chal);
+
+        // This is the corrected one.
+        let c15 = inter.c6 + inter.c2;
+        let eq2 = EqualityProof::create_proof_with_challenge(&inter.ei2, &inter.c13, &c15, chal);
+
+        Self {
+            c1: inter.c1.comm,
+            c2: inter.c2.comm,
+            c3: inter.c3.comm,
+            c4: inter.c4.comm,
+            c5: inter.c5.comm,
+            c6: inter.c6.comm,
+            c8: inter.c8.comm,
+            c10: inter.c10.comm,
+            c11: inter.c11.comm,
+            c13: inter.c13.comm,
+            mp1,
+            mp2,
+            mp3,
+            mp4,
+            e1: eq1,
+            e2: eq2,
+            stored_comms: inter.stored_comms,
+        }
+    }
+
+    /// verify. This function verifies that `self` is a valid elliptic curve addition
+    /// proof. This function returns true if the proof is valid and false otherwise.
+    /// # Arguments
+    /// *`self` - the proof object.
+    /// *`transcript` - the transcript object that is used.
+    fn verify(&self, transcript: &mut Transcript) -> bool {
+        // This function just needs to verify that everything else works as it should.
+        self.add_to_transcript(transcript);
+
+        // Now make the challenge and delegate.
+        let chal_buf = ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c");
+        self.verify_proof(&chal_buf[..])
+    }
+
+    /// verify_proof. This function verifies that the proof object held by `self` is valid.
+    /// Note that this function uses the bytes in `chal_buf` as the challenge for this verification.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `chal_buf` - the challenge bytes.
+    fn verify_proof(&self, chal_buf: &[u8]) -> bool {
+        self.verify_with_challenge(&<P as PedersenConfig>::make_single_bit_challenge(
+            chal_buf.last().unwrap() & 1,
+        ))
+    }
+
+    /// verify_with_challenge. This function verifies that the proof object held by `self` is valid.
+    /// Note that this function uses `chal` as the challenge for this verification.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `chal` - the challenge.
+    fn verify_with_challenge(&self, chal: &<P as CurveConfig>::ScalarField) -> bool {
+        let c7 = (self.c3.into_group() - self.c1).into_affine();
+
+        // Now we verify that c8 * c7 is a commitment to 1.
+        // N.B We use the same fixed commitment to 1 as above.
+        let commit_one = PedersenComm {
+            comm: <P as SWCurveConfig>::GENERATOR,
+            r: <P as CurveConfig>::ScalarField::ZERO,
+        };
+
+        let first = self
+            .mp1
+            .verify_with_challenge(&c7, &self.c8, &commit_one.comm, chal);
+
+        // Proof of c10 = c9 * c10.
+        // We recover c9 as c4 - c2.
+        let c9 = (self.c4.into_group() - self.c2).into_affine();
+        let second = self
+            .mp2
+            .verify_with_challenge(&c9, &self.c8, &self.c10, chal);
+
+        // Proof of c11 = c10*c10
+        let third = self
+            .mp3
+            .verify_with_challenge(&self.c10, &self.c10, &self.c11, chal);
+
+        // Proof of c13 = c10 * c12.
+        // We recover c12 as c1 - c5
+        let c12 = (self.c1.into_group() - self.c5).into_affine();
+        let fourth = self
+            .mp4
+            .verify_with_challenge(&self.c10, &c12, &self.c13, chal);
+
+        // Verify that c5 + c1 + c3 == c11
+        let c14 = (self.c5 + self.c1 + self.c3).into_affine();
+        let fifth = self.e1.verify_with_challenge(&c14, &self.c11, chal);
+
+        // Verify that c13 == c6 + c2.
+        let c15 = (self.c6 + self.c2).into_affine();
+        let sixth = self.e2.verify_with_challenge(&self.c13, &c15, chal);
+        first && second && third && fourth && fifth && sixth
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    fn serialized_size(&self) -> usize {
+        let lhs = if self.stored_comms {
+            self.c1.compressed_size()
+                + self.c2.compressed_size()
+                + self.c3.compressed_size()
+                + self.c4.compressed_size()
+                + self.c5.compressed_size()
+                + self.c6.compressed_size()
+        } else {
+            0
+        };
+
+        lhs + self.c8.compressed_size()
+            + self.c10.compressed_size()
+            + self.c11.compressed_size()
+            + self.c13.compressed_size()
+            + self.mp1.serialized_size()
+            + self.mp2.serialized_size()
+            + self.mp3.serialized_size()
+            + self.mp4.serialized_size()
+            + self.e1.serialized_size()
+            + self.e2.serialized_size()
+    }
 }
 
 impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
@@ -341,396 +782,6 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
         let c15 = (c6.into_group() + c2).into_affine();
         ep2.add_to_transcript(transcript, c13, &c15);
     }
-
-    /// create_intermediates_from_existing_commitments. This function returns all of the intermediate
-    /// values for a proof that `t = a + b` using an existing set of commitments.
-    /// This is primarily useful when the transcript that will be used to derive
-    /// challenges has not yet been fully filled.
-    /// # Arguments
-    /// * `transcript` - the transcript object.
-    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
-    /// * `a` - one of the components of the sum.
-    /// * `b` - the other component of the sum.
-    /// * `t` - the target point (i.e t = a + b).
-    /// * `ci` - the commitments to the points. In particular, c0 and c1 are commitments
-    ///    to a.x and a.y. The same pattern holds for the others.
-    /// * `stored_comms` - true if we treat the produced object as holding the commitments, false if they are stored elsewhere.
-    #[allow(clippy::too_many_arguments)]
-    pub fn create_intermediates_from_existing_commitments<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-        c1: &PedersenComm<P>,
-        c2: &PedersenComm<P>,
-        c3: &PedersenComm<P>,
-        c4: &PedersenComm<P>,
-        c5: &PedersenComm<P>,
-        c6: &PedersenComm<P>,
-        stored_comms: bool,
-    ) -> ZKAttestPointAddProofIntermediate<P> {
-        // We require that a != b.
-        assert!(a != b);
-
-        // Make the transcripts and build the relevant sub-proofs.
-        Self::make_transcript(
-            transcript, &c1.comm, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &c6.comm,
-        );
-
-        // Now make the proof that there's an inverse for b.x - a.x.
-        let z2 = <P as PedersenConfig>::from_ob_to_sf((b.x - a.x).inverse().unwrap());
-
-        let c7 = c3 - c1;
-        let c8 = PedersenComm::new(z2, rng);
-
-        // Make the multiplication proof for c8.
-        let commit_one = PedersenComm {
-            comm: <P as SWCurveConfig>::GENERATOR,
-            r: <P as CurveConfig>::ScalarField::ZERO,
-        };
-
-        let mpi1 = MulProof::create_intermediates(transcript, rng, &c7, &c8, &commit_one);
-
-        // Proof of c10
-        let z3 = <P as PedersenConfig>::from_ob_to_sf(b.y - a.y);
-        let c9 = c4 - c2;
-
-        let z4 = z3 * z2; // b.y - a.y / b.x - a.x
-        let c10 = PedersenComm::new(z4, rng);
-        let mpi2 = MulProof::create_intermediates(transcript, rng, &c9, &c8, &c10);
-
-        // Proof of c11
-        let z5 = z4 * z4;
-        let c11 = PedersenComm::new(z5, rng);
-        let mpi3 = MulProof::create_intermediates(transcript, rng, &c10, &c10, &c11);
-
-        // Proof of c13.
-        let z6 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x);
-        let c12 = c1 - c5;
-
-        let z7 = z4 * z6; // z4 = b.y - a.y / (b.x - a.x), z6 = (a.x - t.x)
-        let c13 = PedersenComm::new(z7, rng);
-
-        let mpi4 = MulProof::create_intermediates(transcript, rng, &c10, &c12, &c13);
-
-        // And now the remaining equality proofs.
-        let c14 = c5 + c1 + c3;
-        let ei1 = EqualityProof::create_intermediates(transcript, rng, &c14, &c11);
-
-        // This is the corrected one.
-        let c15 = c6 + c2;
-        let ei2 = EqualityProof::create_intermediates(transcript, rng, &c13, &c15);
-
-        ZKAttestPointAddProofIntermediate {
-            c1: *c1,
-            c2: *c2,
-            c3: *c3,
-            c4: *c4,
-            c5: *c5,
-            c6: *c6,
-            c8,
-            c10,
-            c11,
-            c13,
-            mpi1,
-            mpi2,
-            mpi3,
-            mpi4,
-            ei1,
-            ei2,
-            stored_comms, 
-        }
-    }
-
-    /// create_intermediates. This function returns all of the intermediate values for a proof
-    /// that `t = a + b`. This is primarily useful when the transcript that will be used to derive
-    /// challenges has not yet been fully filled.
-    /// # Arguments
-    /// * `transcript` - the transcript object.
-    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
-    /// * `a` - one of the components of the sum.
-    /// * `b` - the other component of the sum.
-    /// * `t` - the target point (i.e t = a + b).
-    pub fn create_intermediates<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> ZKAttestPointAddProofIntermediate<P> {
-        // This proof requires that a != b.
-        assert!(a != b);
-        let (c1, c2, c3, c4, c5, c6) =
-            <P as PedersenConfig>::create_commitments_to_coords(a, b, t, rng);
-        Self::create_intermediates_from_existing_commitments(
-            transcript, rng, a, b, t, &c1, &c2, &c3, &c4, &c5, &c6, true
-        )
-    }
-
-    /// create. This function returns a new proof that `t = a + b`.
-    /// # Arguments
-    /// * `transcript` - the transcript object.
-    /// * `rng` - the random number generator. This must be a cryptographically secure RNG.
-    /// * `a` - one of the components of the sum.
-    /// * `b` - the other component of the sum.
-    /// * `t` - the target point (i.e t = a + b).
-    pub fn create<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> Self {
-        // Make the intermediate objects.
-        let proof_i = Self::create_intermediates(transcript, rng, a, b, t);
-
-        // Now make the challenge object.
-        let chal_buf = ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c");
-        Self::create_proof(a, b, t, &proof_i, &chal_buf[..])
-    }
-
-    /// make_intermediate_transcript. This function accepts a set of intermediates (`inter`) and builds
-    /// a new intermediate transcript object from `inter`.
-    /// # Arguments
-    /// * `inter` - the intermediate objects.
-    pub fn make_intermediate_transcript(
-        inter: ZKAttestPointAddProofIntermediate<P>,
-    ) -> ZKAttestPointAddProofIntermediateTranscript<P> {
-        ZKAttestPointAddProofIntermediateTranscript {
-            c1: inter.c1.comm,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
-            c4: inter.c4.comm,
-            c5: inter.c5.comm,
-            c6: inter.c6.comm,
-            c8: inter.c8.comm,
-            c10: inter.c10.comm,
-            c11: inter.c11.comm,
-            c13: inter.c13.comm,
-            mp1: MulProof::make_intermediate_transcript(inter.mpi1),
-            mp2: MulProof::make_intermediate_transcript(inter.mpi2),
-            mp3: MulProof::make_intermediate_transcript(inter.mpi3),
-            mp4: MulProof::make_intermediate_transcript(inter.mpi4),
-            e1: EqualityProof::make_intermediate_transcript(inter.ei1),
-            e2: EqualityProof::make_intermediate_transcript(inter.ei2),
-            stored_comms: inter.stored_comms, 
-        }
-    }
-
-    /// create_proof_with_challenge. This function produces a ZKAttest point addition proof
-    /// for `t = a + b` using the challenge bytes in `chal_buf`.
-    /// # Arguments
-    /// * `a` - one of the summands.
-    /// * `b` - the other summand.
-    /// * `t` - the target point (e.g `t = a + b`).
-    /// * `inter` - the intermediate values.
-    /// * `chal_buf` - the challenge buffer.
-    pub fn create_proof(
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-        inter: &ZKAttestPointAddProofIntermediate<P>,
-        chal_buf: &[u8],
-    ) -> Self {
-        Self::create_proof_with_challenge(
-            a,
-            b,
-            t,
-            inter,
-            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
-        )
-    }
-
-    /// create_proof_with_challenge. This function produces a ZKAttest point addition proof
-    /// for `t = a + b` using the challenge `chal`.
-    /// # Arguments
-    /// * `a` - one of the summands.
-    /// * `b` - the other summand.
-    /// * `t` - the target point (e.g `t = a + b`).
-    /// * `inter` - the intermediate values.
-    /// * `chal` - the challenge.
-    pub fn create_proof_with_challenge(
-        a: sw::Affine<<P as PedersenConfig>::OCurve>,
-        b: sw::Affine<<P as PedersenConfig>::OCurve>,
-        t: sw::Affine<<P as PedersenConfig>::OCurve>,
-        inter: &ZKAttestPointAddProofIntermediate<P>,
-        chal: &<P as CurveConfig>::ScalarField,
-    ) -> Self {
-        // Now make the proof that there's an inverse for b.x - a.x.
-        let z1 = <P as PedersenConfig>::from_ob_to_sf(b.x - a.x);
-        let z2 = <P as PedersenConfig>::from_ob_to_sf((b.x - a.x).inverse().unwrap());
-
-        let c7 = inter.c3 - inter.c1;
-        // Make the multiplication proof for c8.
-        let commit_one = PedersenComm {
-            comm: <P as SWCurveConfig>::GENERATOR,
-            r: <P as CurveConfig>::ScalarField::ZERO,
-        };
-
-        let mp1 = MulProof::create_proof_with_challenge(
-            &z1,
-            &z2,
-            &inter.mpi1,
-            &c7,
-            &inter.c8,
-            &commit_one,
-            chal,
-        );
-
-        // Proof of c10
-        let z3 = <P as PedersenConfig>::from_ob_to_sf(b.y - a.y);
-        let c9 = inter.c4 - inter.c2;
-        let z4 = z3 * z2; // b.y - a.y / b.x - a.x
-        let mp2 = MulProof::create_proof_with_challenge(
-            &z3,
-            &z2,
-            &inter.mpi2,
-            &c9,
-            &inter.c8,
-            &inter.c10,
-            chal,
-        );
-
-        // Proof of c11
-        let mp3 = MulProof::create_proof_with_challenge(
-            &z4,
-            &z4,
-            &inter.mpi3,
-            &inter.c10,
-            &inter.c10,
-            &inter.c11,
-            chal,
-        );
-
-        // Proof of c13.
-        let z6 = <P as PedersenConfig>::from_ob_to_sf(a.x - t.x);
-        let c12 = inter.c1 - inter.c5;
-        let mp4 = MulProof::create_proof_with_challenge(
-            &z4,
-            &z6,
-            &inter.mpi4,
-            &inter.c10,
-            &c12,
-            &inter.c13,
-            chal,
-        );
-
-        // And now for the remaining equality proofs.
-        let c14 = inter.c5 + inter.c1 + inter.c3;
-        let eq1 = EqualityProof::create_proof_with_challenge(&inter.ei1, &c14, &inter.c11, chal);
-
-        // This is the corrected one.
-        let c15 = inter.c6 + inter.c2;
-        let eq2 = EqualityProof::create_proof_with_challenge(&inter.ei2, &inter.c13, &c15, chal);
-
-        Self {
-            c1: inter.c1.comm,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
-            c4: inter.c4.comm,
-            c5: inter.c5.comm,
-            c6: inter.c6.comm,
-            c8: inter.c8.comm,
-            c10: inter.c10.comm,
-            c11: inter.c11.comm,
-            c13: inter.c13.comm,
-            mp1,
-            mp2,
-            mp3,
-            mp4,
-            e1: eq1,
-            e2: eq2,
-            stored_comms: inter.stored_comms, 
-        }
-    }
-
-    /// verify. This function verifies that `self` is a valid elliptic curve addition
-    /// proof. This function returns true if the proof is valid and false otherwise.
-    /// # Arguments
-    /// *`self` - the proof object.
-    /// *`transcript` - the transcript object that is used.
-    pub fn verify(&self, transcript: &mut Transcript) -> bool {
-        // This function just needs to verify that everything else works as it should.
-        self.add_to_transcript(transcript);
-
-        // Now make the challenge and delegate.
-        let chal_buf = ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c");
-        self.verify_proof(&chal_buf[..])
-    }
-
-    /// verify_proof. This function verifies that the proof object held by `self` is valid.
-    /// Note that this function uses the bytes in `chal_buf` as the challenge for this verification.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `chal_buf` - the challenge bytes.
-    pub fn verify_proof(&self, chal_buf: &[u8]) -> bool {
-        self.verify_proof_with_challenge(&<P as PedersenConfig>::make_single_bit_challenge(
-            chal_buf.last().unwrap() & 1,
-        ))
-    }
-
-    /// verify_proof_with_challenge. This function verifies that the proof object held by `self` is valid.
-    /// Note that this function uses `chal` as the challenge for this verification.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `chal` - the challenge.
-    pub fn verify_proof_with_challenge(&self, chal: &<P as CurveConfig>::ScalarField) -> bool {
-        let c7 = (self.c3.into_group() - self.c1).into_affine();
-
-        // Now we verify that c8 * c7 is a commitment to 1.
-        // N.B We use the same fixed commitment to 1 as above.
-        let commit_one = PedersenComm {
-            comm: <P as SWCurveConfig>::GENERATOR,
-            r: <P as CurveConfig>::ScalarField::ZERO,
-        };
-
-        let first = self
-            .mp1
-            .verify_with_challenge(&c7, &self.c8, &commit_one.comm, chal);
-
-        // Proof of c10 = c9 * c10.
-        // We recover c9 as c4 - c2.
-        let c9 = (self.c4.into_group() - self.c2).into_affine();
-        let second = self
-            .mp2
-            .verify_with_challenge(&c9, &self.c8, &self.c10, chal);
-
-        // Proof of c11 = c10*c10
-        let third = self
-            .mp3
-            .verify_with_challenge(&self.c10, &self.c10, &self.c11, chal);
-
-        // Proof of c13 = c10 * c12.
-        // We recover c12 as c1 - c5
-        let c12 = (self.c1.into_group() - self.c5).into_affine();
-        let fourth = self
-            .mp4
-            .verify_with_challenge(&self.c10, &c12, &self.c13, chal);
-
-        // Verify that c5 + c1 + c3 == c11
-        let c14 = (self.c5 + self.c1 + self.c3).into_affine();
-        let fifth = self.e1.verify_with_challenge(&c14, &self.c11, chal);
-
-        // Verify that c13 == c6 + c2.
-        let c15 = (self.c6 + self.c2).into_affine();
-        let sixth = self.e2.verify_with_challenge(&self.c13, &c15, chal);
-        first && second && third && fourth && fifth && sixth
-    }
-
-    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
-    pub fn serialized_size(&self) -> usize {
-        let lhs = if self.stored_comms {
-            self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
-            + self.c5.compressed_size() + self.c6.compressed_size()
-        } else {
-            0
-        };
-
-        lhs + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
-            + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
-            + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
-    }
 }
 
 impl<P: PedersenConfig> ZKAttestPointAddProofTranscriptable for ZKAttestPointAddProof<P> {
@@ -805,14 +856,25 @@ impl<P: PedersenConfig> ZKAttestPointAddProofIntermediateTranscript<P> {
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     pub fn serialized_size(&self) -> usize {
         let lhs = if self.stored_comms {
-            self.c1.compressed_size() + self.c2.compressed_size() + self.c3.compressed_size() + self.c4.compressed_size()
-                + self.c5.compressed_size() + self.c6.compressed_size()
+            self.c1.compressed_size()
+                + self.c2.compressed_size()
+                + self.c3.compressed_size()
+                + self.c4.compressed_size()
+                + self.c5.compressed_size()
+                + self.c6.compressed_size()
         } else {
             0
         };
 
-        lhs + self.c8.compressed_size() + self.c10.compressed_size() + self.c11.compressed_size()
-            + self.c13.compressed_size() + self.mp1.serialized_size() + self.mp2.serialized_size() + self.mp3.serialized_size()
-            + self.mp4.serialized_size() + self.e1.serialized_size() + self.e2.serialized_size()
+        lhs + self.c8.compressed_size()
+            + self.c10.compressed_size()
+            + self.c11.compressed_size()
+            + self.c13.compressed_size()
+            + self.mp1.serialized_size()
+            + self.mp2.serialized_size()
+            + self.mp3.serialized_size()
+            + self.mp4.serialized_size()
+            + self.e1.serialized_size()
+            + self.e2.serialized_size()
     }
 }

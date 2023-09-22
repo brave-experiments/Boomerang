@@ -6,6 +6,8 @@ macro_rules! __test_pedersen {
         type PC = PedersenComm<$config>;
         type SF = <$config as CurveConfig>::ScalarField;
         type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
+        type OSA = sw::Affine<<$config as PedersenConfig>::OCurve>;
+        type AT = sw::Affine<$config>;
 
         const OGENERATOR: sw::Affine<<$config as PedersenConfig>::OCurve> =
             <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
@@ -78,7 +80,7 @@ macro_rules! __test_pedersen {
 
             let c3 = c1 - c2;
 
-            let c_act: sw::Affine<Config> = (c1.comm.into_group() - c2.comm).into();
+            let c_act: AT = (c1.comm.into_group() - c2.comm).into();
             assert!(c3.comm == c_act);
             assert!(c3.r == c1.r - c2.r);
 
@@ -790,19 +792,19 @@ macro_rules! __test_pedersen {
             let s = (OGENERATOR.mul(lambda)).into_affine();
             let mut transcript = Transcript::new(label);
 
-            let proof: FSECMP<Config> =
+            let proof: FSECMP<Config, ECSMP<Config>> =
                 FSECMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
 
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));
             println!("Our size: {}", proof.serialized_size());
-            
+
             // Now make a fake transcript.
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
             let mut transcript_f = Transcript::new(label);
 
-            let proof_f: FSECMP<Config> =
+            let proof_f: FSECMP<Config, ECSMP<Config>> =
                 FSECMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
@@ -833,24 +835,49 @@ macro_rules! __test_pedersen {
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));
 
             // Now make a fake transcript.
-            let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
-            let mut transcript_f = Transcript::new(label);
-            let proof_f: ECSMP<Config> =
-                ECSMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+            let mut lambda_fake = OSF::rand(&mut OsRng);
 
-            // All of the other invariants are right.
-            assert!(proof_f.c1.is_on_curve());
-            assert!(proof_f.c2.is_on_curve());
-            assert!(proof_f.c3.is_on_curve());
-            assert!(proof_f.c4.is_on_curve());
-            assert!(proof_f.c5.is_on_curve());
-            assert!(proof_f.c6.is_on_curve());
-            assert!(proof_f.c7.is_on_curve());
-            assert!(proof_f.c8.is_on_curve());
+            loop {
+                if lambda_fake != lambda {
+                    break;
+                }
+                lambda_fake = OSF::rand(&mut OsRng);
+            }
 
-            // But the verification fails.
-            let mut transcript_fv = Transcript::new(label);
-            assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
+            let s_fake = (OGENERATOR.mul(lambda_fake)).into_affine();
+
+            // N.B if c0 == 0 then this proof will always pass without proving anything.
+            // Thus, we always pass the challenge of c0 == 1 here, just to show it'll fail.
+            let vals: [u8; 2] = [1, 3];
+            for i in vals {
+                let mut transcript_f = Transcript::new(label);
+                let proof_i = ZKECSMP::<$config>::create_intermediates(
+                    &mut transcript_f,
+                    &mut OsRng,
+                    &s_fake,
+                    &lambda,
+                    &OGENERATOR,
+                );
+                let chal: [u8; 1] = [i];
+                let proof_f = ZKECSMP::<$config>::create_proof(
+                    &s_fake,
+                    &lambda,
+                    &OGENERATOR,
+                    &proof_i,
+                    &chal,
+                );
+                // All of the other invariants are right.
+                assert!(proof_f.c1.is_on_curve());
+                assert!(proof_f.c2.is_on_curve());
+                assert!(proof_f.c3.is_on_curve());
+                assert!(proof_f.c4.is_on_curve());
+                assert!(proof_f.c5.is_on_curve());
+                assert!(proof_f.a1.is_on_curve());
+                assert!(proof_f.a2.is_on_curve());
+                assert!(proof_f.a3.is_on_curve());
+                // But the verification fails.
+                assert!(!proof_f.verify_proof(&OGENERATOR, &chal));
+            }
         }
 
         #[test]
@@ -862,11 +889,11 @@ macro_rules! __test_pedersen {
             let s = (OGENERATOR.mul(lambda)).into_affine();
             let mut transcript = Transcript::new(label);
 
-            let proof: FSZKECSMP<Config> =
-                FSZKECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+            let proof: FSECMP<Config, ZKECSMP<Config>> =
+                FSECMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
 
             println!("ZKAttest size: {}", proof.serialized_size());
-            
+
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR));
@@ -875,8 +902,8 @@ macro_rules! __test_pedersen {
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
             let mut transcript_f = Transcript::new(label);
 
-            let proof_f: FSZKECSMP<Config> =
-                FSZKECSMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
+            let proof_f: FSECMP<Config, ZKECSMP<Config>> =
+                FSECMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR);
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR));
         }
@@ -895,7 +922,7 @@ macro_rules! __test_pedersen {
             // Now check the proof is fine.
             assert!(proof.ca.is_on_curve());
             assert!(proof.cb.is_on_curve());
-            
+
             // And now check that it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &c.comm));
@@ -904,7 +931,158 @@ macro_rules! __test_pedersen {
             let n = SF::ONE;
             let cf: PC = PC::new(n, &mut OsRng);
             transcript_v = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_v, &cf.comm));            
+            assert!(!proof.verify(&mut transcript_v, &cf.comm));
+        }
+
+        fn make_ecdsa_signature(z: &OSF, private: &OSF) -> (OSF, OSF) {
+            loop {
+                // First we begin the process of making `r`.
+                let k = OSF::rand(&mut OsRng);
+
+                // We require that `k` is invertible.
+                if k == OSF::ZERO {
+                    continue;
+                }
+
+                let kG = OGENERATOR.mul(k).into_affine();
+                let r = <$config as PedersenConfig>::from_ob_to_os(kG.x);
+
+                // Repeat until we have a decent value of `r`.
+                if r == OSF::ZERO {
+                    continue;
+                }
+
+                // Now make s.
+                let s = (k.inverse().unwrap()) * (*z + private.mul(&r));
+                if s == OSF::ZERO {
+                    continue;
+                }
+
+                return (r, s);
+            }
+        }
+
+        #[test]
+        fn test_ecdsa_signature_our() {
+            // This function just tests that we can prove knowledge of an ECDSA signature.
+            let label = b"PedersenECDSA";
+
+            // Make the public key.
+            let private = OSF::rand(&mut OsRng);
+            let public = OGENERATOR.mul(private).into_affine();
+
+            // For the sake of this test, we'll use the simplest message in existence.
+            let m = b"";
+
+            // And now we begin the long and arduous process of making a signature.
+            // N.B For the sake of compatibility, we always use SHA-512 here and just truncate.
+            let mut hasher = Sha512::new();
+            hasher.update(m);
+            let h = hasher.finalize();
+
+            // We map `t` to the curve by using the `from_random_bytes` API.
+            let t = OSF::from_random_bytes(&h[0..32]).unwrap();
+
+            // Build the signature.
+            let (r, s) = make_ecdsa_signature(&t, &private);
+
+            // Now we need to make `R`.
+            let u1 = t * s.inverse().unwrap();
+            let u2 = r * s.inverse().unwrap();
+
+            let R = (OGENERATOR.mul(u1) + public.mul(u2)).into_affine();
+            assert!(<$config>::from_ob_to_os(R.x) == r);
+
+            // Now prove it passed.
+            let mut transcript = Transcript::new(label);
+
+            let proof = ECDSASigProof::<$config, CDLSCollective>::create(
+                &mut transcript,
+                &mut OsRng,
+                &t,
+                &R,
+                &r,
+                &s,
+                &public,
+            );
+            assert!(proof.r.is_on_curve());
+            assert!(proof.cq_x.is_on_curve());
+            assert!(proof.cq_y.is_on_curve());
+            assert!(proof.cs_x.is_on_curve());
+            assert!(proof.cs_y.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+
+            // Now check it passes verification.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &R, &t));
+
+            // Finally, check that it would fail on a different choice of &R.
+            let Rf = (R + OGENERATOR).into_affine();
+            let mut transcript_vf = Transcript::new(label);
+            assert!(!proof.verify(&mut transcript_vf, &Rf, &t));
+        }
+
+        #[test]
+        fn test_ecdsa_signature_zk_attest() {
+            // This function just tests that we can prove knowledge of an ECDSA signature using
+            // ZKAttest.
+            let label = b"PedersenECDSA";
+
+            // Make the public key.
+            let private = OSF::rand(&mut OsRng);
+            let public = OGENERATOR.mul(private).into_affine();
+
+            // For the sake of this test, we'll use the simplest message in existence.
+            let m = b"";
+
+            // And now we begin the long and arduous process of making a signature.
+            // N.B For the sake of compatibility, we always use SHA-512 here and just truncate.
+            let mut hasher = Sha512::new();
+            hasher.update(m);
+            let h = hasher.finalize();
+
+            // We map `t` to the curve by using the `from_random_bytes` API.
+            let t = OSF::from_random_bytes(&h[0..32]).unwrap();
+
+            // Build the signature.
+            let (r, s) = make_ecdsa_signature(&t, &private);
+
+            // Now we need to make `R`.
+            let u1 = t * s.inverse().unwrap();
+            let u2 = r * s.inverse().unwrap();
+
+            let R = (OGENERATOR.mul(u1) + public.mul(u2)).into_affine();
+            assert!(<$config>::from_ob_to_os(R.x) == r);
+
+            // Now prove it passed.
+            let mut transcript = Transcript::new(label);
+
+            let proof = ECDSASigProof::<$config, ZKAttestCollective>::create(
+                &mut transcript,
+                &mut OsRng,
+                &t,
+                &R,
+                &r,
+                &s,
+                &public,
+            );
+            assert!(proof.r.is_on_curve());
+            assert!(proof.cq_x.is_on_curve());
+            assert!(proof.cq_y.is_on_curve());
+            assert!(proof.cs_x.is_on_curve());
+            assert!(proof.cs_y.is_on_curve());
+            assert!(proof.c2.is_on_curve());
+            assert!(proof.c3.is_on_curve());
+
+            // Now check it passes verification.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &R, &t));
+
+            // Finally, check that it would fail on a different choice of &R.
+            let Rf = (R + OGENERATOR).into_affine();
+            let mut transcript_vf = Transcript::new(label);
+            assert!(!proof.verify(&mut transcript_vf, &Rf, &t));
         }
 
         #[test]
@@ -921,7 +1099,7 @@ macro_rules! __test_pedersen {
             // Now check the proof is fine.
             assert!(proof.ca.is_on_curve());
             assert!(proof.cb.is_on_curve());
-            
+
             // And now check that it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &c.comm));
@@ -930,27 +1108,31 @@ macro_rules! __test_pedersen {
             let n = SF::ZERO;
             let cf: PC = PC::new(n, &mut OsRng);
             transcript_v = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_v, &cf.comm));            
+            assert!(!proof.verify(&mut transcript_v, &cf.comm));
         }
 
         #[test]
-        fn test_interpolation() {            
+        fn test_interpolation() {
             // Test that the polynomial interpolation works.
             // Simple case: y = 3x.
             {
-                let x : [SF; 2] = [SF::ZERO, SF::ONE];
-                let y : [SF; 2] = [SF::ZERO,  <$config>::from_u64_to_sf(3)];                                
+                let x: [SF; 2] = [SF::ZERO, SF::ONE];
+                let y: [SF; 2] = [SF::ZERO, <$config>::from_u64_to_sf(3)];
                 let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
                 assert!(coeffs.len() == 2);
                 assert!(coeffs[0] == SF::ZERO);
-                assert!(coeffs[1] == <$config>::from_u64_to_sf(3));            
+                assert!(coeffs[1] == <$config>::from_u64_to_sf(3));
             }
 
             // More complicated case: y = 3x^2 + x + 1.
             {
-                let x : [SF; 3] = [SF::ZERO, SF::ONE, SF::ONE+SF::ONE];
-                let y : [SF; 3] = [SF::ONE,  <$config>::from_u64_to_sf(5), <$config>::from_u64_to_sf(15)];
-                                
+                let x: [SF; 3] = [SF::ZERO, SF::ONE, SF::ONE + SF::ONE];
+                let y: [SF; 3] = [
+                    SF::ONE,
+                    <$config>::from_u64_to_sf(5),
+                    <$config>::from_u64_to_sf(15),
+                ];
+
                 let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
                 assert!(coeffs.len() == 3);
                 assert!(coeffs[0] == SF::ONE);
@@ -960,12 +1142,12 @@ macro_rules! __test_pedersen {
 
             // And even more: this time, y = x^4 + x^2 + 1.
             {
-                let mut x : [SF; 5] = [SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO];
-                let mut y : [SF; 5] = [SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO,SF::ZERO];
+                let mut x: [SF; 5] = [SF::ZERO, SF::ZERO, SF::ZERO, SF::ZERO, SF::ZERO];
+                let mut y: [SF; 5] = [SF::ZERO, SF::ZERO, SF::ZERO, SF::ZERO, SF::ZERO];
 
                 for i in 0..5 {
                     x[i] = <$config>::from_u64_to_sf(i as u64);
-                    y[i] = (x[i]*x[i]*x[i]*x[i]) + (x[i]*x[i]) + SF::ONE;                    
+                    y[i] = (x[i] * x[i] * x[i] * x[i]) + (x[i] * x[i]) + SF::ONE;
                 }
 
                 let coeffs = PolynomialInterpolation::<$config>::interpolate(&x, &y);
@@ -987,23 +1169,29 @@ macro_rules! test_pedersen {
                 short_weierstrass::{self as sw, SWCurveConfig},
                 AffineRepr, CurveGroup,
             };
+            use ark_ff::{Field, PrimeField};
             use ark_serialize::CanonicalSerialize;
             use ark_std::UniformRand;
-            use ark_ff::Field;
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
+                ec_collective::CDLSCollective,
                 ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
+                ecdsa_protocol::ECDSASigProof,
                 equality_protocol::EqualityProof as EP,
                 fs_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
-                fs_zk_attest_scalar_mul_protocol::FSZKAttestECScalarMulProof as FSZKECSMP,
+                gk_zero_one_protocol::{ZeroOneProof as ZOP, ZeroOneProofIntermediate as ZOPI},
+                interpolate::PolynomialInterpolation,
                 mul_protocol::MulProof as MP,
                 opening_protocol::OpeningProof as OP,
                 pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
+                point_add::PointAddProtocol,
+                scalar_mul::ScalarMulProtocol,
                 scalar_mul_protocol::{
                     ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
                 },
+                zk_attest_collective::ZKAttestCollective,
                 zk_attest_point_add_protocol::{
                     ZKAttestPointAddProof as ZKEPAP, ZKAttestPointAddProofIntermediate as ZKEPAPI,
                 },
@@ -1011,10 +1199,9 @@ macro_rules! test_pedersen {
                     ZKAttestECScalarMulProof as ZKECSMP,
                     ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
                 },
-                gk_zero_one_protocol::{ZeroOneProof as ZOP, ZeroOneProofIntermediate as ZOPI},
-                interpolate::{PolynomialInterpolation},
             };
             use rand_core::OsRng;
+            use sha2::{Digest, Sha512};
             $crate::__test_pedersen!($config, $OtherProjectiveType);
         }
     };

@@ -70,6 +70,10 @@ macro_rules! __derive_conversion {
             pub fn new(x: $other_r) -> OtherScalar {
                 OtherScalar(x)
             }
+
+            pub fn as_fr(&self) -> OtherScalarField {
+                self.0
+            }
         }
 
         impl From<OtherScalar> for BigInt<$dim> {
@@ -90,7 +94,7 @@ macro_rules! __derive_conversion {
             type OCurve = $OtherCurve;
 
             const SECPARAM: usize = $sec_param;
-            
+
             /// GENERATOR2 = (G2_X, G2_Y)
             const GENERATOR2: $affine = <$affine>::new_unchecked($G2_X, $G2_Y);
 
@@ -98,6 +102,11 @@ macro_rules! __derive_conversion {
                 let x_t: BigInt<$dim> = x.into();
                 let x_v: FrStruct = FrStruct::from(x_t);
                 x_v.as_fr()
+            }
+
+            fn from_ob_to_os(x: OtherBaseField) -> <Self::OCurve as CurveConfig>::ScalarField {
+                let x_t: BigInt<$dim> = x.into();
+                OtherScalar::from(x_t).as_fr()
             }
 
             fn from_os_to_sf(x: OtherScalarField) -> <$config as CurveConfig>::ScalarField {
@@ -148,7 +157,7 @@ macro_rules! derive_conversion {
         $crate::__derive_conversion!(
             $config,
             $dim,
-            $sec_param, 
+            $sec_param,
             $OtherCurve,
             $G2_X,
             $G2_Y,

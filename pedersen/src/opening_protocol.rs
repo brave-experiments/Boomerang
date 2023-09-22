@@ -167,6 +167,24 @@ impl<P: PedersenConfig> OpeningProof<P> {
         Self::create_proof_with_challenge(x, inter, c1, &chal)
     }
 
+    /// create_proof. This function accepts a set of intermediaries (`inter`) and proves
+    /// that `x` acts as a valid opening for `c1` using a challenge generated from the `transcript`.
+    /// Notably, this function should be used when a challenge needs to be extracted from a completed transcript.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `x` - the value that is used to show an opening of  `c1`.
+    /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
+    /// * `c1` - the commitment that is opened.
+    pub fn create_proof_own_challenge(
+        transcript: &mut Transcript,
+        x: &<P as CurveConfig>::ScalarField,
+        inter: &OpeningProofIntermediate<P>,
+        c1: &PedersenComm<P>,
+    ) -> Self {
+        let chal_buf = transcript.challenge_scalar(b"c");
+        Self::create_proof(x, inter, c1, &chal_buf)
+    }
+
     /// create_proof_with_challenge. This function accepts a set of intermediaries (`inter`) and proves
     /// that `x` acts as a valid opening for `c1` using an existing challenge `chal`.
     /// # Arguments
@@ -180,6 +198,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
         c1: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
+        //println!("Opening challenge in create {}", chal);
         let (z1, z2) = if *chal == P::CM1 {
             (inter.t1 - *x, inter.t2 - c1.r)
         } else if *chal == P::CP1 {
@@ -187,10 +206,11 @@ impl<P: PedersenConfig> OpeningProof<P> {
         } else {
             (*x * (*chal) + inter.t1, c1.r * (*chal) + inter.t2)
         };
-        
+
         Self {
             alpha: inter.alpha,
-            z1, z2
+            z1,
+            z2,
         }
     }
 
@@ -202,8 +222,21 @@ impl<P: PedersenConfig> OpeningProof<P> {
     pub fn verify(&self, transcript: &mut Transcript, c1: &sw::Affine<P>) -> bool {
         // Make the transcript.
         self.add_to_transcript(transcript, c1);
+        self.verify_proof_own_challenge(transcript, c1)
+    }
 
-        // Now check make the challenge and delegate.
+    /// verify_proof_own_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// Note: this function does not add `self` to the transcript.
+    ///
+    /// # Arguments
+    /// * `self` - the proof that is being verified.
+    /// * `transcript` - the transcript object that's used.
+    /// * `c1` - the commitment whose opening is being proved by this function.
+    pub fn verify_proof_own_challenge(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+    ) -> bool {
         self.verify_proof(c1, &transcript.challenge_scalar(b"c")[..])
     }
 
@@ -216,6 +249,7 @@ impl<P: PedersenConfig> OpeningProof<P> {
     pub fn verify_proof(&self, c1: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
+        //println!("Opening challenge in verif {}", chal);
         self.verify_with_challenge(c1, &chal)
     }
 
@@ -237,8 +271,8 @@ impl<P: PedersenConfig> OpeningProof<P> {
         } else {
             c1.mul(*chal) + self.alpha
         };
-        
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == rhs            
+
+        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == rhs
     }
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.

@@ -5,18 +5,19 @@
 
 use ark_ec::{
     short_weierstrass::{self as sw},
-    CurveConfig,    
+    CurveConfig,
 };
 use merlin::Transcript;
 
+use ark_ff::Field;
 use ark_serialize::CanonicalSerialize;
 use ark_std::UniformRand;
-use std::ops::Mul;
-use ark_ff::Field;
 use rand::{CryptoRng, RngCore};
+use std::ops::Mul;
 
 use crate::{
-    pedersen_config::{PedersenComm, PedersenConfig}, transcript::GKZeroOneTranscript,
+    pedersen_config::{PedersenComm, PedersenConfig},
+    transcript::GKZeroOneTranscript,
 };
 
 /// ZeroOneProofTranscriptable. This trait provides a notion of `Transcriptable`, which implies
@@ -43,7 +44,7 @@ pub struct ZeroOneProof<P: PedersenConfig> {
 
     /// cb: the commitment to `am`.
     pub cb: sw::Affine<P>,
-        
+
     /// f: the mx + a value.
     pub f: <P as CurveConfig>::ScalarField,
     /// z_a: the rx + s value.
@@ -63,7 +64,7 @@ pub struct ZeroOneProofIntermediate<P: PedersenConfig> {
 
     /// cb: the commitment to `am`.
     pub cb: PedersenComm<P>,
-        
+
     /// a: a random value
     pub a: <P as CurveConfig>::ScalarField,
 
@@ -82,7 +83,7 @@ impl<P: PedersenConfig> Clone for ZeroOneProofIntermediate<P> {
     }
 }
 
-/// ZeroOneProofIntermediateTranscript. This struct provides a wrapper for 
+/// ZeroOneProofIntermediateTranscript. This struct provides a wrapper for
 /// every input into the transcript i.e everything that's in `ZeroOneProofIntermediate` except
 /// for the random values.
 pub struct ZeroOneProofIntermediateTranscript<P: PedersenConfig> {
@@ -90,17 +91,21 @@ pub struct ZeroOneProofIntermediateTranscript<P: PedersenConfig> {
     pub ca: sw::Affine<P>,
 
     /// cb: the commitment to `am`.
-    pub cb: sw::Affine<P>,     
+    pub cb: sw::Affine<P>,
 }
 
 impl<P: PedersenConfig> ZeroOneProof<P> {
-
-    /// make_intermediate_tarnscript. This function accepts a set of intermediate values and converts it into a 
+    /// make_intermediate_tarnscript. This function accepts a set of intermediate values and converts it into a
     /// immediate transcript for a ZeroOneProof.
     /// # Arguments
     /// * `inter` - the set of intermediate values.
-    pub fn make_intermediate_transcript(inter: ZeroOneProofIntermediate<P>) -> ZeroOneProofIntermediateTranscript<P> {
-        ZeroOneProofIntermediateTranscript { ca: inter.ca.comm, cb: inter.cb.comm } 
+    pub fn make_intermediate_transcript(
+        inter: ZeroOneProofIntermediate<P>,
+    ) -> ZeroOneProofIntermediateTranscript<P> {
+        ZeroOneProofIntermediateTranscript {
+            ca: inter.ca.comm,
+            cb: inter.cb.comm,
+        }
     }
 
     /// make_transcript. This function just adds the affine commitments `ca`, `cb` to the
@@ -110,12 +115,17 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `ca` - the ca commitment.
     /// * `cb` - the cb commitment.
     /// * `c` - the existing commitment to `m`.
-    pub fn make_transcript(transcript: &mut Transcript, ca: &sw::Affine<P>, cb: &sw::Affine<P>, c: &sw::Affine<P>) {
+    pub fn make_transcript(
+        transcript: &mut Transcript,
+        ca: &sw::Affine<P>,
+        cb: &sw::Affine<P>,
+        c: &sw::Affine<P>,
+    ) {
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
         c.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"c0", &compressed_bytes[..]);
-        
+
         ca.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"ca", &compressed_bytes[..]);
 
@@ -130,11 +140,12 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `rng` - the random number generator to use. Must be cryptographically random.
     /// * `m` - the 0/1 value to which we are committing.
     /// * `c` - a pre-existing commitment to `m`.
-    pub fn create_intermediates<T: RngCore + CryptoRng>(transcript: &mut Transcript,
-                                                        rng: &mut T,
-                                                        m: &<P as CurveConfig>::ScalarField,
-                                                        c: &PedersenComm<P>) -> ZeroOneProofIntermediate<P> {
-
+    pub fn create_intermediates<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        m: &<P as CurveConfig>::ScalarField,
+        c: &PedersenComm<P>,
+    ) -> ZeroOneProofIntermediate<P> {
         // Make the initial random values.
         let a = <P as CurveConfig>::ScalarField::rand(rng);
         let s = <P as CurveConfig>::ScalarField::rand(rng);
@@ -145,7 +156,7 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
 
         // Add them to the transcript and then just return the intermediate object.
         Self::make_transcript(transcript, &ca.comm, &cb.comm, &c.comm);
-        ZeroOneProofIntermediate { ca, cb, a, s, t}        
+        ZeroOneProofIntermediate { ca, cb, a, s, t }
     }
 
     /// create. This function creates a new ZeroOneProof on `m`, returning the result.
@@ -158,12 +169,14 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
         transcript: &mut Transcript,
         rng: &mut T,
         m: &<P as CurveConfig>::ScalarField,
-        c: &PedersenComm<P>) -> Self {
-
-        Self::create_proof(&Self::create_intermediates(transcript, rng, m, c),
-                           m,
-                           c,
-                           &transcript.challenge_scalar(b"c")[..],)
+        c: &PedersenComm<P>,
+    ) -> Self {
+        Self::create_proof(
+            &Self::create_intermediates(transcript, rng, m, c),
+            m,
+            c,
+            &transcript.challenge_scalar(b"c")[..],
+        )
     }
 
     /// create_proof. This function returns a new ZeroOneProof on `m`, returning the result. Note that this
@@ -173,11 +186,18 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `m` - the 0/1 value to which we are committing.
     /// * `c` - a pre-existing commitment to `m`.
     /// * `chal_buf` - a buffer of existing challenge bytes.
-    pub fn create_proof(inter: &ZeroOneProofIntermediate<P>,
-                        m: &<P as CurveConfig>::ScalarField,
-                        c: &PedersenComm<P>,
-                        chal_buf: &[u8]) -> Self {
-        Self::create_proof_with_challenge(inter, m, c, &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),)
+    pub fn create_proof(
+        inter: &ZeroOneProofIntermediate<P>,
+        m: &<P as CurveConfig>::ScalarField,
+        c: &PedersenComm<P>,
+        chal_buf: &[u8],
+    ) -> Self {
+        Self::create_proof_with_challenge(
+            inter,
+            m,
+            c,
+            &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),
+        )
     }
 
     /// create_proof_with_challenge. This function returns a new ZeroOneProof on `m`, returning the result. Note that this
@@ -187,11 +207,12 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `m` - the 0/1 value to which we are committing.
     /// * `c` - a pre-existing commitment to `m`.
     /// * `chal` - a pre-existing challenge.    
-    pub fn create_proof_with_challenge(inter: &ZeroOneProofIntermediate<P>,
-                        m: &<P as CurveConfig>::ScalarField,
-                        c: &PedersenComm<P>,
-                        chal: &<P as CurveConfig>::ScalarField) -> Self {
-
+    pub fn create_proof_with_challenge(
+        inter: &ZeroOneProofIntermediate<P>,
+        m: &<P as CurveConfig>::ScalarField,
+        c: &PedersenComm<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
         let f = (*m) * chal + inter.a;
         Self {
             ca: inter.ca.comm,
@@ -219,7 +240,10 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `c` - the already-received commitment to `m`.
     /// * `chal_buf` - the challenge bytes to use.
     pub fn verify_proof(&self, c: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
-        self.verify_with_challenge(c, &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),)
+        self.verify_with_challenge(
+            c,
+            &<P as PedersenConfig>::make_challenge_from_buffer(chal_buf),
+        )
     }
 
     /// verify_proof. This function verifies that the proof held by `self` is valid, returning true if so.
@@ -228,32 +252,35 @@ impl<P: PedersenConfig> ZeroOneProof<P> {
     /// * `self` - the proof object.
     /// * `c` - the already-received commitment to `m`.
     /// * `chal` - the challenge to use.
-    pub fn verify_with_challenge(&self, c: &sw::Affine<P>, chal: &<P as CurveConfig>::ScalarField) -> bool {
-        (self.ca + c.mul(*chal) == PedersenComm::new_with_both(self.f, self.z_a).comm) &&
-            (self.cb + c.mul(*chal - self.f) == PedersenComm::new_with_both(<P as CurveConfig>::ScalarField::ZERO, self.z_b).comm)
+    pub fn verify_with_challenge(
+        &self,
+        c: &sw::Affine<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> bool {
+        (self.ca + c.mul(*chal) == PedersenComm::new_with_both(self.f, self.z_a).comm)
+            && (self.cb + c.mul(*chal - self.f)
+                == PedersenComm::new_with_both(<P as CurveConfig>::ScalarField::ZERO, self.z_b)
+                    .comm)
     }
 }
 
 impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProof<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
-        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, &c);
+        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, c);
     }
 }
 
 impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProofIntermediateTranscript<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
-        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, &c);
+        ZeroOneProof::make_transcript(transcript, &self.ca, &self.cb, c);
     }
 }
-
 
 impl<P: PedersenConfig> ZeroOneProofTranscriptable for ZeroOneProofIntermediate<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c: &Self::Affine) {
-        ZeroOneProof::make_transcript(transcript, &self.ca.comm, &self.cb.comm, &c);
+        ZeroOneProof::make_transcript(transcript, &self.ca.comm, &self.cb.comm, c);
     }
 }
-
-

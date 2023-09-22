@@ -64,7 +64,7 @@ pub const G_GENERATOR_Y2 : Fq = MontFp!("636388578600324213113694494136936946846
 derive_conversion!(
     Config,
     6,
-    192, 
+    192,
     secp384r1conf,
     G_GENERATOR_X2,
     G_GENERATOR_Y2,

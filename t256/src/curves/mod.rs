@@ -75,7 +75,7 @@ pub const G_SECP256_O_Y: &str =
 derive_conversion!(
     Config,
     4,
-    128, 
+    128,
     secp256r1conf,
     G_GENERATOR_X2,
     G_GENERATOR_Y2,

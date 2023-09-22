@@ -9,20 +9,54 @@ use ark_ec::{
 use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
-use crate::{
-    pedersen_config::PedersenConfig,
-    scalar_mul_protocol::{ECScalarMulProof, ECScalarMulProofTranscriptable},
-    transcript::FSECScalarMulTranscript,
-};
+use crate::{pedersen_config::PedersenConfig, scalar_mul::ScalarMulProtocol};
+
+use std::marker::PhantomData;
 
 /// FSECScalarMulProof. This struct acts as a container for the Fiat-Shamir scalar multiplication proof.
 /// Essentially, this struct can be used to create new proofs (via ```create```), and verify existing proofs (via ```verify```).
-pub struct FSECScalarMulProof<P: PedersenConfig> {
+pub struct FSECScalarMulProof<P: PedersenConfig, PT: ScalarMulProtocol<P>> {
     /// proofs: the sub-proofs.    
-    proofs: Vec<ECScalarMulProof<P>>,
+    proofs: Vec<PT>,
+    _p: PhantomData<P>,
 }
 
-impl<P: PedersenConfig> FSECScalarMulProof<P> {
+pub struct FSECScalarMulProofIntermediate<P: PedersenConfig, PT: ScalarMulProtocol<P>> {
+    intermediates: Vec<PT::Intermediate>,
+    _p: PhantomData<P>,
+}
+
+impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
+    /// create_intermediate. This function returns a set of intermediate values for
+    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `s` - the secret, target point.
+    /// * `rng` - the cryptographically secure RNG.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    pub fn create_intermediate<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> FSECScalarMulProofIntermediate<P, PT> {
+        // Domain separate the transcript.
+        PT::initialise_transcript(transcript);
+        // Now initialise the initial proof objects.
+        let mut intermediates = Vec::with_capacity(P::SECPARAM);
+        for _ in 0..P::SECPARAM {
+            intermediates.push(PT::create_intermediates(transcript, rng, s, lambda, p));
+        }
+
+        FSECScalarMulProofIntermediate {
+            intermediates,
+            _p: PhantomData,
+        }
+    }
+
     /// create. This function creates a new scalar multiplication proof for s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -39,40 +73,91 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
-        // Initialise the transcript.
-        transcript.domain_sep();
+        Self::create_proof(
+            s,
+            lambda,
+            p,
+            &Self::create_intermediate(transcript, rng, s, lambda, p),
+            &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
+        )
+    }
 
-        let mut intermediates = Vec::with_capacity(P::SECPARAM);
-        for _ in 0..<P as PedersenConfig>::SECPARAM {
-            intermediates.push(ECScalarMulProof::create_intermediates(
-                transcript, rng, s, lambda, p,
-            ));
-        }
+    /// create_proof_own_challenge.
+    /// This function creates a new scalar multiplication proof for s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the associated T Curve.
+    /// Moreover, this function generates its own challenges from the `transcript`.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `s` - the secret, target point.
+    /// * `rng` - the cryptographically secure RNG.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `inter` - the pre-generated intermediate values.
+    pub fn create_proof_own_challenge(
+        transcript: &mut Transcript,
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &FSECScalarMulProofIntermediate<P, PT>,
+    ) -> Self {
+        Self::create_proof(
+            s,
+            lambda,
+            p,
+            inter,
+            &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
+        )
+    }
 
-        // Now make the challenge.
-        let chal_buf = transcript.challenge_scalar(b"c");
+    /// create_proof. This function creates a new scalar multiplication proof for s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the associated T Curve. The function also uses
+    /// the challenge in `chal_buf`.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `s` - the secret, target point.
+    /// * `rng` - the cryptographically secure RNG.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    pub fn create_proof(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &FSECScalarMulProofIntermediate<P, PT>,
+        chal_buf: &[u8],
+    ) -> Self {
         let mut proofs = Vec::with_capacity(P::SECPARAM);
-        
         for (i, c) in chal_buf.iter().enumerate() {
             let mut byte = *c;
-            for j in 0..8 {
-                // Extract the lowest bit of byte.
-                let bit = byte & 1;
-                // Use that to make a challenge.
-                let chal = <P as PedersenConfig>::make_single_bit_challenge(bit);
-                proofs.push(ECScalarMulProof::create_proof_with_challenge(
+            for j in 0..PT::SUB_ITER {
+                proofs.push(PT::create_proof_with_challenge_byte(
                     s,
                     lambda,
                     p,
-                    &intermediates[i * 8 + j],
-                    &chal,
+                    &inter.intermediates[(i * (8 / PT::SHIFT_BY)) + j],
+                    byte,
                 ));
-                byte >>= 1;
+
+                byte >>= PT::SHIFT_BY;
             }
         }
 
-        // And finally just return the proofs.
-        Self { proofs }
+        Self {
+            proofs,
+            _p: PhantomData,
+        }
+    }
+
+    /// add_to_transcript. This function adds all of the proof information held by `self`
+    /// to the `transcript`. This includes all sub-proof objects.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.    
+    pub fn add_to_transcript(&self, transcript: &mut Transcript) {
+        // Domain separate the transcript.
+        PT::initialise_transcript(transcript);
+        for proof in &self.proofs {
+            proof.add_proof_to_transcript(transcript);
+        }
     }
 
     /// verify. This function verifies that the proof held by `self` is valid.
@@ -86,17 +171,25 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
         transcript: &mut Transcript,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> bool {
-        // Initialise the transcript.
-        transcript.domain_sep();
-        assert!(self.proofs.len() == P::SECPARAM);
-        
-        // Now use the existing elements to build up the rest of the transcript.
-        for proof in &self.proofs {
-            proof.add_to_transcript(transcript);
-        }
+        // Rebuild the transcript.
+        self.add_to_transcript(transcript);
+        // Now just return the verification
+        self.verify_proof(transcript, p)
+    }
 
-        // Make the challenge.
-        let chal_buf = transcript.challenge_scalar(b"c");
+    /// verify_proof. This function verifies that the proof held by `self` is valid.
+    /// Namely, this function checks that each individual sub-proof is correct and returns true
+    /// if all proofs pass and false otherwise. This is equivalent to checking if s = λp for some publicly known point `P`
+    /// Note that this function differs from `verify` in that it assumes the transcript has already been built.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `p` - the publicly known generator.
+    pub fn verify_proof(
+        &self,
+        transcript: &mut Transcript,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> bool {
+        let chal_buf = &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)];
         // And now just check they all go through.
         let mut worked: bool = true;
 
@@ -104,13 +197,10 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
             // Take the current challenge byte.
             let mut byte = *c;
 
-            for j in 0..8 {
-                // Extract the lowest bit of byte.
-                let bit = byte & 1;
-                // Use that to make a challenge.
-                let chal = <P as PedersenConfig>::make_single_bit_challenge(bit);
-                worked &= self.proofs[i * 8 + j].verify_with_challenge(p, &chal);
-                byte >>= 1;
+            for j in 0..PT::SUB_ITER {
+                worked &=
+                    self.proofs[i * (8 / PT::SHIFT_BY) + j].verify_with_challenge_byte(p, byte);
+                byte >>= PT::SHIFT_BY;
             }
         }
 
@@ -119,6 +209,7 @@ impl<P: PedersenConfig> FSECScalarMulProof<P> {
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     pub fn serialized_size(&self) -> usize {
-        self.proofs.len() * self.proofs[0].serialized_size()
+        // N.B we write this in this way because ZKAttest proof sizes may vary.
+        self.proofs.iter().map(|p| p.serialized_size()).sum()
     }
 }

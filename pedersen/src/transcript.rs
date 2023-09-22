@@ -203,8 +203,9 @@ pub trait FSECScalarMulTranscript {
     fn append_point(&mut self, label: &'static [u8], point: &[u8]);
 
     /// Produce the challenge.
-    /// N.B 16 byte challenge -> 128 bits.
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 16];
+    /// N.B 32 byte challenge - 256 bit challenge. Callers can use less of
+    /// this for e.g 128 bit challenges.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64];
 }
 
 impl FSECScalarMulTranscript for Transcript {
@@ -216,8 +217,8 @@ impl FSECScalarMulTranscript for Transcript {
         self.append_message(label, point);
     }
 
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 16] {
-        let mut buf = [0u8; 16];
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64] {
+        let mut buf = [0u8; 64];
         self.challenge_bytes(label, &mut buf);
         buf
     }
@@ -231,8 +232,8 @@ pub trait ZKAttestFSECScalarMulTranscript {
     fn append_point(&mut self, label: &'static [u8], point: &[u8]);
 
     /// Produce the challenge.
-    /// N.B 16 byte challenge -> 256 bits.
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 32];
+    /// N.B 64 byte challenge -> 512 bits.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64];
 }
 
 impl ZKAttestFSECScalarMulTranscript for Transcript {
@@ -244,8 +245,8 @@ impl ZKAttestFSECScalarMulTranscript for Transcript {
         self.append_message(label, point);
     }
 
-    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 32] {
-        let mut buf = [0u8; 32];
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; 64] {
+        let mut buf = [0u8; 64];
         self.challenge_bytes(label, &mut buf);
         buf
     }
@@ -265,6 +266,33 @@ pub trait GKZeroOneTranscript {
 impl GKZeroOneTranscript for Transcript {
     fn domain_sep(&mut self) {
         self.append_message(b"dom-sep", b"gk-zero-one-proof");
+    }
+
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
+        self.append_message(label, point);
+    }
+
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE] {
+        let mut buf = [0u8; CHALLENGE_SIZE];
+        self.challenge_bytes(label, &mut buf);
+        buf
+    }
+}
+
+pub trait ECDSASignatureTranscript {
+    /// Append a domain separator.
+    fn domain_sep(&mut self);
+
+    /// Append a point.
+    fn append_point(&mut self, label: &'static [u8], point: &[u8]);
+
+    /// Produce the challenge.
+    fn challenge_scalar(&mut self, label: &'static [u8]) -> [u8; CHALLENGE_SIZE];
+}
+
+impl ECDSASignatureTranscript for Transcript {
+    fn domain_sep(&mut self) {
+        self.append_message(b"dom-sep", b"ecdsa-signature-proof");
     }
 
     fn append_point(&mut self, label: &'static [u8], point: &[u8]) {
