@@ -534,8 +534,13 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
             let s = (OGENERATOR.mul(lambda)).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof =
-                FSECSMP::<$config, ZKECSMP<$config>>::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+            let proof = FSECSMP::<$config, ZKECSMP<$config>>::create(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+            );
 
             c.bench_function(
                 concat!(
@@ -661,20 +666,35 @@ macro_rules! bench_tcurve_ecdsa_prover_time {
             };
 
             let (r, s) = sign(&t, &private);
-                       
+
             // Now we need to make `R`.
             let u1 = t * s.inverse().unwrap();
             let u2 = r * s.inverse().unwrap();
             let R = (OGENERATOR.mul(u1) + public.mul(u2)).into_affine();
 
-            c.bench_function(concat!($curve_name, " ecdsa signature proof prover time ", $collective_name), |b| {
-                b.iter(|| {
-                    let mut transcript = Transcript::new(label);
-                    ECDSASigProof::<$config, $collective_type>::create(&mut transcript, &mut OsRng, &t, &R, &r, &s, &public);
-                });
-            });            
+            c.bench_function(
+                concat!(
+                    $curve_name,
+                    " ecdsa signature proof prover time ",
+                    $collective_name
+                ),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript = Transcript::new(label);
+                        ECDSASigProof::<$config, $collective_type>::create(
+                            &mut transcript,
+                            &mut OsRng,
+                            &t,
+                            &R,
+                            &r,
+                            &s,
+                            &public,
+                        );
+                    });
+                },
+            );
         }
-    }
+    };
 }
 
 #[macro_export]
@@ -734,22 +754,37 @@ macro_rules! bench_tcurve_ecdsa_verifier_time {
             };
 
             let (r, s) = sign(&t, &private);
-                       
+
             // Now we need to make `R`.
             let u1 = t * s.inverse().unwrap();
             let u2 = r * s.inverse().unwrap();
             let R = (OGENERATOR.mul(u1) + public.mul(u2)).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof = ECDSASigProof::<$config, $collective_type>::create(&mut transcript, &mut OsRng, &t, &R, &r, &s, &public);
-            c.bench_function(concat!($curve_name, " ecdsa signature proof verifier time ", $collective_name), |b| {
-                b.iter(|| {
-                    let mut transcript_v = Transcript::new(label);
-                    proof.verify(&mut transcript_v, &R, &t);
-                });
-            });                       
+            let proof = ECDSASigProof::<$config, $collective_type>::create(
+                &mut transcript,
+                &mut OsRng,
+                &t,
+                &R,
+                &r,
+                &s,
+                &public,
+            );
+            c.bench_function(
+                concat!(
+                    $curve_name,
+                    " ecdsa signature proof verifier time ",
+                    $collective_name
+                ),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript_v = Transcript::new(label);
+                        proof.verify(&mut transcript_v, &R, &t);
+                    });
+                },
+            );
         }
-    }
+    };
 }
 
 #[macro_export]
@@ -770,14 +805,14 @@ macro_rules! bench_tcurve_import_everything {
             ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
             ecdsa_protocol::ECDSASigProof,
             equality_protocol::EqualityProof as EP,
-            scalar_mul::ScalarMulProtocol,
-            point_add::PointAddProtocol, 
-            fs_scalar_mul_protocol::FSECScalarMulProof as FSECSMP,            
+            fs_scalar_mul_protocol::FSECScalarMulProof as FSECSMP,
             gk_zero_one_protocol::ZeroOneProof as ZOP,
             mul_protocol::MulProof as MP,
             opening_protocol::OpeningProof as OP,
             pedersen_config::PedersenComm,
             pedersen_config::PedersenConfig,
+            point_add::PointAddProtocol,
+            scalar_mul::ScalarMulProtocol,
             scalar_mul_protocol::{
                 ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
             },
@@ -789,7 +824,7 @@ macro_rules! bench_tcurve_import_everything {
             zk_attest_scalar_mul_protocol::{
                 ZKAttestECScalarMulProof as ZKECSMP,
                 ZKAttestECScalarMulProofIntermediate as ZKECSMPI,
-           },                       
+            },
         };
         use rand_core::OsRng;
         use sha2::{Digest, Sha512};
@@ -917,13 +952,35 @@ macro_rules! bench_tcurve_make_all {
             $OtherProjectiveType
         );
 
-        $crate::bench_tcurve_ecdsa_prover_time!($config, ecdsa_scalar_mul_creation_cdls, $curve_name, " cdls", CDLSCollective);
-        $crate::bench_tcurve_ecdsa_prover_time!($config, ecdsa_scalar_mul_creation_zk, $curve_name, " zkattest", ZKAttestCollective);
-        $crate::bench_tcurve_ecdsa_verifier_time!($config, ecdsa_scalar_mul_verification_cdls,
-                                                  $curve_name, " cdls", CDLSCollective);
-        $crate::bench_tcurve_ecdsa_verifier_time!($config, ecdsa_scalar_mul_verification_zk,
-                                                  $curve_name, " zkattest", ZKAttestCollective);
-        
+        $crate::bench_tcurve_ecdsa_prover_time!(
+            $config,
+            ecdsa_scalar_mul_creation_cdls,
+            $curve_name,
+            " cdls",
+            CDLSCollective
+        );
+        $crate::bench_tcurve_ecdsa_prover_time!(
+            $config,
+            ecdsa_scalar_mul_creation_zk,
+            $curve_name,
+            " zkattest",
+            ZKAttestCollective
+        );
+        $crate::bench_tcurve_ecdsa_verifier_time!(
+            $config,
+            ecdsa_scalar_mul_verification_cdls,
+            $curve_name,
+            " cdls",
+            CDLSCollective
+        );
+        $crate::bench_tcurve_ecdsa_verifier_time!(
+            $config,
+            ecdsa_scalar_mul_verification_zk,
+            $curve_name,
+            " zkattest",
+            ZKAttestCollective
+        );
+
         $crate::bench_tcurve_gk_zero_one_prover_time!($config, gk_zero_one_creation, $curve_name);
         $crate::bench_tcurve_gk_zero_one_verifier_time!(
             $config,
@@ -947,7 +1004,7 @@ macro_rules! bench_tcurve_make_all {
             zk_attest_scalar_mul_creation,
             scalar_mul_verification,
             zk_attest_scalar_mul_verification,
-            fs_scalar_mul_creation,            
+            fs_scalar_mul_creation,
             fs_zk_attest_scalar_mul_creation,
             fs_scalar_mul_verification,
             fs_zk_attest_scalar_mul_verification,
@@ -957,7 +1014,6 @@ macro_rules! bench_tcurve_make_all {
             ecdsa_scalar_mul_verification_zk,
             gk_zero_one_creation,
             gk_zero_one_verification,
-            
         );
         criterion_main!(benches);
     };
