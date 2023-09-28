@@ -895,17 +895,19 @@ macro_rules! test_pedersen {
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
-                ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
+                cdls_point_add_protocol::{
+                    ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP,
+                },
+                cdls_scalar_mul_protocol::{
+                    ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
+                },
                 equality_protocol::EqualityProof as EP,
-                fs_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
+                fs_cdls_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
                 fs_zk_attest_scalar_mul_protocol::FSZKAttestECScalarMulProof as FSZKECSMP,
                 mul_protocol::MulProof as MP,
                 opening_protocol::OpeningProof as OP,
                 pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
-                scalar_mul_protocol::{
-                    ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
-                },
                 zk_attest_point_add_protocol::{
                     ZKAttestPointAddProof as ZKEPAP, ZKAttestPointAddProofIntermediate as ZKEPAPI,
                 },

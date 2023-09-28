@@ -10,8 +10,8 @@ use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
 use crate::{
+    cdls_scalar_mul_protocol::{ECScalarMulProof, ECScalarMulProofTranscriptable},
     pedersen_config::PedersenConfig,
-    scalar_mul_protocol::{ECScalarMulProof, ECScalarMulProofTranscriptable},
     transcript::FSECScalarMulTranscript,
 };
 

@@ -16,7 +16,7 @@ use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
 use crate::{
-    ec_point_add_protocol::{
+    cdls_point_add_protocol::{
         ECPointAddIntermediate, ECPointAddIntermediateTranscript, ECPointAddProof,
         ECPointAddProofTranscriptable,
     },
@@ -352,7 +352,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
 
     /// create_proof_with_challenge. This function returns a proof that s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
+    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.
     /// # Arguments
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
