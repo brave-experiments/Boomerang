@@ -15,7 +15,6 @@ use rand::{CryptoRng, RngCore};
 use crate::{
     collective::Collective,
     fs_scalar_mul_protocol::{FSECScalarMulProof, FSECScalarMulProofIntermediate},
-    opening_protocol::{OpeningProof, OpeningProofIntermediate, OpeningProofTranscriptable},
     pedersen_config::PedersenComm,
     pedersen_config::PedersenConfig,
     transcript::ECDSASignatureTranscript,
@@ -53,11 +52,7 @@ pub struct ECDSASigProof<P: PedersenConfig, PT: Collective<P>> {
     pub c3: sw::Affine<P>,
 
     /// scalar_mul: the proof of validity for zR.
-    pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,
-    /// op1: proof of opening for c2.
-    pub op1: OpeningProof<P>,
-    /// op2: proof of opening for c3.
-    pub op2: OpeningProof<P>,
+    pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,    
 }
 
 pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
@@ -89,11 +84,6 @@ pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
 
     /// mpi: the intermediates for the Fiat-Shamir multiplication proof.
     pub mpi: FSECScalarMulProofIntermediate<P, PT::ScalarMul>,
-
-    /// opi1: the opening proof intermediates for the proof that c2 == a commitment to the x co-ordinate of zR.
-    pub opi1: OpeningProofIntermediate<P>,
-    /// opi2: the opening proof intermediates for the proof that c3 == a commitment to the y co-ordinate of zR.
-    pub opi2: OpeningProofIntermediate<P>,
 
     /// zr: the value of z*R. This is private information, but this is only for the intermediates struct.
     pub zr: sw::Affine<P::OCurve>,
@@ -224,10 +214,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             transcript, rng, &lhs, &z, r,
         );
 
-        // Prove knowledge of an opening for C2 and C3.
-        let opi1 = OpeningProof::create_intermediates(transcript, rng, &c2);
-        let opi2 = OpeningProof::create_intermediates(transcript, rng, &c3);
-
         ECDSASigProofIntermediate {
             r: (*r),
             cq_x,
@@ -239,9 +225,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             mpi,
             zr,
             trmgpq: lhs,
-            z,
-            opi1,
-            opi2,
+            z,            
         }
     }
 
@@ -303,19 +287,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
                 &inter.z,
                 r,
                 &inter.mpi,
-            ),
-            op1: OpeningProof::create_proof_own_challenge(
-                transcript,
-                &P::from_ob_to_sf(inter.zr.x),
-                &inter.opi1,
-                &inter.c2,
-            ),
-            op2: OpeningProof::create_proof_own_challenge(
-                transcript,
-                &P::from_ob_to_sf(inter.zr.y),
-                &inter.opi2,
-                &inter.c3,
-            ),
+            ),            
         }
     }
 
@@ -362,19 +334,14 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         );
 
         self.scalar_mul.add_to_transcript(transcript);
-        self.op1.add_to_transcript(transcript, &self.c2);
-        self.op2.add_to_transcript(transcript, &self.c3);
-
+        
         // Part 2: we verify.
         // This should be read as:
         // 1) We verify the scalar multiplication
-        // 2) We verify the opening proofs
-        // 3) We check the commitments to tr^{-1}g.
+        // 2) We check the commitments to tr^{-1}g.
         // N.B These all need to use functions that do not modify the transcript object further.
         // I.e these functions should call verify_proof or verify_proof_own_challenge where appropriate.
-        self.scalar_mul.verify_proof(transcript, r)
-            && self.op1.verify_proof_own_challenge(transcript, &self.c2)
-            && self.op2.verify_proof_own_challenge(transcript, &self.c3)
+        self.scalar_mul.verify_proof(transcript, r)            
             && self.verify_trm1g_commitments(r, t)
     }
 
@@ -391,8 +358,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             + self.cs_yr.compressed_size()
             + self.c2.compressed_size()
             + self.c3.compressed_size()
-            + self.scalar_mul.serialized_size()
-            + self.op1.serialized_size()
-            + self.op2.serialized_size()
+            + self.scalar_mul.serialized_size()            
     }
 }
