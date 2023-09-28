@@ -493,18 +493,6 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         assert!(*c0 == <P as PedersenConfig>::CM1 || *c0 == <P as PedersenConfig>::CP1);
         assert!(*c1 == <P as PedersenConfig>::CM1 || *c1 == <P as PedersenConfig>::CP1);
 
-        if *c0 == <P as PedersenConfig>::CM1 {
-            println!("c0p: 0");
-        } else {
-            println!("c0p: 1");
-        }
-
-        if *c1 == <P as PedersenConfig>::CM1 {
-            println!("c1p: 0");
-        } else {
-            println!("c1p: 1");
-        }
-
         // Now we rebuild the parts we need for the protocol. N.B
         // the code below creates the transcriptable object differently
         // depending on the challenge c0. Notably, both objects are transcriptable.
@@ -595,18 +583,6 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         assert!(*c0 == <P as PedersenConfig>::CM1 || *c0 == <P as PedersenConfig>::CP1);
         // c1 must also be mapped to either 0 or 1.
         assert!(*c1 == <P as PedersenConfig>::CM1 || *c1 == <P as PedersenConfig>::CP1);
-
-        if *c0 == <P as PedersenConfig>::CM1 {
-            println!("c0v: 0");
-        } else {
-            println!("c0v: 1");
-        }
-
-        if *c1 == <P as PedersenConfig>::CM1 {
-            println!("c1v: 0");
-        } else {
-            println!("c1v: 1");
-        }
 
         // In either case we need z1P.
         // NOTE: this must be an affine point.

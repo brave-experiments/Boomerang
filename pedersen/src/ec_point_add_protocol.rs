@@ -410,6 +410,26 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
         )
     }
 
+    /// create_proof_own_challenge. This function returns a new proof of elliptic curve point addition
+    /// for `t = a + b` using the existing intermediate values held in `inter`. This function also generates
+    /// a new challenge from the `transcript` when generating all proofs.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    /// * `a` - one of the summands.
+    /// * `b` - the other summand.
+    /// * `t` - the target point (i.e `t = a + b`).
+    /// * `inter` - the intermediate values.
+    fn create_proof_own_challenge(
+        transcript: &mut Transcript,
+        a: sw::Affine<<P as PedersenConfig>::OCurve>,
+        b: sw::Affine<<P as PedersenConfig>::OCurve>,
+        t: sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &Self::Intermediate,
+    ) -> Self {
+        // Just return the result of creating all the sub-proofs.
+        Self::create_proof(a, b, t, inter, &transcript.challenge_scalar(b"c")[..])
+    }
+
     /// create. This function returns a new proof of elliptic curve addition point addition
     /// for `t = a + b`.
     /// # Arguments
@@ -462,6 +482,16 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
         self.verify_with_challenge(&chal)
     }
 
+    /// verify_proof_own_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
+    /// Note: this function does not add `self` to the transcript, and instead only uses the transcript to generate
+    /// the challenges.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.
+    fn verify_proof_own_challenge(&self, transcript: &mut Transcript) -> bool {
+        self.verify_proof(&transcript.challenge_scalar(b"c")[..])
+    }
+
     /// verify_with_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
     /// In other words, this function returns true if the proof shows that `t = a + b` for previously
     /// committed values of `t`, `a` and `b`.
@@ -504,6 +534,10 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
             + self.mp2.serialized_size()
             + self.mp3.serialized_size()
             + self.op.serialized_size()
+    }
+
+    fn add_proof_to_transcript(&self, transcript: &mut Transcript) {
+        self.add_to_transcript(transcript);
     }
 }
 

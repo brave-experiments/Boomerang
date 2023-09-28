@@ -15,8 +15,8 @@ use rand::{CryptoRng, RngCore};
 use crate::{
     collective::Collective,
     fs_scalar_mul_protocol::{FSECScalarMulProof, FSECScalarMulProofIntermediate},
-    pedersen_config::PedersenComm,
-    pedersen_config::PedersenConfig,
+    pedersen_config::{PedersenComm, PedersenConfig},
+    point_add::PointAddProtocol,
     transcript::ECDSASignatureTranscript,
 };
 
@@ -52,7 +52,10 @@ pub struct ECDSASigProof<P: PedersenConfig, PT: Collective<P>> {
     pub c3: sw::Affine<P>,
 
     /// scalar_mul: the proof of validity for zR.
-    pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,    
+    pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,
+
+    /// point_add: the proof that the commitment to `tr^{-1}g + Q` == a value.
+    pub point_add: PT::PointAdd,
 }
 
 pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
@@ -85,10 +88,17 @@ pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
     /// mpi: the intermediates for the Fiat-Shamir multiplication proof.
     pub mpi: FSECScalarMulProofIntermediate<P, PT::ScalarMul>,
 
+    /// addpi: the intermediates for the point addition proof.
+    pub addpi: <PT::PointAdd as PointAddProtocol<P>>::Intermediate,
+
     /// zr: the value of z*R. This is private information, but this is only for the intermediates struct.
     pub zr: sw::Affine<P::OCurve>,
-    /// trmgpq: the value of tr^{-1}g + q. Only used later for generating proofs.
-    pub trmgpq: sw::Affine<P::OCurve>,
+    /// trm1g: the value of tr^{-1}g. Only used later for generating proofs.
+    pub trm1g: sw::Affine<P::OCurve>,
+
+    /// sum: the value of tr^{-1}g + q. Only used later for generating proofs.
+    pub sum: sw::Affine<P::OCurve>,
+
     /// z: the scalar that's used. Only here for easier proof generation.
     pub z: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
 }
@@ -209,9 +219,18 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         // This is the lhs for the proof (i.e we are proving that tr^{-1}g + q = zR).
         let lhs = (trm1g + q).into_affine();
 
+        // Commit to the point.
+        let c_lhs_x = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(lhs.x), rng);
+        let c_lhs_y = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(lhs.y), rng);
+
         // Prove that zr = trm1g + q.
         let mpi = FSECScalarMulProof::<P, PT::ScalarMul>::create_intermediate(
             transcript, rng, &lhs, &z, r,
+        );
+
+        // Prove that lhs = trm1g + q from our already existing commitments.
+        let addpi = PT::PointAdd::create_intermediates_with_existing_commitments(
+            transcript, rng, trm1g, *q, lhs, &cs_x, &cs_y, &cq_x, &cq_y, &c_lhs_x, &c_lhs_y, false,
         );
 
         ECDSASigProofIntermediate {
@@ -223,9 +242,11 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             c2,
             c3,
             mpi,
+            addpi,
             zr,
-            trmgpq: lhs,
-            z,            
+            sum: lhs,
+            trm1g,
+            z,
         }
     }
 
@@ -252,7 +273,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         // We just make the intermediates and delegate to the
         // rest.
         let inter = Self::create_intermediates(transcript, rng, t, r, r_x, s, q);
-        Self::create_proof(transcript, r, &inter)
+        Self::create_proof(transcript, r, &inter, q)
     }
 
     /// create_proof. This function takes a pre-existing set of intermediates (`inter`) and builds
@@ -266,6 +287,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         transcript: &mut Transcript,
         r: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &ECDSASigProofIntermediate<P, PT>,
+        q: &sw::Affine<<P as PedersenConfig>::OCurve>,
     ) -> Self {
         // N.B We allow the sub-callers to generate their own challenges here. This is primarily
         // to make the API easier to handle across various security levels / parameters.
@@ -282,12 +304,16 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             c2: inter.c2.comm,
             c3: inter.c3.comm,
             scalar_mul: FSECScalarMulProof::<P, PT::ScalarMul>::create_proof_own_challenge(
+                transcript, &inter.sum, &inter.z, r, &inter.mpi,
+            ),
+
+            point_add: PT::PointAdd::create_proof_own_challenge(
                 transcript,
-                &inter.trmgpq,
-                &inter.z,
-                r,
-                &inter.mpi,
-            ),            
+                inter.trm1g,
+                *q,
+                inter.sum,
+                &inter.addpi,
+            ),
         }
     }
 
@@ -334,14 +360,17 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         );
 
         self.scalar_mul.add_to_transcript(transcript);
-        
+        self.point_add.add_proof_to_transcript(transcript);
+
         // Part 2: we verify.
         // This should be read as:
         // 1) We verify the scalar multiplication
-        // 2) We check the commitments to tr^{-1}g.
+        // 2) We verify the point addition.
+        // 3) We check the commitments to tr^{-1}g.
         // N.B These all need to use functions that do not modify the transcript object further.
         // I.e these functions should call verify_proof or verify_proof_own_challenge where appropriate.
-        self.scalar_mul.verify_proof(transcript, r)            
+        self.scalar_mul.verify_proof(transcript, r)
+            && self.point_add.verify_proof_own_challenge(transcript)
             && self.verify_trm1g_commitments(r, t)
     }
 
@@ -358,6 +387,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             + self.cs_yr.compressed_size()
             + self.c2.compressed_size()
             + self.c3.compressed_size()
-            + self.scalar_mul.serialized_size()            
+            + self.scalar_mul.serialized_size()
     }
 }
