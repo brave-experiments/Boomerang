@@ -1,7 +1,7 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __derive_conversion {
-    ($config: ty, $dim: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
         // Define the conversion functions for this particular
         // mapping.
         type OtherBaseField = <$OtherCurve as CurveConfig>::BaseField;
@@ -70,6 +70,10 @@ macro_rules! __derive_conversion {
             pub fn new(x: $other_r) -> OtherScalar {
                 OtherScalar(x)
             }
+
+            pub fn as_fr(&self) -> OtherScalarField {
+                self.0
+            }
         }
 
         impl From<OtherScalar> for BigInt<$dim> {
@@ -88,6 +92,9 @@ macro_rules! __derive_conversion {
         // Define the Pedersen commitment type.
         impl PedersenConfig for $config {
             type OCurve = $OtherCurve;
+
+            const SECPARAM: usize = $sec_param;
+
             /// GENERATOR2 = (G2_X, G2_Y)
             const GENERATOR2: $affine = <$affine>::new_unchecked($G2_X, $G2_Y);
 
@@ -95,6 +102,11 @@ macro_rules! __derive_conversion {
                 let x_t: BigInt<$dim> = x.into();
                 let x_v: FrStruct = FrStruct::from(x_t);
                 x_v.as_fr()
+            }
+
+            fn from_ob_to_os(x: OtherBaseField) -> <Self::OCurve as CurveConfig>::ScalarField {
+                let x_t: BigInt<$dim> = x.into();
+                OtherScalar::from(x_t).as_fr()
             }
 
             fn from_os_to_sf(x: OtherScalarField) -> <$config as CurveConfig>::ScalarField {
@@ -119,6 +131,12 @@ macro_rules! __derive_conversion {
                 }
             }
 
+            fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField {
+                let x_t = BigInt::<$dim>::from(x);
+                let x_v = FrStruct::from(x_t);
+                x_v.as_fr()
+            }
+
             const OGENERATOR2: sw::Affine<Self::OCurve> =
                 sw::Affine::<Self::OCurve>::new_unchecked(StrToOtherFq!($GSX), StrToOtherFq!($GSY));
 
@@ -130,7 +148,7 @@ macro_rules! __derive_conversion {
 
 #[macro_export]
 macro_rules! derive_conversion {
-    ($config: ty, $dim: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
         use ark_ff::BigInt;
         use ark_ff::{Field, MontConfig, MontFp};
         use ark_ff_macros::to_sign_and_limbs;
@@ -139,6 +157,7 @@ macro_rules! derive_conversion {
         $crate::__derive_conversion!(
             $config,
             $dim,
+            $sec_param,
             $OtherCurve,
             $G2_X,
             $G2_Y,

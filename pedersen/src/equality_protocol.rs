@@ -82,22 +82,6 @@ impl<P: PedersenConfig> EqualityProof<P> {
         EqualityProofIntermediateTranscript { alpha: inter.alpha }
     }
 
-    /// add_to_transcript. This function simply adds self.alpha and the commitments `c1`, `c2` to the `transcript`
-    /// object.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the transcript which is modified.
-    /// * `c1` - the c1 commitment that is being added to the transcript.
-    /// * `c2` - the c2 commitment that is being added to the transcript.    
-    pub fn add_to_transcript(
-        &self,
-        transcript: &mut Transcript,
-        c1: &sw::Affine<P>,
-        c2: &sw::Affine<P>,
-    ) {
-        Self::make_transcript(transcript, c1, c2, &self.alpha)
-    }
-
     /// make_transcript. This function simply adds `c1`, `c2` and `alpha_p` to the `transcript` object.
     /// # Arguments
     /// * `transcript` - the transcript which is modified.
@@ -198,9 +182,17 @@ impl<P: PedersenConfig> EqualityProof<P> {
         c2: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
+        let z = if *chal == P::CM1 {
+            inter.r - (c1.r - c2.r)
+        } else if *chal == P::CP1 {
+            (c1.r - c2.r) + inter.r
+        } else {
+            *chal * (c1.r - c2.r) + inter.r
+        };
+
         EqualityProof {
             alpha: inter.alpha,
-            z: *chal * (c1.r - c2.r) + inter.r,
+            z,
         }
     }
 
@@ -252,7 +244,20 @@ impl<P: PedersenConfig> EqualityProof<P> {
         c2: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        P::GENERATOR2.mul(self.z) == (c1.into_group() - c2).mul(*chal) + self.alpha
+        let rhs = if *chal == P::CP1 {
+            (c1.into_group() - c2).into_affine()
+        } else if *chal == P::CM1 {
+            (c2.into_group() - c1).into_affine()
+        } else {
+            ((c1.into_group() - c2).mul(*chal)).into_affine()
+        };
+
+        P::GENERATOR2.mul(self.z) - self.alpha == rhs
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.z.compressed_size() + self.alpha.compressed_size()
     }
 }
 
@@ -279,5 +284,12 @@ impl<P: PedersenConfig> EqualityProofTranscriptable for EqualityProofIntermediat
         c2: &sw::Affine<P>,
     ) {
         EqualityProof::make_transcript(transcript, c1, c2, &self.alpha);
+    }
+}
+
+impl<P: PedersenConfig> EqualityProofIntermediateTranscript<P> {
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    pub fn serialized_size(&self) -> usize {
+        self.alpha.compressed_size()
     }
 }

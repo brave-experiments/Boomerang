@@ -15,6 +15,8 @@ use rand::{CryptoRng, RngCore};
 
 use crate::{
     pedersen_config::{PedersenComm, PedersenConfig},
+    point_add::PointAddProtocol,
+    scalar_mul::ScalarMulProtocol,
     transcript::ZKAttestECScalarMulTranscript,
     zk_attest_point_add_protocol::{
         ZKAttestPointAddProof, ZKAttestPointAddProofIntermediate,
@@ -164,12 +166,30 @@ pub struct ZKAttestECScalarMulProofIntermediateTranscript<P: PedersenConfig> {
     pub pi: ZKAttestPointAddProofIntermediateTranscript<P>,
 }
 
-impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
+impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
+    type Intermediate = ZKAttestECScalarMulProofIntermediate<P>;
+    type IntermediateTranscript = ZKAttestECScalarMulProofIntermediateTranscript<P>;
+
+    const SUB_ITER: usize = 4;
+    const SHIFT_BY: usize = 2;
+
+    /// initialise_transcript. This function accepts a transcript and initialises it to the domain separator state.
+    /// This is typically used for generic callers.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    fn initialise_transcript(transcript: &mut Transcript) {
+        transcript.domain_sep();
+    }
+
+    fn challenge_scalar(transcript: &mut Transcript) -> [u8; 64] {
+        transcript.challenge_scalar(b"c")
+    }
+
     /// make_intermediate_transcript. This function accepts a set of intermediates (`inter`) and builds
     /// a new intermediate transcript object from `inter`.
     /// # Arguments
     /// * `inter` - the intermediate objects.
-    pub fn make_intermediate_transcript(
+    fn make_intermediate_transcript(
         inter: ZKAttestECScalarMulProofIntermediate<P>,
     ) -> ZKAttestECScalarMulProofIntermediateTranscript<P> {
         ZKAttestECScalarMulProofIntermediateTranscript {
@@ -187,6 +207,220 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         }
     }
 
+    /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
+    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    fn create<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> Self {
+        // Make the intermediates and then immediately make the challenge.
+        let inter = Self::create_intermediates(transcript, rng, s, lambda, p);
+
+        // Now challenge.
+        let chal_buf = transcript.challenge_scalar(b"c");
+
+        // And now just return the result of the proof.
+        Self::create_proof(s, lambda, p, &inter, &chal_buf[..])
+    }
+
+    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
+    /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve.
+    /// # Arguments
+    /// * `transcript` - the transcript object to use.
+    /// * `rng` - the cryptographically secure RNG.
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    fn create_intermediates<T: RngCore + CryptoRng>(
+        transcript: &mut Transcript,
+        rng: &mut T,
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> ZKAttestECScalarMulProofIntermediate<P> {
+        // Part 1: make the various commitments.
+        // To begin, we commit to lambda.
+        let (c1, r1) = <P as PedersenConfig>::create_commit_other(lambda, rng);
+        let c2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.x), rng);
+        let c3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.y), rng);
+
+        // And now we make the unique alpha value. Note that ZKAttest places no restriction on the
+        // value of alpha.
+        let alpha = <P as PedersenConfig>::get_random_p(rng);
+
+        // Now we compute the gamma values.
+        let gamma = ((*p).mul(alpha)).into_affine();
+
+        let (a1, beta_1) = <P as PedersenConfig>::create_commit_other(&alpha, rng);
+        let a2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.x), rng);
+        let a3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.y), rng);
+
+        // And now the other one.
+        let amlp = ((*p).mul(alpha - lambda)).into_affine();
+        let c4 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(amlp.x), rng);
+        let c5 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(amlp.y), rng);
+
+        Self::make_transcript(
+            transcript, &c1, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &a1, &a2.comm, &a3.comm,
+        );
+
+        let pi = ZKAttestPointAddProof::create_intermediates_with_existing_commitments(
+            transcript, rng, amlp, *s, gamma, &c4, &c5, &c2, &c3, &a2, &a3, false,
+        );
+
+        ZKAttestECScalarMulProofIntermediate {
+            c1,
+            c2,
+            c3,
+            alpha,
+            a1,
+            r1,
+            beta_1,
+            a2,
+            a3,
+            c4,
+            c5,
+            pi,
+        }
+    }
+
+    /// create_proof. This function creates a proof that
+    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Note that this function uses challenges derived from `chal_buf`.
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `inter` - the intermediate values.
+    /// * `chal_buf` - the buffer from which challenges are produced.
+    fn create_proof(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ZKAttestECScalarMulProofIntermediate<P>,
+        chal_buf: &[u8],
+    ) -> Self {
+        let c0 = &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
+        let c1 =
+            &<P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
+
+        Self::create_proof_with_challenge(s, lambda, p, inter, c0, c1)
+    }
+
+    /// verify. This function verifies the proof held in `self`, returns true if the proof is valid and false otherwise.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.
+    /// * `p` - the publicly known point.
+    fn verify(
+        &self,
+        transcript: &mut Transcript,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> bool {
+        // Build the transcript from the ones that we have.
+        self.add_to_transcript(transcript);
+        let chal_buf = transcript.challenge_scalar(b"c");
+        self.verify_proof(p, &chal_buf[..])
+    }
+
+    /// verify_proof. This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
+    /// Notably, this function builds the challenge from the bytes supplied in `chal_buf`.
+    /// # Arguments
+    /// * `self` - the proof object.    
+    /// * `p` - the publicly known point.
+    /// * `chal_buf` - the buffer containing the challenge bytes.
+    fn verify_proof(&self, p: &sw::Affine<<P as PedersenConfig>::OCurve>, chal_buf: &[u8]) -> bool {
+        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
+        let c1 =
+            <P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
+        self.verify_with_challenge(p, &c0, &c1)
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    fn serialized_size(&self) -> usize {
+        let lhs = self.c1.compressed_size()
+            + self.c2.compressed_size()
+            + self.c3.compressed_size()
+            + self.alpha.compressed_size()
+            + self.a1.compressed_size()
+            + self.a2.compressed_size()
+            + self.a3.compressed_size()
+            + self.c4.compressed_size()
+            + self.c5.compressed_size()
+            + self.z1.compressed_size()
+            + self.z2.compressed_size()
+            + self.z4.compressed_size();
+
+        if let Some(proof) = &self.pi {
+            lhs + proof.serialized_size()
+        } else if let Some(pii) = &self.pii {
+            lhs + pii.serialized_size()
+        } else {
+            panic!("Cannot have both proof and pii not set!");
+        }
+    }
+
+    /// create_proof_with_challenge_byte. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `chal` - the challenge byte.
+    fn create_proof_with_challenge_byte(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &Self::Intermediate,
+        chal: u8,
+    ) -> Self {
+        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
+        let c1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
+        Self::create_proof_with_challenge(s, lambda, p, inter, &c0, &c1)
+    }
+
+    /// verify_with_challenge_byte. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
+    /// Notably, this function uses a pre-determined challenge (`chal`).
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `p` - the publicly known point.
+    /// * `chal` - the challenge byte.
+    fn verify_with_challenge_byte(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal: u8,
+    ) -> bool {
+        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
+        let c1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
+        self.verify_with_challenge(p, &c0, &c1)
+    }
+
+    /// add_proof_to_transcript. This function acts as an alias for the add_to_transcript function that may
+    /// be realised by other means. The main idea here is that we need a type-independent way to add proofs
+    /// to the transcript for the Fiat-Shamir code.
+    ///
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the transcript object.
+    fn add_proof_to_transcript(&self, transcript: &mut Transcript) {
+        self.add_to_transcript(transcript);
+    }
+}
+
+impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
     /// make_transcript. This function adds all of the relevant sub-commitments
     /// to the transcript for the scalar multiplication proof.
     /// # Arguments
@@ -234,117 +468,6 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
 
         a3.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"A3", &compressed_bytes[..]);
-    }
-
-    /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve.
-    /// # Arguments
-    /// * `transcript` - the transcript object to use.
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    pub fn create<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> Self {
-        // Make the intermediates and then immediately make the challenge.
-        let inter = Self::create_intermediates(transcript, rng, s, lambda, p);
-
-        // Now challenge.
-        let chal_buf = transcript.challenge_scalar(b"c");
-
-        // And now just return the result of the proof.
-        Self::create_proof(s, lambda, p, &inter, &chal_buf)
-    }
-
-    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
-    /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
-    /// Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve.
-    /// # Arguments
-    /// * `transcript` - the transcript object to use.
-    /// * `rng` - the cryptographically secure RNG.
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    pub fn create_intermediates<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> ZKAttestECScalarMulProofIntermediate<P> {
-        // Part 1: make the various commitments.
-        // To begin, we commit to lambda.
-        let (c1, r1) = <P as PedersenConfig>::create_commit_other(lambda, rng);
-        let c2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.x), rng);
-        let c3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.y), rng);
-
-        // And now we make the unique alpha value. Note that ZKAttest places no restriction on the
-        // value of alpha.
-        let alpha = <P as PedersenConfig>::get_random_p(rng);
-
-        // Now we compute the gamma values.
-        let gamma = ((*p).mul(alpha)).into_affine();
-
-        let (a1, beta_1) = <P as PedersenConfig>::create_commit_other(&alpha, rng);
-        let a2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.x), rng);
-        let a3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.y), rng);
-
-        // And now the other one.
-        let amlp = ((*p).mul(alpha - lambda)).into_affine();
-        let c4 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(amlp.x), rng);
-        let c5 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(amlp.y), rng);
-
-        Self::make_transcript(
-            transcript, &c1, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &a1, &a2.comm, &a3.comm,
-        );
-
-        let pi = ZKAttestPointAddProof::create_intermediates_from_existing_commitments(
-            transcript, rng, amlp, *s, gamma, &c4, &c5, &c2, &c3, &a2, &a3,
-        );
-
-        ZKAttestECScalarMulProofIntermediate {
-            c1,
-            c2,
-            c3,
-            alpha,
-            a1,
-            r1,
-            beta_1,
-            a2,
-            a3,
-            c4,
-            c5,
-            pi,
-        }
-    }
-
-    /// create_proof. This function creates a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve. Note that this function uses challenges derived from `chal_buf`.
-    /// # Arguments
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    /// * `inter` - the intermediate values.
-    /// * `chal_buf` - the buffer from which challenges are produced.
-    pub fn create_proof(
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        inter: &ZKAttestECScalarMulProofIntermediate<P>,
-        chal_buf: &[u8],
-    ) -> Self {
-        let c0 = &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
-        let c1 =
-            &<P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
-
-        Self::create_proof_with_challenge(s, lambda, p, inter, c0, c1)
     }
 
     /// create_proof_with_challenge. This function creates a proof that
@@ -442,39 +565,6 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         pi.add_to_transcript(transcript);
     }
 
-    /// verify. This function verifies the proof held in `self`, returns true if the proof is valid and false otherwise.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the transcript object.
-    /// * `p` - the publicly known point.
-    pub fn verify(
-        &self,
-        transcript: &mut Transcript,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> bool {
-        // Build the transcript from the ones that we have.
-        self.add_to_transcript(transcript);
-        let chal_buf = transcript.challenge_scalar(b"c");
-        self.verify_proof(p, &chal_buf[..])
-    }
-
-    /// verify_proof. This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
-    /// Notably, this function builds the challenge from the bytes supplied in `chal_buf`.
-    /// # Arguments
-    /// * `self` - the proof object.    
-    /// * `p` - the publicly known point.
-    /// * `chal_buf` - the buffer containing the challenge bytes.
-    pub fn verify_proof(
-        &self,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        chal_buf: &[u8],
-    ) -> bool {
-        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
-        let c1 =
-            <P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
-        self.verify_with_challenge(p, &c0, &c1)
-    }
-
     /// verify_with_challenge.
     /// This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
     /// Notably, this function uses the challenges `c0` and `c1`.
@@ -524,7 +614,7 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         if let Some(proof) = &self.pi {
             // This can only happen if c0 == 1.
             assert!(*c0 == <P as PedersenConfig>::CP1);
-            worked = proof.verify_proof_with_challenge(c1);
+            worked = proof.verify_with_challenge(c1);
         } else {
             // This can only happen if c0 = 0.
             assert!(*c0 == <P as PedersenConfig>::CM1);

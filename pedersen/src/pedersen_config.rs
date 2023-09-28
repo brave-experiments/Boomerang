@@ -19,6 +19,11 @@ pub trait PedersenConfig: SWCurveConfig {
     /// structures) and a SWCurveConfig (so we can access the generators).
     type OCurve: CurveConfig + SWCurveConfig;
 
+    /// The security level associated with this particular Pedersen Config. This should
+    /// be set from the user side. For NIST curves, a prime of bit size |p| provides approximately
+    /// |p|/2 bits of security.
+    const SECPARAM: usize;
+
     /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
     /// * `x` - the element ∈ OCurve's ScalarField.
@@ -29,6 +34,14 @@ pub trait PedersenConfig: SWCurveConfig {
         let x_bt: num_bigint::BigUint = x.into();
         <Self as CurveConfig>::ScalarField::from(x_bt)
     }
+
+    /// from_ob_to_os. This function takes an `x` in the OCurve's BaseField and converts
+    /// it into an element of the Scalar field of the OCurve.
+    /// * `x` - the element ∈ OCurve's BaseField.
+    /// Returns `y` ∈ OCurve's ScalarField.
+    fn from_ob_to_os(
+        x: <Self::OCurve as CurveConfig>::BaseField,
+    ) -> <Self::OCurve as CurveConfig>::ScalarField;
 
     /// from_ob_to_sf. This function takes an `x` in the OCurve's BaseField and converts
     /// it into an element of the ScalarField of the current curve.
@@ -51,6 +64,8 @@ pub trait PedersenConfig: SWCurveConfig {
     /// * `x` - the element ∈ Self::BaseField.
     /// Returns `x` as an element of Self::ScalarField.
     fn from_bf_to_sf(x: <Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
+
+    fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField;
 
     /// make_challenge_from_buffer. This function accepts a challenge slice (ideally produced by a transcript)
     /// and converts it into an element of Self::ScalarField.

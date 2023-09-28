@@ -22,6 +22,8 @@ use crate::{
     },
     pedersen_config::PedersenComm,
     pedersen_config::PedersenConfig,
+    point_add::PointAddProtocol,
+    scalar_mul::ScalarMulProtocol,
     transcript::ECScalarMulTranscript,
 };
 
@@ -136,17 +138,30 @@ pub struct ECScalarMulProofIntermediateTranscript<P: PedersenConfig> {
     pub eapi: ECPointAddIntermediateTranscript<P>,
 }
 
-impl<P: PedersenConfig> ECScalarMulProof<P> {
-    /// OTHER_ZERO. This constant is used to act as the zero element for the ScalarField of
-    /// OCurve. This is here primarily because the proof formation needs it when choosing α.
-    const OTHER_ZERO: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField =
-        <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField::ZERO;
+impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
+    type Intermediate = ECScalarMulProofIntermediate<P>;
+    type IntermediateTranscript = ECScalarMulProofIntermediateTranscript<P>;
+
+    const SUB_ITER: usize = 8;
+    const SHIFT_BY: usize = 1;
+
+    /// initialise_transcript. This function accepts a transcript and initialises it to the domain separator state.
+    /// This is typically used for generic callers.
+    /// # Arguments
+    /// * `transcript` - the transcript object.
+    fn initialise_transcript(transcript: &mut Transcript) {
+        ECScalarMulTranscript::domain_sep(transcript);
+    }
+
+    fn challenge_scalar(transcript: &mut Transcript) -> [u8; 64] {
+        ECScalarMulTranscript::challenge_scalar(transcript, b"c")
+    }
 
     /// make_intermediate_transcript. This function accept a set of intermediate values (`inter`)
     /// and builds a new ECScalarMulProofIntermediateTranscript from `inter`.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
-    pub fn make_intermediate_transcript(
+    fn make_intermediate_transcript(
         inter: ECScalarMulProofIntermediate<P>,
     ) -> ECScalarMulProofIntermediateTranscript<P> {
         ECScalarMulProofIntermediateTranscript {
@@ -162,55 +177,6 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    /// make_transcript. This function accepts a `transcript`, alongside all auxiliary commitments (`c1`,..., `c8`)
-    /// and incorporates each commitment into the transcript.
-    /// # Arguments
-    /// * `transcript` - the transcript object to which the commitments are added.
-    /// * `ci` - the commitments. These are detailed in the ECScalarMulProof struct documentation.
-    pub fn make_transcript(
-        transcript: &mut Transcript,
-        c1: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        c2: &sw::Affine<P>,
-        c3: &sw::Affine<P>,
-        c4: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        c5: &sw::Affine<P>,
-        c6: &sw::Affine<P>,
-        c7: &sw::Affine<P>,
-        c8: &sw::Affine<P>,
-    ) {
-        // This function just builds the transcript for both the create and verify functions.
-        // N.B Because of how we define the serialisation API to handle different numbers,
-        // we use a temporary buffer here.
-        ECScalarMulTranscript::domain_sep(transcript);
-        let mut compressed_bytes = Vec::new();
-
-        c1.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C1", &compressed_bytes[..]);
-
-        c2.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C2", &compressed_bytes[..]);
-
-        c3.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C3", &compressed_bytes[..]);
-
-        c4.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C4", &compressed_bytes[..]);
-
-        c5.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C5", &compressed_bytes[..]);
-
-        c6.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C6", &compressed_bytes[..]);
-
-        c7.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C7", &compressed_bytes[..]);
-
-        c8.serialize_compressed(&mut compressed_bytes).unwrap();
-        ECScalarMulTranscript::append_point(transcript, b"C8", &compressed_bytes[..]);
-    }
-    #[deny(clippy::too_many_arguments)]
-
     /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
     /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -219,7 +185,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    pub fn create<T: RngCore + CryptoRng>(
+    fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
@@ -246,7 +212,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    pub fn create_intermediates<T: RngCore + CryptoRng>(
+    fn create_intermediates<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
@@ -305,7 +271,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
 
         // Now make the EC point addition intermediates.
         let eapi = ECPointAddProof::create_intermediates_with_existing_commitments(
-            transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6,
+            transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6, false,
         );
 
         // Now return the intermediates.
@@ -334,7 +300,7 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
     /// * `chal_buf` - the buffer of challenge bytes.
-    pub fn create_proof(
+    fn create_proof(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
@@ -349,6 +315,159 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
             &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
         )
     }
+
+    /// verify. This function verifies that the proof in `self` holds. This function returns
+    /// true in case of success and false otherwise.
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `transcript` - the stateful transcript object.
+    /// * `p` - the publicly known point.
+    fn verify(
+        &self,
+        transcript: &mut Transcript,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+    ) -> bool {
+        // Re-initialise the transcript.
+        self.add_to_transcript(transcript);
+
+        // Now produce the challenge and delegate.
+        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
+        self.verify_proof(p, &chal_buf)
+    }
+
+    /// verify_proof. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
+    /// Notably, this function builds its challenge from a pre-determined buffer (`chal_buf`).
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `p` - the publicly known point.
+    /// * `chal_buf` - the buffer of challenge bytes.
+    fn verify_proof(&self, p: &sw::Affine<<P as PedersenConfig>::OCurve>, chal_buf: &[u8]) -> bool {
+        // We just make the challenge and call into the more general routine.
+        self.verify_with_challenge(
+            p,
+            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
+        )
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    fn serialized_size(&self) -> usize {
+        self.c1.compressed_size()
+            + self.c2.compressed_size()
+            + self.c3.compressed_size()
+            + self.c4.compressed_size()
+            + self.c5.compressed_size()
+            + self.c6.compressed_size()
+            + self.c7.compressed_size()
+            + self.c8.compressed_size()
+            + self.z1.compressed_size()
+            + self.z2.compressed_size()
+            + self.z3.compressed_size()
+            + self.z4.compressed_size()
+            + self.eap.serialized_size()
+    }
+
+    /// create_proof_with_challenge_byte. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `chal` - the challenge byte.
+    fn create_proof_with_challenge_byte(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &Self::Intermediate,
+        chal: u8,
+    ) -> Self {
+        let bit = chal & 1;
+        // Use that to make a challenge.
+        let challenge = <P as PedersenConfig>::make_single_bit_challenge(bit);
+        Self::create_proof_with_challenge(s, lambda, p, inter, &challenge)
+    }
+
+    /// verify_with_challenge_byte. This function returns true if the proof held by `self` is valid and false otherwise.
+    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
+    /// Notably, this function uses a pre-determined challenge (`chal`).
+    /// # Arguments
+    /// * `self` - the proof object.
+    /// * `p` - the publicly known point.
+    /// * `chal` - the challenge byte.
+    fn verify_with_challenge_byte(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal: u8,
+    ) -> bool {
+        let bit = chal & 1;
+        // Use that to make a challenge.
+        let challenge = <P as PedersenConfig>::make_single_bit_challenge(bit);
+        self.verify_with_challenge(p, &challenge)
+    }
+
+    /// add_proof_to_transcript. This function acts as an alias for the add_to_transcript function that may
+    /// be realised by other means.
+
+    fn add_proof_to_transcript(&self, transcript: &mut Transcript) {
+        self.add_to_transcript(transcript);
+    }
+}
+
+impl<P: PedersenConfig> ECScalarMulProof<P> {
+    /// OTHER_ZERO. This constant is used to act as the zero element for the ScalarField of
+    /// OCurve. This is here primarily because the proof formation needs it when choosing α.
+    const OTHER_ZERO: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField =
+        <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField::ZERO;
+
+    #[allow(clippy::too_many_arguments)]
+    /// make_transcript. This function accepts a `transcript`, alongside all auxiliary commitments (`c1`,..., `c8`)
+    /// and incorporates each commitment into the transcript.
+    /// # Arguments
+    /// * `transcript` - the transcript object to which the commitments are added.
+    /// * `ci` - the commitments. These are detailed in the ECScalarMulProof struct documentation.
+    pub fn make_transcript(
+        transcript: &mut Transcript,
+        c1: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        c4: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c5: &sw::Affine<P>,
+        c6: &sw::Affine<P>,
+        c7: &sw::Affine<P>,
+        c8: &sw::Affine<P>,
+    ) {
+        // This function just builds the transcript for both the create and verify functions.
+        // N.B Because of how we define the serialisation API to handle different numbers,
+        // we use a temporary buffer here.
+        ECScalarMulTranscript::domain_sep(transcript);
+        let mut compressed_bytes = Vec::new();
+
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C1", &compressed_bytes[..]);
+
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C2", &compressed_bytes[..]);
+
+        c3.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C3", &compressed_bytes[..]);
+
+        c4.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C4", &compressed_bytes[..]);
+
+        c5.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C5", &compressed_bytes[..]);
+
+        c6.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C6", &compressed_bytes[..]);
+
+        c7.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C7", &compressed_bytes[..]);
+
+        c8.serialize_compressed(&mut compressed_bytes).unwrap();
+        ECScalarMulTranscript::append_point(transcript, b"C8", &compressed_bytes[..]);
+    }
+    #[deny(clippy::too_many_arguments)]
 
     /// create_proof_with_challenge. This function returns a proof that s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
@@ -431,44 +550,6 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         ep: &EP,
     ) {
         ep.add_to_transcript(transcript);
-    }
-
-    /// verify. This function verifies that the proof in `self` holds. This function returns
-    /// true in case of success and false otherwise.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the stateful transcript object.
-    /// * `p` - the publicly known point.
-    pub fn verify(
-        &self,
-        transcript: &mut Transcript,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> bool {
-        // Re-initialise the transcript.
-        self.add_to_transcript(transcript);
-
-        // Now produce the challenge and delegate.
-        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
-        self.verify_proof(p, &chal_buf)
-    }
-
-    /// verify_proof. This function returns true if the proof held by `self` is valid and false otherwise.
-    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
-    /// Notably, this function builds its challenge from a pre-determined buffer (`chal_buf`).
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `p` - the publicly known point.
-    /// * `chal_buf` - the buffer of challenge bytes.
-    pub fn verify_proof(
-        &self,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        chal_buf: &[u8],
-    ) -> bool {
-        // We just make the challenge and call into the more general routine.
-        self.verify_with_challenge(
-            p,
-            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
-        )
     }
 
     /// verify_with_challenge. This function returns true if the proof held by `self` is valid and false otherwise.

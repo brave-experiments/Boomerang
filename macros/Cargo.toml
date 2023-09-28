@@ -14,3 +14,4 @@ rand_core = { version = "0.6.4" }
 merlin = { version = "3.0.0" }
 ark-ff-macros =  { version = "0.4.2", default-features = false }
 criterion = "0.5.1"
+sha2 = "0.10.8"
