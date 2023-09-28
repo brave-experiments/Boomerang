@@ -1010,8 +1010,6 @@ macro_rules! __test_pedersen {
             assert!(proof.cq_y.is_on_curve());
             assert!(proof.cs_x.is_on_curve());
             assert!(proof.cs_y.is_on_curve());
-            assert!(proof.c2.is_on_curve());
-            assert!(proof.c3.is_on_curve());
 
             // Now check it passes verification.
             let mut transcript_v = Transcript::new(label);
@@ -1072,8 +1070,6 @@ macro_rules! __test_pedersen {
             assert!(proof.cq_y.is_on_curve());
             assert!(proof.cs_x.is_on_curve());
             assert!(proof.cs_y.is_on_curve());
-            assert!(proof.c2.is_on_curve());
-            assert!(proof.c3.is_on_curve());
 
             // Now check it passes verification.
             let mut transcript_v = Transcript::new(label);

@@ -45,12 +45,6 @@ pub struct ECDSASigProof<P: PedersenConfig, PT: Collective<P>> {
     /// cs_yr: the randomness used when making cs_y.
     pub cs_yr: P::ScalarField,
 
-    /// c2: the commitment to the x co-ordinate of zR.
-    pub c2: sw::Affine<P>,
-
-    /// c3: the commitment to the y co-ordinate of zR.
-    pub c3: sw::Affine<P>,
-
     /// scalar_mul: the proof of validity for zR.
     pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,
 
@@ -79,20 +73,12 @@ pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
     /// cs_y: the commitment to tr^{-1}g's y co-ordinate.
     pub cs_y: PedersenComm<P>,
 
-    /// c2: the commitment to the x co-ordinate of zR.
-    pub c2: PedersenComm<P>,
-
-    /// c3: the commitment to the y co-ordinate of zR.
-    pub c3: PedersenComm<P>,
-
     /// mpi: the intermediates for the Fiat-Shamir multiplication proof.
     pub mpi: FSECScalarMulProofIntermediate<P, PT::ScalarMul>,
 
     /// addpi: the intermediates for the point addition proof.
     pub addpi: <PT::PointAdd as PointAddProtocol<P>>::Intermediate,
 
-    /// zr: the value of z*R. This is private information, but this is only for the intermediates struct.
-    pub zr: sw::Affine<P::OCurve>,
     /// trm1g: the value of tr^{-1}g. Only used later for generating proofs.
     pub trm1g: sw::Affine<P::OCurve>,
 
@@ -113,8 +99,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
     /// * `cq_x` - the commitment to the public key Q's x co-ordinate.
     /// * `cs_x` - the commitment to the tr^{-1}g's x co-ordinate.
     /// * `cs_y` - the commitment to the tr^{-1}g's y co-ordinate.
-    /// * `c2` - the commitment to the (private) zR x co-ordinate.
-    /// * `c3` - the commitment to the (private) zR y co-ordinate.
     #[allow(clippy::too_many_arguments)]
     pub fn make_transcript(
         transcript: &mut Transcript,
@@ -123,8 +107,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         cq_y: &sw::Affine<P>,
         cs_x: &sw::Affine<P>,
         cs_y: &sw::Affine<P>,
-        c2: &sw::Affine<P>,
-        c3: &sw::Affine<P>,
     ) {
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
@@ -143,12 +125,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
 
         cs_y.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"cs_y", &compressed_bytes[..]);
-
-        c2.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_point(b"c2", &compressed_bytes[..]);
-
-        c3.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_point(b"c3", &compressed_bytes[..]);
     }
 
     /// make_trgm1_and_r_inv. This function returns tr^{-1}g as a point in the OCurve's affine space,
@@ -206,14 +182,12 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         // z = sr^{-1}.
         let z = *s / *r_x;
 
-        // We now compute zR and commit to each of the co-ordinates..
-        let zr = (r.mul(z)).into_affine();
-        let c2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(zr.x), rng);
-        let c3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(zr.y), rng);
+        // N.B We do not need to compute zR, as it's implicit from knowledge of trm1g + q for
+        // honest provers.
 
         // and then make the transcript for the parts we've built so far.
         Self::make_transcript(
-            transcript, r, &cq_x.comm, &cq_y.comm, &cs_x.comm, &cs_y.comm, &c2.comm, &c3.comm,
+            transcript, r, &cq_x.comm, &cq_y.comm, &cs_x.comm, &cs_y.comm,
         );
 
         // This is the lhs for the proof (i.e we are proving that tr^{-1}g + q = zR).
@@ -239,11 +213,8 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             cq_y,
             cs_x,
             cs_y,
-            c2,
-            c3,
             mpi,
             addpi,
-            zr,
             sum: lhs,
             trm1g,
             z,
@@ -301,8 +272,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             cs_xr: inter.cs_x.r,
             cs_y: inter.cs_y.comm,
             cs_yr: inter.cs_y.r,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
             scalar_mul: FSECScalarMulProof::<P, PT::ScalarMul>::create_proof_own_challenge(
                 transcript, &inter.sum, &inter.z, r, &inter.mpi,
             ),
@@ -356,7 +325,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         // Part 1: rebuild the transcript. This needs to be done in order, or the challenges won't
         // match up.
         Self::make_transcript(
-            transcript, &self.r, &self.cq_x, &self.cq_y, &self.cs_x, &self.cs_y, &self.c2, &self.c3,
+            transcript, &self.r, &self.cq_x, &self.cq_y, &self.cs_x, &self.cs_y,
         );
 
         self.scalar_mul.add_to_transcript(transcript);
@@ -385,8 +354,6 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             + self.cs_xr.compressed_size()
             + self.cs_y.compressed_size()
             + self.cs_yr.compressed_size()
-            + self.c2.compressed_size()
-            + self.c3.compressed_size()
             + self.scalar_mul.serialized_size()
     }
 }
