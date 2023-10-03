@@ -9,7 +9,7 @@ use ark_ec::{
 use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
-use crate::{pedersen_config::PedersenConfig, scalar_mul::ScalarMulProtocol};
+use crate::{pedersen_config::{PedersenComm, PedersenConfig}, scalar_mul::ScalarMulProtocol};
 
 use std::marker::PhantomData;
 
@@ -42,13 +42,17 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> FSECScalarMulProofIntermediate<P, PT> {
         // Domain separate the transcript.
         PT::initialise_transcript(transcript);
         // Now initialise the initial proof objects.
         let mut intermediates = Vec::with_capacity(P::SECPARAM);
         for _ in 0..P::SECPARAM {
-            intermediates.push(PT::create_intermediates(transcript, rng, s, lambda, p));
+            intermediates.push(PT::create_intermediates_with_existing_commitments(transcript, rng, s, lambda, p, c1, r1, c2, c3));
         }
 
         FSECScalarMulProofIntermediate {
@@ -72,12 +76,17 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
         Self::create_proof(
             s,
             lambda,
             p,
-            &Self::create_intermediate(transcript, rng, s, lambda, p),
+            &Self::create_intermediate(transcript, rng, s, lambda, p, c1, r1, c2, c3),
+            c1, r1, c2, c3, 
             &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
         )
     }
@@ -99,12 +108,17 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &FSECScalarMulProofIntermediate<P, PT>,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
         Self::create_proof(
             s,
             lambda,
             p,
             inter,
+            c1, r1, c2, c3,
             &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
         )
     }
@@ -123,6 +137,10 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &FSECScalarMulProofIntermediate<P, PT>,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
         chal_buf: &[u8],
     ) -> Self {
         let mut proofs = Vec::with_capacity(P::SECPARAM);
@@ -135,6 +153,7 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
                     p,
                     &inter.intermediates[(i * (8 / PT::SHIFT_BY)) + j],
                     byte,
+                    c1, r1, c2, c3
                 ));
 
                 byte >>= PT::SHIFT_BY;
@@ -152,11 +171,15 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.    
-    pub fn add_to_transcript(&self, transcript: &mut Transcript) {
+    pub fn add_to_transcript(&self, transcript: &mut Transcript,
+                             c1: &sw::Affine<P::OCurve>,
+                             c2: &sw::Affine<P>,
+                             c3: &sw::Affine<P>,
+    ) {
         // Domain separate the transcript.
         PT::initialise_transcript(transcript);
         for proof in &self.proofs {
-            proof.add_proof_to_transcript(transcript);
+            proof.add_proof_to_transcript(transcript, c1, c2, c3);
         }
     }
 
@@ -170,11 +193,14 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         &self,
         transcript: &mut Transcript,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
         // Rebuild the transcript.
-        self.add_to_transcript(transcript);
+        self.add_to_transcript(transcript, c1, c2, c3);
         // Now just return the verification
-        self.verify_proof(transcript, p)
+        self.verify_proof(transcript, p, c1, c2, c3)
     }
 
     /// verify_proof. This function verifies that the proof held by `self` is valid.
@@ -188,6 +214,9 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         &self,
         transcript: &mut Transcript,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
         let chal_buf = &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)];
         // And now just check they all go through.
@@ -198,8 +227,9 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
             let mut byte = *c;
 
             for j in 0..PT::SUB_ITER {
+                println!("{}:{}", i*(8 / PT::SHIFT_BY) + j, worked);
                 worked &=
-                    self.proofs[i * (8 / PT::SHIFT_BY) + j].verify_with_challenge_byte(p, byte);
+                    self.proofs[i * (8 / PT::SHIFT_BY) + j].verify_with_challenge_byte(p, byte, c1, c2, c3);
                 byte >>= PT::SHIFT_BY;
             }
         }

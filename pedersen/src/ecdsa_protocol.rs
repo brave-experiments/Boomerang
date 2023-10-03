@@ -31,10 +31,11 @@ pub struct ECDSASigProof<P: PedersenConfig, PT: Collective<P>> {
     /// cq_y: the commitment to the public key's y co-ordinate.
     pub cq_y: sw::Affine<P>,
 
-    // Note: this differs from ZKAttest. ZKAttest explicitly sets a single choice
-    // of cz = zR + rh. We do not: we allow each scalar multiplication proof to do this internally.
-    // This is because right now we do not need it.
-    // pub cz: sw::Affine<P::OCurve>,
+    pub c_lhs_x: sw::Affine<P>,
+    pub c_lhs_y: sw::Affine<P>,    
+    pub cz: sw::Affine<P::OCurve>,
+
+    
     /// cs_x: the commitment to tr^{-1}g's x co-ordinate.
     pub cs_x: sw::Affine<P>,
     /// cs_xr: the randomness used when making cs_x.
@@ -44,7 +45,7 @@ pub struct ECDSASigProof<P: PedersenConfig, PT: Collective<P>> {
     pub cs_y: sw::Affine<P>,
     /// cs_yr: the randomness used when making cs_y.
     pub cs_yr: P::ScalarField,
-
+    
     /// scalar_mul: the proof of validity for zR.
     pub scalar_mul: FSECScalarMulProof<P, PT::ScalarMul>,
 
@@ -63,16 +64,18 @@ pub struct ECDSASigProofIntermediate<P: PedersenConfig, PT: Collective<P>> {
     /// cq_y: the commitment to the public key's y co-ordinate.
     pub cq_y: PedersenComm<P>,
 
-    // Note: this differs from ZKAttest. ZKAttest explicitly sets a single choice
-    // of cz = zR + rh. We do not: we allow each scalar multiplication proof to do this internally.
-    // This is because right now we do not need it.
-    // pub cz: sw::Affine<P::OCurve>,
+    pub cz: sw::Affine<P::OCurve>,
+    pub cr: <P::OCurve as CurveConfig>::ScalarField,
+    
+    pub c_lhs_x: PedersenComm<P>,
+    pub c_lhs_y: PedersenComm<P>,
+    
     /// cs_x: the commitment to tr^{-1}g's x co-ordinate.
     pub cs_x: PedersenComm<P>,
 
     /// cs_y: the commitment to tr^{-1}g's y co-ordinate.
     pub cs_y: PedersenComm<P>,
-
+        
     /// mpi: the intermediates for the Fiat-Shamir multiplication proof.
     pub mpi: FSECScalarMulProofIntermediate<P, PT::ScalarMul>,
 
@@ -181,6 +184,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
 
         // z = sr^{-1}.
         let z = *s / *r_x;
+        let (cz, cr) = P::create_commit_other(&z, rng);
 
         // N.B We do not need to compute zR, as it's implicit from knowledge of trm1g + q for
         // honest provers.
@@ -199,12 +203,12 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
 
         // Prove that zr = trm1g + q.
         let mpi = FSECScalarMulProof::<P, PT::ScalarMul>::create_intermediate(
-            transcript, rng, &lhs, &z, r,
+            transcript, rng, &lhs, &z, r, &cz, &cr, &c_lhs_x, &c_lhs_y
         );
 
         // Prove that lhs = trm1g + q from our already existing commitments.
         let addpi = PT::PointAdd::create_intermediates_with_existing_commitments(
-            transcript, rng, trm1g, *q, lhs, &cs_x, &cs_y, &cq_x, &cq_y, &c_lhs_x, &c_lhs_y, false,
+            transcript, rng, trm1g, *q, lhs, &cs_x, &cs_y, &cq_x, &cq_y, &c_lhs_x, &c_lhs_y,            
         );
 
         ECDSASigProofIntermediate {
@@ -213,6 +217,9 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             cq_y,
             cs_x,
             cs_y,
+            c_lhs_x,
+            c_lhs_y,
+            cz, cr,
             mpi,
             addpi,
             sum: lhs,
@@ -272,8 +279,12 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             cs_xr: inter.cs_x.r,
             cs_y: inter.cs_y.comm,
             cs_yr: inter.cs_y.r,
+            cz: inter.cz,
+            c_lhs_x: inter.c_lhs_x.comm,
+            c_lhs_y: inter.c_lhs_y.comm,
+            
             scalar_mul: FSECScalarMulProof::<P, PT::ScalarMul>::create_proof_own_challenge(
-                transcript, &inter.sum, &inter.z, r, &inter.mpi,
+                transcript, &inter.sum, &inter.z, r, &inter.mpi, &inter.cz, &inter.cr, &inter.c_lhs_x, &inter.c_lhs_y, 
             ),
 
             point_add: PT::PointAdd::create_proof_own_challenge(
@@ -282,6 +293,12 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
                 *q,
                 inter.sum,
                 &inter.addpi,
+                &inter.cs_x,
+                &inter.cs_y,
+                &inter.cq_x,
+                &inter.cq_y,
+                &inter.c_lhs_x,
+                &inter.c_lhs_y,
             ),
         }
     }
@@ -328,8 +345,9 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             transcript, &self.r, &self.cq_x, &self.cq_y, &self.cs_x, &self.cs_y,
         );
 
-        self.scalar_mul.add_to_transcript(transcript);
-        self.point_add.add_proof_to_transcript(transcript);
+        self.scalar_mul.add_to_transcript(transcript, &self.cz, &self.c_lhs_x, &self.c_lhs_y);
+        self.point_add.add_proof_to_transcript(transcript, &self.cs_x, &self.cs_y,
+                                               &self.cq_x, &self.cq_y, &self.c_lhs_x, &self.c_lhs_y);
 
         // Part 2: we verify.
         // This should be read as:
@@ -338,8 +356,9 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
         // 3) We check the commitments to tr^{-1}g.
         // N.B These all need to use functions that do not modify the transcript object further.
         // I.e these functions should call verify_proof or verify_proof_own_challenge where appropriate.
-        self.scalar_mul.verify_proof(transcript, r)
-            && self.point_add.verify_proof_own_challenge(transcript)
+        self.scalar_mul.verify_proof(transcript, r, &self.cz, &self.c_lhs_x, &self.c_lhs_y)
+            && self.point_add.verify_proof_own_challenge(transcript, &self.cs_x, &self.cs_y, &self.cq_x, &self.cq_y,
+                                                         &self.c_lhs_x, &self.c_lhs_y)
             && self.verify_trm1g_commitments(r, t)
     }
 
@@ -354,6 +373,8 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             + self.cs_xr.compressed_size()
             + self.cs_y.compressed_size()
             + self.cs_yr.compressed_size()
+            + self.c_lhs_x.compressed_size()
+            + self.c_lhs_y.compressed_size()
             + self.scalar_mul.serialized_size()
     }
 }
