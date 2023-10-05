@@ -29,7 +29,7 @@ use crate::{
 
 /// ECScalarMulProofTranscriptable. This trait provides a notion of `Transcriptable` which implies that
 /// a particular struct can be, in some sense, added to the transcript for a scalar multiplication proof.
-pub trait ECScalarMulProofTranscriptable {
+pub trait ECScalarMulProofTranscriptable<P: PedersenConfig> {
     /// Affine: the type of affine point used in these protocols. This is set just to allow
     /// other protocols to take advantage of this information.
     type Affine;
@@ -40,7 +40,13 @@ pub trait ECScalarMulProofTranscriptable {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.
-    fn add_to_transcript(&self, transcript: &mut Transcript);
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    );
 }
 
 /// ECScalarMulProof. This struct acts as a container for the Scalar multiplication proof.
@@ -49,12 +55,6 @@ pub trait ECScalarMulProofTranscriptable {
 /// In this documentation we use the convention of S = λP, and that each commitment C_i has associated
 /// randomness r_i.
 pub struct ECScalarMulProof<P: PedersenConfig> {
-    /// c1: the commitment to λ. This commitment is made over the original curve, and not the T curve.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// c2: the commitment to the x co-ordinate of S.
-    pub c2: sw::Affine<P>,
-    /// c3: the commitment to the y co-ordinate of S.
-    pub c3: sw::Affine<P>,
     /// c4: the commitment to the random value α.
     pub c4: sw::Affine<<P as PedersenConfig>::OCurve>,
     /// c5: the commitment to the x co-ordinate of αP.
@@ -84,16 +84,8 @@ pub struct ECScalarMulProof<P: PedersenConfig> {
 /// created). This exists to allow easier separation between the creation of the initial, random values
 /// and later values.
 pub struct ECScalarMulProofIntermediate<P: PedersenConfig> {
-    /// c1: the commitment to λ. This commitment is made over the original curve, and not the T curve.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// r1: the randomness associated with the commitment c1.
-    pub r1: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
     /// alpha: the randomly generated scalar (produced during setup).
     pub alpha: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-    /// c2: the commitment to the x co-ordinate of S.
-    pub c2: PedersenComm<P>,
-    /// c3: the commitment to the y co-ordinate of S.
-    pub c3: PedersenComm<P>,
     /// c4: the commitment to the random value α.
     pub c4: sw::Affine<<P as PedersenConfig>::OCurve>,
     /// r4: the randomness associated with the commitment to α.
@@ -116,12 +108,6 @@ pub struct ECScalarMulProofIntermediate<P: PedersenConfig> {
 /// into the transcript i.e everything that's in `ECScalarMulProofIntermediate` except from
 /// the randomness values.
 pub struct ECScalarMulProofIntermediateTranscript<P: PedersenConfig> {
-    /// c1: the commitment to λ. This commitment is made over the original curve, and not the T curve.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// c2: the commitment to the x co-ordinate of S.
-    pub c2: sw::Affine<P>,
-    /// c3: the commitment to the y co-ordinate of S.
-    pub c3: sw::Affine<P>,
     /// c4: the commitment to the random value α.
     pub c4: sw::Affine<<P as PedersenConfig>::OCurve>,
     /// c5: the commitment to the x co-ordinate of αP.
@@ -165,9 +151,6 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
         inter: ECScalarMulProofIntermediate<P>,
     ) -> ECScalarMulProofIntermediateTranscript<P> {
         ECScalarMulProofIntermediateTranscript {
-            c1: inter.c1,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
             c4: inter.c4,
             c5: inter.c5.comm,
             c6: inter.c6.comm,
@@ -177,32 +160,8 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
         }
     }
 
-    /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve.
-    /// # Arguments
-    /// * `transcript` - the transcript object to use.
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    fn create<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> Self {
-        // Make the intermediates and then immediately make the challenge.
-        let inter = Self::create_intermediates(transcript, rng, s, lambda, p);
-
-        // Now challenge.
-        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
-
-        // And now just return the result of the proof.
-        Self::create_proof(s, lambda, p, &inter, &chal_buf)
-    }
-
-    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
+    /// create_intermediates_with_existing_commitments.
+    /// This function accepts a `transcript`, a cryptographically secure RNG and returns
     /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -212,18 +171,21 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    fn create_intermediates<T: RngCore + CryptoRng>(
+    /// * `c1` - the commitment to lambda with randomness `r1`.
+    /// * `c2` - the commitment to s.x with randomness `r2`.
+    /// * `c3` - the commitment to s.y with randomness `r3`.
+    fn create_intermediates_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        _r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> ECScalarMulProofIntermediate<P> {
-        // Part 1: make the various commitments.
-        // To begin, we commit to lambda.
-        let (c1, r1) = <P as PedersenConfig>::create_commit_other(lambda, rng);
-
-        // and now we make the unique alpha value. We repeat until we've
+        // First we make the unique alpha value. We repeat until we've
         // found the right value. Note that whp we do not expect this loop to repeat
         // many times, as the probability of choosing α ∈ {0, λ, 2λ} is pretty small.
         let mut alpha = <P as PedersenConfig>::get_random_p(rng);
@@ -242,16 +204,12 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
         let apx = <P as PedersenConfig>::from_ob_to_sf(ap.x);
         let apy = <P as PedersenConfig>::from_ob_to_sf(ap.y);
 
-        // We now do the same with (α-λ)P. We label (α-λ)P = amlp = (amplx, amply).
-        let amlp = ((*p).mul(alpha - lambda)).into_affine();
+        // Save scalar mult by computing ap - s
+        let amlp = (ap - s).into_affine();
         let amlpx = <P as PedersenConfig>::from_ob_to_sf(amlp.x);
         let amlpy = <P as PedersenConfig>::from_ob_to_sf(amlp.y);
 
         // And now we finally can commit to things.
-        // As in the paper, c2 is a commitment to the x co-ordinate of `s`, and
-        // c3 is a commitment to the y co-ordinate of `s` (i.e c2 = Comm_{q}(s.x), c3 = Comm_{q}(s.y).
-        let c2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.x), rng);
-        let c3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.y), rng);
 
         // c4 = Comm_{p}(α).
         let (c4, r4) = <P as PedersenConfig>::create_commit_other(&alpha, rng);
@@ -266,21 +224,17 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
 
         // Part 2: make the transcript and the proof itself.
         Self::make_transcript(
-            transcript, &c1, &c2.comm, &c3.comm, &c4, &c5.comm, &c6.comm, &c7.comm, &c8.comm,
+            transcript, c1, &c2.comm, &c3.comm, &c4, &c5.comm, &c6.comm, &c7.comm, &c8.comm,
         );
 
         // Now make the EC point addition intermediates.
         let eapi = ECPointAddProof::create_intermediates_with_existing_commitments(
-            transcript, rng, *s, amlp, ap, &c2, &c3, &c7, &c8, &c5, &c6, false,
+            transcript, rng, *s, amlp, ap, c2, c3, &c7, &c8, &c5, &c6,
         );
 
         // Now return the intermediates.
         ECScalarMulProofIntermediate {
-            c1,
-            r1,
             alpha,
-            c2,
-            c3,
             c4,
             r4,
             c5,
@@ -289,6 +243,20 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
             c8,
             eapi,
         }
+    }
+
+    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
+    fn serialized_size(&self) -> usize {
+        self.c4.compressed_size()
+            + self.c5.compressed_size()
+            + self.c6.compressed_size()
+            + self.c7.compressed_size()
+            + self.c8.compressed_size()
+            + self.z1.compressed_size()
+            + self.z2.compressed_size()
+            + self.z3.compressed_size()
+            + self.z4.compressed_size()
+            + self.eap.serialized_size()
     }
 
     /// create_proof. This function returns a proof that s = λp for some publicly known point `P`.
@@ -300,71 +268,31 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
     /// * `chal_buf` - the buffer of challenge bytes.
+    /// * `c1` - the commitment to lambda with randomness `r1`.
+    /// * `c2` - the commitment to s.x with randomness `r2`.
+    /// * `c3` - the commitment to s.y with randomness `r3`.
     fn create_proof(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        inter: &ECScalarMulProofIntermediate<P>,
+        inter: &Self::Intermediate,
         chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
         Self::create_proof_with_challenge(
             s,
             lambda,
             p,
             inter,
+            c1,
+            r1,
+            c2,
+            c3,
             &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
         )
-    }
-
-    /// verify. This function verifies that the proof in `self` holds. This function returns
-    /// true in case of success and false otherwise.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the stateful transcript object.
-    /// * `p` - the publicly known point.
-    fn verify(
-        &self,
-        transcript: &mut Transcript,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> bool {
-        // Re-initialise the transcript.
-        self.add_to_transcript(transcript);
-
-        // Now produce the challenge and delegate.
-        let chal_buf = ECScalarMulTranscript::challenge_scalar(transcript, b"c");
-        self.verify_proof(p, &chal_buf)
-    }
-
-    /// verify_proof. This function returns true if the proof held by `self` is valid and false otherwise.
-    /// In other words, this function returns true if the proof object is a valid proof of scalar multiplication.
-    /// Notably, this function builds its challenge from a pre-determined buffer (`chal_buf`).
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `p` - the publicly known point.
-    /// * `chal_buf` - the buffer of challenge bytes.
-    fn verify_proof(&self, p: &sw::Affine<<P as PedersenConfig>::OCurve>, chal_buf: &[u8]) -> bool {
-        // We just make the challenge and call into the more general routine.
-        self.verify_with_challenge(
-            p,
-            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
-        )
-    }
-
-    /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
-    fn serialized_size(&self) -> usize {
-        self.c1.compressed_size()
-            + self.c2.compressed_size()
-            + self.c3.compressed_size()
-            + self.c4.compressed_size()
-            + self.c5.compressed_size()
-            + self.c6.compressed_size()
-            + self.c7.compressed_size()
-            + self.c8.compressed_size()
-            + self.z1.compressed_size()
-            + self.z2.compressed_size()
-            + self.z3.compressed_size()
-            + self.z4.compressed_size()
-            + self.eap.serialized_size()
     }
 
     /// create_proof_with_challenge_byte. This function returns a proof that s = λp for some publicly known point `P`.
@@ -381,11 +309,39 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &Self::Intermediate,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
         let bit = chal & 1;
         // Use that to make a challenge.
         let challenge = <P as PedersenConfig>::make_single_bit_challenge(bit);
-        Self::create_proof_with_challenge(s, lambda, p, inter, &challenge)
+        Self::create_proof_with_challenge(s, lambda, p, inter, c1, r1, c2, c3, &challenge)
+    }
+
+    /// verify_proof. This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
+    /// Notably, this function builds the challenge from the bytes supplied in `chal_buf`.
+    /// # Arguments
+    /// * `self` - the proof object.    
+    /// * `p` - the publicly known point.
+    /// * `chal_buf` - the buffer containing the challenge bytes.        
+    fn verify_proof(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) -> bool {
+        // We just make the challenge and call into the more general routine.
+        self.verify_with_challenge(
+            p,
+            &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1),
+            c1,
+            c2,
+            c3,
+        )
     }
 
     /// verify_with_challenge_byte. This function returns true if the proof held by `self` is valid and false otherwise.
@@ -399,18 +355,26 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ECScalarMulProof<P> {
         &self,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
         let bit = chal & 1;
         // Use that to make a challenge.
         let challenge = <P as PedersenConfig>::make_single_bit_challenge(bit);
-        self.verify_with_challenge(p, &challenge)
+        self.verify_with_challenge(p, &challenge, c1, c2, c3)
     }
 
     /// add_proof_to_transcript. This function acts as an alias for the add_to_transcript function that may
     /// be realised by other means.
-
-    fn add_proof_to_transcript(&self, transcript: &mut Transcript) {
-        self.add_to_transcript(transcript);
+    fn add_proof_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
+        self.add_to_transcript(transcript, c1, c2, c3);
     }
 }
 
@@ -419,6 +383,88 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
     /// OCurve. This is here primarily because the proof formation needs it when choosing α.
     const OTHER_ZERO: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField =
         <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField::ZERO;
+
+    /// create_proof_with_challenge. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
+    /// # Arguments
+    /// * `s` - the secret, target point.
+    /// * `lambda` - the scalar multiple that is used.
+    /// * `p` - the publicly known generator.
+    /// * `chal` - the challenge.
+    #[allow(clippy::too_many_arguments)]
+    pub fn create_proof_with_challenge(
+        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        inter: &ECScalarMulProofIntermediate<P>,
+        _c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
+        chal: &<P as CurveConfig>::ScalarField,
+    ) -> Self {
+        // Because we've already generated the randomness, we now extract those values to use
+        // in our challenges.
+        let beta_1 = inter.r4;
+        let beta_2 = inter.c5.r;
+        let beta_3 = inter.c6.r;
+        let beta_4 = inter.c7.r;
+        let beta_5 = inter.c8.r;
+
+        // Now we compute the co-ordinates of αP.
+        // Note that, unlike in other functions, we only need the points themselves (i.e
+        // we do not need to separately label the co-ordinates).
+        let ap = ((*p).mul(inter.alpha)).into_affine();
+
+        // We now do the same with (α-λ)P. We label (α-λ)P = amlp as before.
+        let amlp = ((*p).mul(inter.alpha - lambda)).into_affine();
+
+        // Prove that αP = λP + ((α-λ)P) using our existing commitments and challenge.
+        let eap = ECPointAddProof::create_proof_with_challenge(
+            *s,
+            amlp,
+            ap,
+            &inter.eapi,
+            c2,
+            c3,
+            &inter.c7,
+            &inter.c8,
+            &inter.c5,
+            &inter.c6,
+            chal,
+        );
+
+        // And, finally, construct the proof.
+        // Note that c can only be 0 or 1 here.
+        if (*chal) == <P as PedersenConfig>::CM1 {
+            Self {
+                c4: inter.c4,
+                c5: inter.c5.comm,
+                c6: inter.c6.comm,
+                c7: inter.c7.comm,
+                c8: inter.c8.comm,
+                z1: inter.alpha,
+                z2: beta_1,
+                z3: beta_2,
+                z4: beta_3,
+                eap,
+            }
+        } else {
+            Self {
+                c4: inter.c4,
+                c5: inter.c5.comm,
+                c6: inter.c6.comm,
+                c7: inter.c7.comm,
+                c8: inter.c8.comm,
+                z1: inter.alpha - *lambda,
+                z2: beta_1 - r1,
+                z3: beta_4,
+                z4: beta_5,
+                eap,
+            }
+        }
+    }
 
     #[allow(clippy::too_many_arguments)]
     /// make_transcript. This function accepts a `transcript`, alongside all auxiliary commitments (`c1`,..., `c8`)
@@ -469,87 +515,23 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
     }
     #[deny(clippy::too_many_arguments)]
 
-    /// create_proof_with_challenge. This function returns a proof that s = λp for some publicly known point `P`.
-    /// Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve. Notably, this function uses a pre-supplied challenge (`chal`) as the challenge value.    
-    /// # Arguments
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    /// * `chal` - the challenge.
-    pub fn create_proof_with_challenge(
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        inter: &ECScalarMulProofIntermediate<P>,
-        chal: &<P as CurveConfig>::ScalarField,
-    ) -> Self {
-        // Because we've already generated the randomness, we now extract those values to use
-        // in our challenges.
-        let beta_1 = inter.r4;
-        let beta_2 = inter.c5.r;
-        let beta_3 = inter.c6.r;
-        let beta_4 = inter.c7.r;
-        let beta_5 = inter.c8.r;
-
-        // Now we compute the co-ordinates of αP.
-        // Note that, unlike in other functions, we only need the points themselves (i.e
-        // we do not need to separately label the co-ordinates).
-        let ap = ((*p).mul(inter.alpha)).into_affine();
-
-        // We now do the same with (α-λ)P. We label (α-λ)P = amlp as before.
-        let amlp = ((*p).mul(inter.alpha - lambda)).into_affine();
-
-        // Prove that αP = λP + ((α-λ)P) using our existing commitments and challenge.
-        let eap = ECPointAddProof::create_proof_with_challenge(*s, amlp, ap, &inter.eapi, chal);
-
-        // And, finally, construct the proof.
-        // Note that c can only be 0 or 1 here.
-        if (*chal) == <P as PedersenConfig>::CM1 {
-            Self {
-                c1: inter.c1,
-                c2: inter.c2.comm,
-                c3: inter.c3.comm,
-                c4: inter.c4,
-                c5: inter.c5.comm,
-                c6: inter.c6.comm,
-                c7: inter.c7.comm,
-                c8: inter.c8.comm,
-                z1: inter.alpha,
-                z2: beta_1,
-                z3: beta_2,
-                z4: beta_3,
-                eap,
-            }
-        } else {
-            Self {
-                c1: inter.c1,
-                c2: inter.c2.comm,
-                c3: inter.c3.comm,
-                c4: inter.c4,
-                c5: inter.c5.comm,
-                c6: inter.c6.comm,
-                c7: inter.c7.comm,
-                c8: inter.c8.comm,
-                z1: inter.alpha - *lambda,
-                z2: beta_1 - inter.r1,
-                z3: beta_4,
-                z4: beta_5,
-                eap,
-            }
-        }
-    }
-
     /// make_subproof_transcript. This function adds the subproof object to the transcript.
     /// The subproof object must be an ECPointAddProofTranscriptable object.
     /// # Arguments
     /// * `transcript` - the transcript object.
     /// * `ep` - the sub-proof object.
-    pub fn make_subproof_transcript<EP: ECPointAddProofTranscriptable>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn make_subproof_transcript<EP: ECPointAddProofTranscriptable<P>>(
         transcript: &mut Transcript,
         ep: &EP,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        c4: &sw::Affine<P>,
+        c5: &sw::Affine<P>,
+        c6: &sw::Affine<P>,
     ) {
-        ep.add_to_transcript(transcript);
+        ep.add_to_transcript(transcript, c1, c2, c3, c4, c5, c6);
     }
 
     /// verify_with_challenge. This function returns true if the proof held by `self` is valid and false otherwise.
@@ -563,6 +545,9 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         &self,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         chal: &<P as CurveConfig>::ScalarField,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
         // z1_p = z1P, which is used in both verifier computations.
         let z1_p = p.mul(&self.z1).into_affine();
@@ -578,53 +563,85 @@ impl<P: PedersenConfig> ECScalarMulProof<P> {
         } else {
             let u_dash = <P as PedersenConfig>::from_ob_to_sf(z1_p.x);
             let v_dash = <P as PedersenConfig>::from_ob_to_sf(z1_p.y);
-            ((self.c4 - self.c1) == <P as PedersenConfig>::new_other_with_both(&self.z1, &self.z2))
+            ((self.c4 - c1) == <P as PedersenConfig>::new_other_with_both(&self.z1, &self.z2))
                 && (self.c7 == PedersenComm::new_with_both(u_dash, self.z3).comm)
                 && (self.c8 == PedersenComm::new_with_both(v_dash, self.z4).comm)
         };
 
-        worked && self.eap.verify_with_challenge(chal)
+        worked
+            && self
+                .eap
+                .verify_with_challenge(c2, c3, &self.c7, &self.c8, &self.c5, &self.c6, chal)
     }
 }
 
-impl<P: PedersenConfig> ECScalarMulProofTranscriptable for ECScalarMulProof<P> {
+impl<P: PedersenConfig> ECScalarMulProofTranscriptable<P> for ECScalarMulProof<P> {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         ECScalarMulProof::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
-            &self.c8,
+            transcript, c1, c2, c3, &self.c4, &self.c5, &self.c6, &self.c7, &self.c8,
         );
-        ECScalarMulProof::<P>::make_subproof_transcript(transcript, &self.eap);
+        ECScalarMulProof::make_subproof_transcript(
+            transcript, &self.eap, c2, c3, &self.c7, &self.c8, &self.c5, &self.c6,
+        );
     }
 }
 
-impl<P: PedersenConfig> ECScalarMulProofTranscriptable for ECScalarMulProofIntermediate<P> {
+impl<P: PedersenConfig> ECScalarMulProofTranscriptable<P> for ECScalarMulProofIntermediate<P> {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         ECScalarMulProof::make_transcript(
             transcript,
-            &self.c1,
-            &self.c2.comm,
-            &self.c3.comm,
+            c1,
+            c2,
+            c3,
             &self.c4,
             &self.c5.comm,
             &self.c6.comm,
             &self.c7.comm,
             &self.c8.comm,
         );
-        ECScalarMulProof::<P>::make_subproof_transcript(transcript, &self.eapi);
+        ECScalarMulProof::make_subproof_transcript(
+            transcript,
+            &self.eapi,
+            c2,
+            c3,
+            &self.c7.comm,
+            &self.c8.comm,
+            &self.c5.comm,
+            &self.c6.comm,
+        );
     }
 }
 
-impl<P: PedersenConfig> ECScalarMulProofTranscriptable
+impl<P: PedersenConfig> ECScalarMulProofTranscriptable<P>
     for ECScalarMulProofIntermediateTranscript<P>
 {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         ECScalarMulProof::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.c6, &self.c7,
-            &self.c8,
+            transcript, c1, c2, c3, &self.c4, &self.c5, &self.c6, &self.c7, &self.c8,
         );
-        ECScalarMulProof::<P>::make_subproof_transcript(transcript, &self.eapi);
+        ECScalarMulProof::<P>::make_subproof_transcript(
+            transcript, &self.eapi, c2, c3, &self.c7, &self.c8, &self.c5, &self.c6,
+        );
     }
 }

@@ -7,7 +7,7 @@ use ark_ec::{
     CurveConfig,
 };
 
-use crate::pedersen_config::PedersenConfig;
+use crate::pedersen_config::{PedersenComm, PedersenConfig};
 use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
@@ -45,23 +45,8 @@ pub trait ScalarMulProtocol<P: PedersenConfig> {
     /// * `inter` - the intermediate objects.
     fn make_intermediate_transcript(inter: Self::Intermediate) -> Self::IntermediateTranscript;
 
-    /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve.
-    /// # Arguments
-    /// * `transcript` - the transcript object to use.
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    fn create<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> Self;
-
-    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
+    /// create_intermediates_with_existing_commitments.
+    /// This function accepts a `transcript`, a cryptographically secure RNG and returns
     /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -71,49 +56,78 @@ pub trait ScalarMulProtocol<P: PedersenConfig> {
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    fn create_intermediates<T: RngCore + CryptoRng>(
+    /// * `c1` - the commitment to lambda with randomness `r1`.
+    /// * `c2` - the commitment to s.x with randomness `r2`.
+    /// * `c3` - the commitment to s.y with randomness `r3`.
+    #[allow(clippy::too_many_arguments)]
+    fn create_intermediates_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self::Intermediate;
 
-    /// create_proof. This function creates a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve. Note that this function uses challenges derived from `chal_buf`.
+    /// create_proof. This function returns a proof that s = λp for some publicly known point `P`.
+    /// Note that `s` and `p` are both members of P::OCurve, and not the
+    /// associated T Curve. Notably, this function uses a pre-supplied buffer (`chal_buf`) for creating
+    /// the underlying challenge.
     /// # Arguments
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    /// * `inter` - the intermediate values.
-    /// * `chal_buf` - the buffer from which challenges are produced.
+    /// * `chal_buf` - the buffer of challenge bytes.
+    /// * `c1` - the commitment to lambda with randomness `r1`.
+    /// * `c2` - the commitment to s.x with randomness `r2`.
+    /// * `c3` - the commitment to s.y with randomness `r3`.
+    #[allow(clippy::too_many_arguments)]
     fn create_proof(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &Self::Intermediate,
         chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self;
 
     /// verify. This function verifies the proof held in `self`, returns true if the proof is valid and false otherwise.
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.
-    /// * `p` - the publicly known point.
+    /// * `p` - the publicly known point.    
     fn verify(
         &self,
         transcript: &mut Transcript,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> bool;
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) -> bool {
+        self.add_proof_to_transcript(transcript, c1, c2, c3);
+        self.verify_proof(p, &Self::challenge_scalar(transcript), c1, c2, c3)
+    }
 
     /// verify_proof. This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
     /// Notably, this function builds the challenge from the bytes supplied in `chal_buf`.
     /// # Arguments
     /// * `self` - the proof object.    
     /// * `p` - the publicly known point.
-    /// * `chal_buf` - the buffer containing the challenge bytes.
-    fn verify_proof(&self, p: &sw::Affine<<P as PedersenConfig>::OCurve>, chal_buf: &[u8]) -> bool;
+    /// * `chal_buf` - the buffer containing the challenge bytes.        
+    fn verify_proof(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) -> bool;
 
     /// create_proof_with_challenge_byte. This function returns a proof that s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
@@ -123,12 +137,17 @@ pub trait ScalarMulProtocol<P: PedersenConfig> {
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
     /// * `chal` - the challenge byte.
+    #[allow(clippy::too_many_arguments)]
     fn create_proof_with_challenge_byte(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &Self::Intermediate,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self;
 
     /// verify_with_challenge_byte. This function returns true if the proof held by `self` is valid and false otherwise.
@@ -142,6 +161,9 @@ pub trait ScalarMulProtocol<P: PedersenConfig> {
         &self,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool;
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
@@ -154,5 +176,11 @@ pub trait ScalarMulProtocol<P: PedersenConfig> {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.
-    fn add_proof_to_transcript(&self, transcript: &mut Transcript);
+    fn add_proof_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    );
 }

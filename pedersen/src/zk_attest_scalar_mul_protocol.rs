@@ -27,7 +27,7 @@ use crate::{
 /// ZKAttestECScalarMulTranscriptable. This trait provides a notion of `Transcriptable`, which
 /// implies that the particular struct can be, in some sense, added to the transcript for a ZK-Attest style
 /// scalar multiplication proof.
-pub trait ZKAttestECScalarMulTranscriptable {
+pub trait ZKAttestECScalarMulTranscriptable<P: PedersenConfig> {
     /// Affine. This type is the type of Pedersen commitment used in this protocol.
     /// This is primarily defined to make sub-layers more composable.
     type Affine;
@@ -35,7 +35,13 @@ pub trait ZKAttestECScalarMulTranscriptable {
     /// add_to_transcript. This function adds `self` to the transcript object.
     /// This should typically be used before creating a challenge (either for proving
     /// or verification).
-    fn add_to_transcript(&self, transcript: &mut Transcript);
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    );
 }
 
 /// ZKAttestECScalarMulProof. This struct acts as a container for the ZKAttest Scalar
@@ -43,17 +49,6 @@ pub trait ZKAttestECScalarMulTranscriptable {
 /// and verify their correctness with ```verify```.
 /// In this documentation we use the convention of S = λP.
 pub struct ZKAttestECScalarMulProof<P: PedersenConfig> {
-    /// c1: the commitment to λ.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// r1: the randomness for c1.
-    pub r1: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-
-    /// c2: the commitment to S.x.
-    pub c2: sw::Affine<P>,
-
-    /// c3: the commitment to S.y.
-    pub c3: sw::Affine<P>,
-
     /// alpha: the randomly generated value used during the proof.
     pub alpha: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
 
@@ -92,17 +87,6 @@ pub struct ZKAttestECScalarMulProof<P: PedersenConfig> {
 /// should typically only be used when the transcript needs to be further modified
 /// before a challenge is created.
 pub struct ZKAttestECScalarMulProofIntermediate<P: PedersenConfig> {
-    /// c1: the commitment to λ.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// r1: the randomness for c1.
-    pub r1: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-
-    /// c2: the commitment to S.x.
-    pub c2: PedersenComm<P>,
-
-    /// c3: the commitment to S.y.
-    pub c3: PedersenComm<P>,
-
     /// alpha: the randomly generated value.
     pub alpha: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
 
@@ -132,17 +116,6 @@ pub struct ZKAttestECScalarMulProofIntermediate<P: PedersenConfig> {
 /// into the transcript i.e everything that's in `ZKAttestECScalarMulProofIntermediate` except from
 /// the randomness values.
 pub struct ZKAttestECScalarMulProofIntermediateTranscript<P: PedersenConfig> {
-    /// c1: the commitment to λ.
-    pub c1: sw::Affine<<P as PedersenConfig>::OCurve>,
-    /// r1: the randomness for c1.
-    pub r1: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-
-    /// c2: the commitment to S.x.
-    pub c2: sw::Affine<P>,
-
-    /// c3: the commitment to S.y.
-    pub c3: sw::Affine<P>,
-
     /// alpha: the randomly generated value used during the proof.
     pub alpha: <<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
 
@@ -193,10 +166,6 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         inter: ZKAttestECScalarMulProofIntermediate<P>,
     ) -> ZKAttestECScalarMulProofIntermediateTranscript<P> {
         ZKAttestECScalarMulProofIntermediateTranscript {
-            c1: inter.c1,
-            r1: inter.r1,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
             alpha: inter.alpha,
             a1: inter.a1,
             a2: inter.a2.comm,
@@ -207,32 +176,8 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         }
     }
 
-    /// create. This function accepts a `transcript`, a cryptographically secure RNG and returns a proof that
-    /// s = λp for some publicly known point `P`. Note that `s` and `p` are both members of P::OCurve, and not the
-    /// associated T Curve.
-    /// # Arguments
-    /// * `transcript` - the transcript object to use.
-    /// * `s` - the secret, target point.
-    /// * `lambda` - the scalar multiple that is used.
-    /// * `p` - the publicly known generator.
-    fn create<T: RngCore + CryptoRng>(
-        transcript: &mut Transcript,
-        rng: &mut T,
-        s: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> Self {
-        // Make the intermediates and then immediately make the challenge.
-        let inter = Self::create_intermediates(transcript, rng, s, lambda, p);
-
-        // Now challenge.
-        let chal_buf = transcript.challenge_scalar(b"c");
-
-        // And now just return the result of the proof.
-        Self::create_proof(s, lambda, p, &inter, &chal_buf[..])
-    }
-
-    /// create_intermediates. This function accepts a `transcript`, a cryptographically secure RNG and returns
+    /// create_intermediates_with_existing_commitments.
+    /// This function accepts a `transcript`, a cryptographically secure RNG and returns
     /// the intermediate values for a proof that  s = λp for some publicly known point `P`.
     /// Note that `s` and `p` are both members of P::OCurve, and not the
     /// associated T Curve.
@@ -242,27 +187,27 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
     /// * `s` - the secret, target point.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
-    fn create_intermediates<T: RngCore + CryptoRng>(
+    /// * `c1` - the commitment to lambda with randomness `r1`.
+    /// * `c2` - the commitment to s.x with randomness `r2`.
+    /// * `c3` - the commitment to s.y with randomness `r3`.
+    fn create_intermediates_with_existing_commitments<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        _r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> ZKAttestECScalarMulProofIntermediate<P> {
-        // Part 1: make the various commitments.
-        // To begin, we commit to lambda.
-        let (c1, r1) = <P as PedersenConfig>::create_commit_other(lambda, rng);
-        let c2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.x), rng);
-        let c3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(s.y), rng);
-
-        // And now we make the unique alpha value. Note that ZKAttest places no restriction on the
+        // First we make the unique alpha value. Note that ZKAttest places no restriction on the
         // value of alpha.
         let alpha = <P as PedersenConfig>::get_random_p(rng);
+        let (a1, beta_1) = <P as PedersenConfig>::create_commit_other(&alpha, rng);
 
         // Now we compute the gamma values.
         let gamma = ((*p).mul(alpha)).into_affine();
-
-        let (a1, beta_1) = <P as PedersenConfig>::create_commit_other(&alpha, rng);
         let a2 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.x), rng);
         let a3 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(gamma.y), rng);
 
@@ -272,20 +217,16 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         let c5 = PedersenComm::new(<P as PedersenConfig>::from_ob_to_sf(amlp.y), rng);
 
         Self::make_transcript(
-            transcript, &c1, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &a1, &a2.comm, &a3.comm,
+            transcript, c1, &c2.comm, &c3.comm, &c4.comm, &c5.comm, &a1, &a2.comm, &a3.comm,
         );
 
         let pi = ZKAttestPointAddProof::create_intermediates_with_existing_commitments(
-            transcript, rng, amlp, *s, gamma, &c4, &c5, &c2, &c3, &a2, &a3, false,
+            transcript, rng, amlp, *s, gamma, &c4, &c5, c2, c3, &a2, &a3,
         );
 
         ZKAttestECScalarMulProofIntermediate {
-            c1,
-            c2,
-            c3,
             alpha,
             a1,
-            r1,
             beta_1,
             a2,
             a3,
@@ -310,28 +251,15 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &ZKAttestECScalarMulProofIntermediate<P>,
         chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
-        let c0 = &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
-        let c1 =
+        let chal0 = &<P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
+        let chal1 =
             &<P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
-
-        Self::create_proof_with_challenge(s, lambda, p, inter, c0, c1)
-    }
-
-    /// verify. This function verifies the proof held in `self`, returns true if the proof is valid and false otherwise.
-    /// # Arguments
-    /// * `self` - the proof object.
-    /// * `transcript` - the transcript object.
-    /// * `p` - the publicly known point.
-    fn verify(
-        &self,
-        transcript: &mut Transcript,
-        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-    ) -> bool {
-        // Build the transcript from the ones that we have.
-        self.add_to_transcript(transcript);
-        let chal_buf = transcript.challenge_scalar(b"c");
-        self.verify_proof(p, &chal_buf[..])
+        Self::create_proof_with_challenge(s, lambda, p, inter, chal0, chal1, c1, r1, c2, c3)
     }
 
     /// verify_proof. This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
@@ -340,19 +268,23 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
     /// * `self` - the proof object.    
     /// * `p` - the publicly known point.
     /// * `chal_buf` - the buffer containing the challenge bytes.
-    fn verify_proof(&self, p: &sw::Affine<<P as PedersenConfig>::OCurve>, chal_buf: &[u8]) -> bool {
-        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
-        let c1 =
+    fn verify_proof(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        chal_buf: &[u8],
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) -> bool {
+        let chal0 = <P as PedersenConfig>::make_single_bit_challenge(chal_buf.last().unwrap() & 1);
+        let chal1 =
             <P as PedersenConfig>::make_single_bit_challenge((chal_buf.last().unwrap() & 2) >> 1);
-        self.verify_with_challenge(p, &c0, &c1)
+        self.verify_with_challenge(p, &chal0, &chal1, c1, c2, c3)
     }
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
     fn serialized_size(&self) -> usize {
-        let lhs = self.c1.compressed_size()
-            + self.c2.compressed_size()
-            + self.c3.compressed_size()
-            + self.alpha.compressed_size()
+        let lhs = self.alpha.compressed_size()
             + self.a1.compressed_size()
             + self.a2.compressed_size()
             + self.a3.compressed_size()
@@ -360,6 +292,7 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
             + self.c5.compressed_size()
             + self.z1.compressed_size()
             + self.z2.compressed_size()
+            + self.z3.compressed_size()
             + self.z4.compressed_size();
 
         if let Some(proof) = &self.pi {
@@ -385,10 +318,14 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &Self::Intermediate,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
-        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
-        let c1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
-        Self::create_proof_with_challenge(s, lambda, p, inter, &c0, &c1)
+        let chal0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
+        let chal1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
+        Self::create_proof_with_challenge(s, lambda, p, inter, &chal0, &chal1, c1, r1, c2, c3)
     }
 
     /// verify_with_challenge_byte. This function returns true if the proof held by `self` is valid and false otherwise.
@@ -402,10 +339,13 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
         &self,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         chal: u8,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
-        let c0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
-        let c1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
-        self.verify_with_challenge(p, &c0, &c1)
+        let chal0 = <P as PedersenConfig>::make_single_bit_challenge(chal & 1);
+        let chal1 = <P as PedersenConfig>::make_single_bit_challenge((chal & 2) >> 1);
+        self.verify_with_challenge(p, &chal0, &chal1, c1, c2, c3)
     }
 
     /// add_proof_to_transcript. This function acts as an alias for the add_to_transcript function that may
@@ -415,8 +355,14 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.
-    fn add_proof_to_transcript(&self, transcript: &mut Transcript) {
-        self.add_to_transcript(transcript);
+    fn add_proof_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
+        self.add_to_transcript(transcript, c1, c2, c3);
     }
 }
 
@@ -478,30 +424,36 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
     /// * `inter` - the intermediate values.
-    /// * `c0` - the c0 challenge. If c0 corresponds to 0, no point addition proof is made. If c0 corresponds to 1,
-    ///   then the point addition proof is invoked with c1.
-    /// * `c1` - the c1 challenge. This is only used if c0 == 1.
+    /// * `chal0` - the c0 challenge. If chal0 corresponds to 0, no point addition proof is made. If chal0 corresponds to 1,
+    ///   then the point addition proof is invoked with chal1.
+    /// * `chal1` - the c1 challenge. This is only used if chal1 == 1.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_proof_with_challenge(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
         inter: &ZKAttestECScalarMulProofIntermediate<P>,
-        c0: &<P as CurveConfig>::ScalarField,
-        c1: &<P as CurveConfig>::ScalarField,
+        chal0: &<P as CurveConfig>::ScalarField,
+        chal1: &<P as CurveConfig>::ScalarField,
+        _c1: &sw::Affine<P::OCurve>,
+        r1: &<P::OCurve as CurveConfig>::ScalarField,
+        c2: &PedersenComm<P>,
+        c3: &PedersenComm<P>,
     ) -> Self {
         // The challenges must be mapped to either 0 or 1.
-        assert!(*c0 == <P as PedersenConfig>::CM1 || *c0 == <P as PedersenConfig>::CP1);
-        assert!(*c1 == <P as PedersenConfig>::CM1 || *c1 == <P as PedersenConfig>::CP1);
+        assert!(*chal0 == <P as PedersenConfig>::CM1 || *chal0 == <P as PedersenConfig>::CP1);
+        assert!(*chal1 == <P as PedersenConfig>::CM1 || *chal1 == <P as PedersenConfig>::CP1);
 
         // Now we rebuild the parts we need for the protocol. N.B
         // the code below creates the transcriptable object differently
-        // depending on the challenge c0. Notably, both objects are transcriptable.
+        // depending on the challenge chal0. Notably, both objects are transcriptable.
         let gamma = ((*p).mul(inter.alpha)).into_affine();
         let amlp = ((*p).mul(inter.alpha - lambda)).into_affine();
-        let (pi, pii) = if *c0 == <P as PedersenConfig>::CP1 {
+        let (pi, pii) = if *chal0 == <P as PedersenConfig>::CP1 {
             (
                 Some(ZKAttestPointAddProof::create_proof_with_challenge(
-                    amlp, *s, gamma, &inter.pi, c1,
+                    amlp, *s, gamma, &inter.pi, &inter.c4, &inter.c5, c2, c3, &inter.a2, &inter.a3,
+                    chal1,
                 )),
                 None,
             )
@@ -515,27 +467,23 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         };
 
         // Now we chose the z1,z2,z3 and z4.
-        let (z1, z2, z3, z4) = if *c0 == <P as PedersenConfig>::CP1 {
-            // If c0 == 1 then we return z1 = alpha - lambda, z2 = beta_1 - r1, z3 = beta_4 and z4 = beta_5.
+        let (z1, z2, z3, z4) = if *chal0 == <P as PedersenConfig>::CP1 {
+            // If chal0 == 1 then we return z1 = alpha - lambda, z2 = beta_1 - r1, z3 = beta_4 and z4 = beta_5.
             // Note that beta_4 = c4.r and beta_5 = c5.r
             (
                 inter.alpha - lambda,
-                inter.beta_1 - inter.r1,
+                inter.beta_1 - r1,
                 inter.c4.r,
                 inter.c5.r,
             )
         } else {
-            // If c0 == 0 then we return z1 = alpha, z2 = beta_1, z3 = beta_2, z4 = beta_3.
+            // If chal0 == 0 then we return z1 = alpha, z2 = beta_1, z3 = beta_2, z4 = beta_3.
             // Note that beta_2 = a2.r and beta_3 = a3.r
             (inter.alpha, inter.beta_1, inter.a2.r, inter.a3.r)
         };
 
         // And now return the proof.
         Self {
-            c1: inter.c1,
-            r1: inter.r1,
-            c2: inter.c2.comm,
-            c3: inter.c3.comm,
             alpha: inter.alpha,
             a1: inter.a1,
             a2: inter.a2.comm,
@@ -556,33 +504,44 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
     /// # Arguments
     /// * `pi` - the proof object.
     /// * `transcript` - the transcript object.
+    /// * `ci` - the commitments for the point addition protocol.
+    #[allow(clippy::too_many_arguments)]
     pub fn make_subproof_transcript<
-        PT: ZKAttestPointAddProofTranscriptable<Affine = sw::Affine<P>>,
+        PT: ZKAttestPointAddProofTranscriptable<P, Affine = sw::Affine<P>>,
     >(
         pi: &PT,
         transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        c4: &sw::Affine<P>,
+        c5: &sw::Affine<P>,
+        c6: &sw::Affine<P>,
     ) {
-        pi.add_to_transcript(transcript);
+        pi.add_to_transcript(transcript, c1, c2, c3, c4, c5, c6);
     }
 
     /// verify_with_challenge.
     /// This function verifies the proof held in `self`, returning true if the proof is valid (and false otherwise).
-    /// Notably, this function uses the challenges `c0` and `c1`.
+    /// Notably, this function uses the challenges `chal0` and `chal`.
     /// # Arguments
     /// * `self` - the proof object.    
     /// * `p` - the publicly known point.
-    /// * `c0` - the c0 challenge.
-    /// * `c1` - the c1 challenge.
+    /// * `chal0` - the chal0 challenge.
+    /// * `chal1` - the chal1 challenge.
     pub fn verify_with_challenge(
         &self,
         p: &sw::Affine<<P as PedersenConfig>::OCurve>,
-        c0: &<P as CurveConfig>::ScalarField,
-        c1: &<P as CurveConfig>::ScalarField,
+        chal0: &<P as CurveConfig>::ScalarField,
+        chal1: &<P as CurveConfig>::ScalarField,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) -> bool {
-        // c0 must be mapped to either 0 or 1.
-        assert!(*c0 == <P as PedersenConfig>::CM1 || *c0 == <P as PedersenConfig>::CP1);
-        // c1 must also be mapped to either 0 or 1.
-        assert!(*c1 == <P as PedersenConfig>::CM1 || *c1 == <P as PedersenConfig>::CP1);
+        // chal0 must be mapped to either 0 or 1.
+        assert!(*chal0 == <P as PedersenConfig>::CM1 || *chal0 == <P as PedersenConfig>::CP1);
+        // chal1 must also be mapped to either 0 or 1.
+        assert!(*chal1 == <P as PedersenConfig>::CM1 || *chal1 == <P as PedersenConfig>::CP1);
 
         // In either case we need z1P.
         // NOTE: this must be an affine point.
@@ -590,16 +549,16 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
 
         // We also always check that the commitments to a1 passes.
         let (a1c, _a1r) = <P as PedersenConfig>::create_commit_other_with_both(&self.z1, &self.z2);
-        let first = if *c0 == <P as PedersenConfig>::CP1 {
-            self.a1 == a1c + self.c1
+        let first = if *chal0 == <P as PedersenConfig>::CP1 {
+            self.a1 == a1c + c1
         } else {
             self.a1 == a1c
         };
 
-        // Now the others. If *c0 == 0, then we just check the other commitments.
+        // Now the others. If *chal0 == 0, then we just check the other commitments.
         // N.B This block here just handles the fact that in both cases we have to check
         // something against Com(t1, z3) and Com(t2, z4).
-        let (lhs1, lhs2) = if *c0 == <P as PedersenConfig>::CM1 {
+        let (lhs1, lhs2) = if *chal0 == <P as PedersenConfig>::CM1 {
             (self.a2, self.a3)
         } else {
             (self.c4, self.c5)
@@ -612,12 +571,13 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
         assert!(self.pii.is_none() ^ self.pi.is_none());
 
         if let Some(proof) = &self.pi {
-            // This can only happen if c0 == 1.
-            assert!(*c0 == <P as PedersenConfig>::CP1);
-            worked = proof.verify_with_challenge(c1);
+            // This can only happen if chal0 == 1.
+            assert!(*chal0 == <P as PedersenConfig>::CP1);
+            worked =
+                proof.verify_with_challenge(&self.c4, &self.c5, c2, c3, &self.a2, &self.a3, chal1);
         } else {
-            // This can only happen if c0 = 0.
-            assert!(*c0 == <P as PedersenConfig>::CM1);
+            // This can only happen if chal0 = 0.
+            assert!(*chal0 == <P as PedersenConfig>::CM1);
             worked = true;
         }
 
@@ -633,40 +593,55 @@ impl<P: PedersenConfig> ZKAttestECScalarMulProof<P> {
     }
 }
 
-impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable for ZKAttestECScalarMulProof<P> {
+impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable<P> for ZKAttestECScalarMulProof<P> {
     type Affine = sw::Affine<P>;
 
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         // Make the regular transcript.
         ZKAttestECScalarMulProof::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.a1, &self.a2,
-            &self.a3,
+            transcript, c1, c2, c3, &self.c4, &self.c5, &self.a1, &self.a2, &self.a3,
         );
         // Make the sub-transcripts, too.
         // Only one of these can reasonably be set.
         assert!(self.pi.is_none() ^ self.pii.is_none());
         if let Some(pi) = &self.pi {
-            ZKAttestECScalarMulProof::make_subproof_transcript(pi, transcript);
+            ZKAttestECScalarMulProof::make_subproof_transcript(
+                pi, transcript, &self.c4, &self.c5, c2, c3, &self.a2, &self.a3,
+            );
         }
 
         if let Some(pii) = &self.pii {
-            ZKAttestECScalarMulProof::make_subproof_transcript(pii, transcript);
+            ZKAttestECScalarMulProof::make_subproof_transcript(
+                pii, transcript, &self.c4, &self.c5, c2, c3, &self.a2, &self.a3,
+            );
         }
     }
 }
 
-impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable
+impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable<P>
     for ZKAttestECScalarMulProofIntermediate<P>
 {
     type Affine = sw::Affine<P>;
 
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         // Make the regular transcript.
         ZKAttestECScalarMulProof::make_transcript(
             transcript,
-            &self.c1,
-            &self.c2.comm,
-            &self.c3.comm,
+            c1,
+            c2,
+            c3,
             &self.c4.comm,
             &self.c5.comm,
             &self.a1,
@@ -674,21 +649,38 @@ impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable
             &self.a3.comm,
         );
         // Make the sub-transcripts, too.
-        ZKAttestECScalarMulProof::make_subproof_transcript(&self.pi, transcript);
+        ZKAttestECScalarMulProof::make_subproof_transcript(
+            &self.pi,
+            transcript,
+            &self.c4.comm,
+            &self.c5.comm,
+            c2,
+            c3,
+            &self.a2.comm,
+            &self.a3.comm,
+        );
     }
 }
 
-impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable
+impl<P: PedersenConfig> ZKAttestECScalarMulTranscriptable<P>
     for ZKAttestECScalarMulProofIntermediateTranscript<P>
 {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript) {
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+    ) {
         // Make the regular transcript.
         ZKAttestECScalarMulProof::make_transcript(
-            transcript, &self.c1, &self.c2, &self.c3, &self.c4, &self.c5, &self.a1, &self.a2,
-            &self.a3,
+            transcript, c1, c2, c3, &self.c4, &self.c5, &self.a1, &self.a2, &self.a3,
         );
+
         // Make the sub-transcripts, too.
-        ZKAttestECScalarMulProof::make_subproof_transcript(&self.pi, transcript);
+        ZKAttestECScalarMulProof::make_subproof_transcript(
+            &self.pi, transcript, &self.c4, &self.c5, c2, c3, &self.a2, &self.a3,
+        );
     }
 }
