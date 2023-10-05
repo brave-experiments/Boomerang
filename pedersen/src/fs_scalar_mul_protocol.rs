@@ -238,7 +238,23 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         c2: &sw::Affine<P>,
         c3: &sw::Affine<P>,
     ) -> bool {
-        let chal_buf = &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)];
+        self.verify_proof_with_challenge(
+            p,
+            c1,
+            c2,
+            c3,
+            &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
+        )
+    }
+
+    pub fn verify_proof_with_challenge(
+        &self,
+        p: &sw::Affine<<P as PedersenConfig>::OCurve>,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        chal_buf: &[u8],
+    ) -> bool {
         // And now just check they all go through.
         let mut worked: bool = true;
 
