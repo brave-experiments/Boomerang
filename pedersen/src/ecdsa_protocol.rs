@@ -397,6 +397,7 @@ impl<P: PedersenConfig, PT: Collective<P>> ECDSASigProof<P, PT> {
             + self.cs_xr.compressed_size()
             + self.cs_y.compressed_size()
             + self.cs_yr.compressed_size()
+            + self.cz.compressed_size()
             + self.c_lhs_x.compressed_size()
             + self.c_lhs_y.compressed_size()
             + self.scalar_mul.serialized_size()

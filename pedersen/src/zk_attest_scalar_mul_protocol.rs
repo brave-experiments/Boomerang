@@ -292,6 +292,7 @@ impl<P: PedersenConfig> ScalarMulProtocol<P> for ZKAttestECScalarMulProof<P> {
             + self.c5.compressed_size()
             + self.z1.compressed_size()
             + self.z2.compressed_size()
+            + self.z3.compressed_size()
             + self.z4.compressed_size();
 
         if let Some(proof) = &self.pi {
