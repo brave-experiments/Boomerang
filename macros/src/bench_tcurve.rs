@@ -227,6 +227,19 @@ macro_rules! bench_tcurve_point_add_verifier_time {
                 &cty,
             );
 
+            let comm_size = cax.comm.compressed_size()
+                + cbx.comm.compressed_size()
+                + ctx.comm.compressed_size()
+                + cay.comm.compressed_size()
+                + cby.comm.compressed_size()
+                + cty.comm.compressed_size();
+
+            println!(
+                "CDLS point add proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size() + comm_size
+            );
+
             c.bench_function(concat!($curve_name, " point add verifier time"), |bf| {
                 bf.iter(|| {
                     let mut transcript_v = Transcript::new(label);
@@ -330,6 +343,17 @@ macro_rules! bench_tcurve_zk_attest_point_add_verifier_time {
                 &cby,
                 &ctx,
                 &cty,
+            );
+            let comm_size = cax.comm.compressed_size()
+                + cbx.comm.compressed_size()
+                + ctx.comm.compressed_size()
+                + cay.comm.compressed_size()
+                + cby.comm.compressed_size()
+                + cty.comm.compressed_size();
+            println!(
+                "ZKAttest point add proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size() + comm_size
             );
 
             let mut transcript_v = Transcript::new(label);
@@ -446,6 +470,14 @@ macro_rules! bench_tcurve_scalar_mul_verifier_time {
                 &c3,
             );
 
+            let comm_size =
+                c1.compressed_size() + c2.comm.compressed_size() + c3.comm.compressed_size();
+            println!(
+                "CDLS scalar mul proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size() + comm_size
+            );
+
             c.bench_function(concat!($curve_name, " scalar mul verifier time"), |b| {
                 b.iter(|| {
                     proof.verify_proof(&OGENERATOR, &chal, &c1, &c2.comm, &c3.comm);
@@ -523,6 +555,14 @@ macro_rules! bench_tcurve_fs_scalar_mul_verifier_time {
                 &r1,
                 &c2,
                 &c3,
+            );
+
+            let comm_size =
+                c1.compressed_size() + c2.comm.compressed_size() + c3.comm.compressed_size();
+            println!(
+                "CDLS fs scalar mul proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size() + comm_size
             );
 
             c.bench_function(
@@ -635,6 +675,14 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_verifier_time {
                 &c3,
             );
 
+            let comm_size =
+                c1.compressed_size() + c2.comm.compressed_size() + c3.comm.compressed_size();
+            println!(
+                "ZKAttest scalar mul proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size()
+            );
+
             c.bench_function(
                 concat!($curve_name, " zk attest scalar mul verifier time"),
                 |b| {
@@ -715,6 +763,14 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
                 &r1,
                 &c2,
                 &c3,
+            );
+
+            let comm_size =
+                c1.compressed_size() + c2.comm.compressed_size() + c3.comm.compressed_size();
+            println!(
+                "ZKAttest fs scalar mul proof size for {}:{}",
+                $curve_name,
+                proof.serialized_size()
             );
 
             c.bench_function(
@@ -971,6 +1027,7 @@ macro_rules! bench_tcurve_import_everything {
             AffineRepr, CurveGroup,
         };
         use ark_ff::fields::Field;
+        use ark_serialize::CanonicalSerialize;
         use ark_std::UniformRand;
         use core::ops::Mul;
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
