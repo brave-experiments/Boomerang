@@ -247,7 +247,6 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
             let mut byte = *c;
 
             for j in 0..PT::SUB_ITER {
-                println!("{}:{}", i * (8 / PT::SHIFT_BY) + j, worked);
                 worked &= self.proofs[i * (8 / PT::SHIFT_BY) + j]
                     .verify_with_challenge_byte(p, byte, c1, c2, c3);
                 byte >>= PT::SHIFT_BY;

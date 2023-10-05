@@ -621,6 +621,7 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_verifier_time {
                 &c2,
                 &c3,
             );
+
             let chal = ZKECSMP::<$config>::challenge_scalar(&mut transcript);
             let proof = ZKECSMP::<$config>::create_proof(
                 &s,
@@ -637,9 +638,8 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_verifier_time {
             c.bench_function(
                 concat!($curve_name, " zk attest scalar mul verifier time"),
                 |b| {
-                    let mut transcript_v = Transcript::new(label);
                     b.iter(|| {
-                        proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm);
+                        proof.verify_proof(&OGENERATOR, &chal, &c1, &c2.comm, &c3.comm);
                     });
                 },
             );
