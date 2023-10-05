@@ -9,7 +9,10 @@ use ark_ec::{
 use merlin::Transcript;
 use rand::{CryptoRng, RngCore};
 
-use crate::{pedersen_config::{PedersenComm, PedersenConfig}, scalar_mul::ScalarMulProtocol};
+use crate::{
+    pedersen_config::{PedersenComm, PedersenConfig},
+    scalar_mul::ScalarMulProtocol,
+};
 
 use std::marker::PhantomData;
 
@@ -36,6 +39,7 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// * `rng` - the cryptographically secure RNG.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_intermediate<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -52,7 +56,9 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
         // Now initialise the initial proof objects.
         let mut intermediates = Vec::with_capacity(P::SECPARAM);
         for _ in 0..P::SECPARAM {
-            intermediates.push(PT::create_intermediates_with_existing_commitments(transcript, rng, s, lambda, p, c1, r1, c2, c3));
+            intermediates.push(PT::create_intermediates_with_existing_commitments(
+                transcript, rng, s, lambda, p, c1, r1, c2, c3,
+            ));
         }
 
         FSECScalarMulProofIntermediate {
@@ -70,6 +76,7 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// * `rng` - the cryptographically secure RNG.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
+    #[allow(clippy::too_many_arguments)]
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -86,7 +93,10 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
             lambda,
             p,
             &Self::create_intermediate(transcript, rng, s, lambda, p, c1, r1, c2, c3),
-            c1, r1, c2, c3, 
+            c1,
+            r1,
+            c2,
+            c3,
             &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
         )
     }
@@ -102,6 +112,7 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
     /// * `inter` - the pre-generated intermediate values.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_proof_own_challenge(
         transcript: &mut Transcript,
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
@@ -118,7 +129,10 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
             lambda,
             p,
             inter,
-            c1, r1, c2, c3,
+            c1,
+            r1,
+            c2,
+            c3,
             &PT::challenge_scalar(transcript)[0..(PT::SHIFT_BY * P::SECPARAM / 8)],
         )
     }
@@ -132,6 +146,7 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// * `rng` - the cryptographically secure RNG.
     /// * `lambda` - the scalar multiple that is used.
     /// * `p` - the publicly known generator.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_proof(
         s: &sw::Affine<<P as PedersenConfig>::OCurve>,
         lambda: &<<P as PedersenConfig>::OCurve as CurveConfig>::ScalarField,
@@ -153,7 +168,10 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
                     p,
                     &inter.intermediates[(i * (8 / PT::SHIFT_BY)) + j],
                     byte,
-                    c1, r1, c2, c3
+                    c1,
+                    r1,
+                    c2,
+                    c3,
                 ));
 
                 byte >>= PT::SHIFT_BY;
@@ -171,10 +189,12 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object.    
-    pub fn add_to_transcript(&self, transcript: &mut Transcript,
-                             c1: &sw::Affine<P::OCurve>,
-                             c2: &sw::Affine<P>,
-                             c3: &sw::Affine<P>,
+    pub fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P::OCurve>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
     ) {
         // Domain separate the transcript.
         PT::initialise_transcript(transcript);
@@ -227,9 +247,9 @@ impl<P: PedersenConfig, PT: ScalarMulProtocol<P>> FSECScalarMulProof<P, PT> {
             let mut byte = *c;
 
             for j in 0..PT::SUB_ITER {
-                println!("{}:{}", i*(8 / PT::SHIFT_BY) + j, worked);
-                worked &=
-                    self.proofs[i * (8 / PT::SHIFT_BY) + j].verify_with_challenge_byte(p, byte, c1, c2, c3);
+                println!("{}:{}", i * (8 / PT::SHIFT_BY) + j, worked);
+                worked &= self.proofs[i * (8 / PT::SHIFT_BY) + j]
+                    .verify_with_challenge_byte(p, byte, c1, c2, c3);
                 byte >>= PT::SHIFT_BY;
             }
         }

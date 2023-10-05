@@ -37,6 +37,7 @@ pub trait ECPointAddProofTranscriptable<P: PedersenConfig> {
     /// * `self` - the proof object.
     /// * `transcript` - the transcript object that's used.
     /// * `ci` - the commitments.
+    #[allow(clippy::too_many_arguments)]
     fn add_to_transcript(
         &self,
         transcript: &mut Transcript,
@@ -111,7 +112,7 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
     fn challenge_scalar(transcript: &mut Transcript) -> [u8; 64] {
         ECPointAdditionTranscript::challenge_scalar(transcript, b"c")
     }
-    
+
     /// make_intermediate_transcript. This function accepts a set of intermediate values (`inter`)
     /// and builds a new ECPointAddProofIntermediateTranscript from `inter`.
     /// # Arguments
@@ -263,7 +264,7 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
             chal,
         );
 
-        let op = OpeningProof::create_proof_with_challenge(&ay_sf, &inter.opi, &c2, chal);
+        let op = OpeningProof::create_proof_with_challenge(&ay_sf, &inter.opi, c2, chal);
 
         // And now we just return.
         Self {
@@ -305,7 +306,7 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ECPointAddProof<P> {
                 .mp2
                 .verify_with_challenge(&self.c7, &self.c7, &z4, chal)
             && self.mp3.verify_with_challenge(z2, &z5, &z6, chal)
-            && self.op.verify_with_challenge(&c2, chal)
+            && self.op.verify_with_challenge(c2, chal)
     }
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
@@ -431,10 +432,9 @@ impl<P: PedersenConfig> ECPointAddProofTranscriptable<P> for ECPointAddProof<P> 
         c6: &sw::Affine<P>,
     ) {
         // Just build each bit in turn.
-        ECPointAddProof::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6, &self.c7);
+        ECPointAddProof::make_transcript(transcript, c1, c2, c3, c4, c5, c6, &self.c7);
         ECPointAddProof::make_subproof_transcripts(
-            transcript, &c1, &c2, &c3, &c4, &c5, &c6, &self.c7, &self.mp1, &self.mp2, &self.mp3,
-            &self.op,
+            transcript, c1, c2, c3, c4, c5, c6, &self.c7, &self.mp1, &self.mp2, &self.mp3, &self.op,
         );
     }
 }
@@ -451,15 +451,15 @@ impl<P: PedersenConfig> ECPointAddProofTranscriptable<P> for ECPointAddIntermedi
         c6: &sw::Affine<P>,
     ) {
         // Just build each bit in turn.
-        ECPointAddProof::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6, &self.c7.comm);
+        ECPointAddProof::make_transcript(transcript, c1, c2, c3, c4, c5, c6, &self.c7.comm);
         ECPointAddProof::make_subproof_transcripts(
             transcript,
-            &c1,
-            &c2,
-            &c3,
-            &c4,
-            &c5,
-            &c6,
+            c1,
+            c2,
+            c3,
+            c4,
+            c5,
+            c6,
             &self.c7.comm,
             &self.mpi1,
             &self.mpi2,
@@ -481,9 +481,9 @@ impl<P: PedersenConfig> ECPointAddProofTranscriptable<P> for ECPointAddIntermedi
         c6: &sw::Affine<P>,
     ) {
         // Just build each bit in turn.
-        ECPointAddProof::make_transcript(transcript, &c1, &c2, &c3, &c4, &c5, &c6, &self.c7);
+        ECPointAddProof::make_transcript(transcript, c1, c2, c3, c4, c5, c6, &self.c7);
         ECPointAddProof::make_subproof_transcripts(
-            transcript, &c1, &c2, &c3, &c4, &c5, &c6, &self.c7, &self.mpi1, &self.mpi2, &self.mpi3,
+            transcript, c1, c2, c3, c4, c5, c6, &self.c7, &self.mpi1, &self.mpi2, &self.mpi3,
             &self.opi,
         );
     }

@@ -522,16 +522,36 @@ macro_rules! __test_pedersen {
             let t = (a + b).into_affine();
 
             // We now commit to t, a, b.
-            let (cax, cay, cbx, cby, ctx, cty) = <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);            
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
             let mut transcript = Transcript::new(label);
-            let proof = EPAP::<$config>::create_with_existing_commitments(&mut transcript, &mut OsRng, a, b, t,
-                                                                          &cax, &cay, &cbx, &cby, &ctx, &cty);
+            let proof = EPAP::<$config>::create_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                a,
+                b,
+                t,
+                &cax,
+                &cay,
+                &cbx,
+                &cby,
+                &ctx,
+                &cty,
+            );
             assert!(proof.c7.is_on_curve());
 
             // Now check that it verifies.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &cax.comm, &cay.comm, &cbx.comm, &cby.comm, &ctx.comm, &cty.comm));
-            
+            assert!(proof.verify(
+                &mut transcript_v,
+                &cax.comm,
+                &cay.comm,
+                &cbx.comm,
+                &cby.comm,
+                &ctx.comm,
+                &cty.comm
+            ));
+
             // Alternatively, generate a false proof and watch it fail.
             let mut tf = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
             loop {
@@ -543,15 +563,34 @@ macro_rules! __test_pedersen {
 
             // Now show it fails.
             let mut transcript_f1 = Transcript::new(label);
-            let (caxf, cayf, cbxf, cbyf, ctxf, ctyf) = <$config as PedersenConfig>::create_commitments_to_coords(a, b, tf, &mut OsRng);
-            let proof_f: EPAP<Config> = EPAP::<$config>::create_with_existing_commitments(&mut transcript_f1, &mut OsRng, a, b, tf,
-                                                                               &caxf, &cayf, &cbxf, &cbyf, &ctxf, &ctyf
+            let (caxf, cayf, cbxf, cbyf, ctxf, ctyf) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, tf, &mut OsRng);
+            let proof_f: EPAP<Config> = EPAP::<$config>::create_with_existing_commitments(
+                &mut transcript_f1,
+                &mut OsRng,
+                a,
+                b,
+                tf,
+                &caxf,
+                &cayf,
+                &cbxf,
+                &cbyf,
+                &ctxf,
+                &ctyf,
             );
 
             let mut transcript_f2 = Transcript::new(label);
-            assert!(!proof_f.verify(&mut transcript_f2, &caxf.comm, &cayf.comm, &cbxf.comm, &cbyf.comm, &ctxf.comm, &ctyf.comm));
+            assert!(!proof_f.verify(
+                &mut transcript_f2,
+                &caxf.comm,
+                &cayf.comm,
+                &cbxf.comm,
+                &cbyf.comm,
+                &ctxf.comm,
+                &ctyf.comm
+            ));
         }
-        
+
         #[test]
         fn test_zkattest_point_add() {
             // Test that ZKAttest point addition proofs work.
@@ -571,12 +610,24 @@ macro_rules! __test_pedersen {
             let t = (a + b).into_affine();
             let mut transcript = Transcript::new(label);
             // We now commit to t, a, b.
-            let (cax, cay, cbx, cby, ctx, cty) = <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
 
-            let proof = ZKEPAP::<$config>::create_with_existing_commitments(&mut transcript, &mut OsRng, a, b, t,
-                                                                          &cax, &cay, &cbx, &cby, &ctx, &cty);
-            
-            // Check that all of the commitments are valid.            
+            let proof = ZKEPAP::<$config>::create_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                a,
+                b,
+                t,
+                &cax,
+                &cay,
+                &cbx,
+                &cby,
+                &ctx,
+                &cty,
+            );
+
+            // Check that all of the commitments are valid.
             assert!(proof.c8.is_on_curve());
             assert!(proof.c10.is_on_curve());
             assert!(proof.c11.is_on_curve());
@@ -584,7 +635,15 @@ macro_rules! __test_pedersen {
 
             // Now check that it verifies properly.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &cax.comm, &cay.comm, &cbx.comm, &cby.comm, &ctx.comm, &cty.comm));
+            assert!(proof.verify(
+                &mut transcript_v,
+                &cax.comm,
+                &cay.comm,
+                &cbx.comm,
+                &cby.comm,
+                &ctx.comm,
+                &cty.comm
+            ));
 
             // Now check that an incorrect proof fails.
             let mut t2 = <$OtherProjectiveType>::rand(&mut OsRng).into_affine();
@@ -599,10 +658,21 @@ macro_rules! __test_pedersen {
             let ct2x = <$config as PedersenConfig>::make_commitment_from_other(t2.x, &mut OsRng);
             let ct2y = <$config as PedersenConfig>::make_commitment_from_other(t2.y, &mut OsRng);
             let mut transcript_f = Transcript::new(label);
-            let proof_f = ZKEPAP::<$config>::create_with_existing_commitments(&mut transcript_f, &mut OsRng, a, b, t2,
-            &cax, &cay, &cbx, &cby, &ct2x, &ct2y);
+            let proof_f = ZKEPAP::<$config>::create_with_existing_commitments(
+                &mut transcript_f,
+                &mut OsRng,
+                a,
+                b,
+                t2,
+                &cax,
+                &cay,
+                &cbx,
+                &cby,
+                &ct2x,
+                &ct2y,
+            );
 
-            // The rest of the invariants still hold.            
+            // The rest of the invariants still hold.
             assert!(proof_f.c8.is_on_curve());
             assert!(proof_f.c10.is_on_curve());
             assert!(proof_f.c11.is_on_curve());
@@ -610,9 +680,17 @@ macro_rules! __test_pedersen {
 
             // And now check it fails.
             let mut transcript_fv = Transcript::new(label);
-            assert!(!proof_f.verify(&mut transcript_fv, &cax.comm, &cay.comm, &cbx.comm, &cby.comm, &ct2x.comm, &ct2y.comm));
+            assert!(!proof_f.verify(
+                &mut transcript_fv,
+                &cax.comm,
+                &cay.comm,
+                &cbx.comm,
+                &cby.comm,
+                &ct2x.comm,
+                &ct2y.comm
+            ));
         }
-        
+
         #[test]
         fn test_scalar_mult() {
             // Test that scalar multiplication works.
@@ -625,10 +703,18 @@ macro_rules! __test_pedersen {
             let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
             let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
             let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
-            
-            let inter = ECSMP::<$config>::create_intermediates_with_existing_commitments(&mut transcript, &mut OsRng,
-                                                                                         &s, &lambda, &OGENERATOR,
-                                                                                         &c1, &r1, &c2, &c3);
+
+            let inter = ECSMP::<$config>::create_intermediates_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
             assert!(inter.c4.is_on_curve());
             assert!(inter.c5.comm.is_on_curve());
             assert!(inter.c6.comm.is_on_curve());
@@ -636,7 +722,17 @@ macro_rules! __test_pedersen {
             assert!(inter.c8.comm.is_on_curve());
 
             let chal = ECSMP::<$config>::challenge_scalar(&mut transcript);
-            let proof = ECSMP::<$config>::create_proof(&s, &lambda, &OGENERATOR, &inter, &chal, &c1, &r1, &c2, &c3);                    
+            let proof = ECSMP::<$config>::create_proof(
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &inter,
+                &chal,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
             assert!(proof.c4.is_on_curve());
             assert!(proof.c5.is_on_curve());
             assert!(proof.c6.is_on_curve());
@@ -648,17 +744,41 @@ macro_rules! __test_pedersen {
 
             // Now make a fake transcript.
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
-            let c2f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.x), &mut OsRng);
-            let c3f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.y), &mut OsRng);
-            
-            let mut transcript_f = Transcript::new(label);
-            let inter_f = ECSMP::<$config>::create_intermediates_with_existing_commitments(&mut transcript, &mut OsRng,
-                                                                                         &s, &lambda, &OGENERATOR,
-                                                                                           &c1, &r1, &c2f, &c3f);
-            let chalf = ECSMP::<$config>::challenge_scalar(&mut transcript_f);
-            let proof_f = ECSMP::<$config>::create_proof(&s_fake, &lambda, &OGENERATOR, &inter, &chalf, &c1, &r1, &c2f, &c3f);
+            let c2f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.x),
+                &mut OsRng,
+            );
+            let c3f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.y),
+                &mut OsRng,
+            );
 
-            // All of the other invariants are right.            
+            let mut transcript_f = Transcript::new(label);
+            let inter_f = ECSMP::<$config>::create_intermediates_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2f,
+                &c3f,
+            );
+            let chalf = ECSMP::<$config>::challenge_scalar(&mut transcript_f);
+            let proof_f = ECSMP::<$config>::create_proof(
+                &s_fake,
+                &lambda,
+                &OGENERATOR,
+                &inter,
+                &chalf,
+                &c1,
+                &r1,
+                &c2f,
+                &c3f,
+            );
+
+            // All of the other invariants are right.
             assert!(proof_f.c4.is_on_curve());
             assert!(proof_f.c5.is_on_curve());
             assert!(proof_f.c6.is_on_curve());
@@ -669,7 +789,7 @@ macro_rules! __test_pedersen {
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR, &c1, &c2f.comm, &c3f.comm));
         }
-        
+
         #[test]
         fn test_fs_ec_scalar_mult() {
             // Test that the Fiat-Shamir scalar multiplication works.
@@ -681,23 +801,47 @@ macro_rules! __test_pedersen {
             let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
             let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
             let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
-            
-            let proof: FSECMP<Config, ECSMP<Config>> =
-                FSECMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR, &c1, &r1, &c2, &c3);
+
+            let proof: FSECMP<Config, ECSMP<Config>> = FSECMP::create(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
 
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm));
-            
+
             // Now make a fake transcript.
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
-            let c2f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.x), &mut OsRng);
-            let c3f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.y), &mut OsRng);
+            let c2f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.x),
+                &mut OsRng,
+            );
+            let c3f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.y),
+                &mut OsRng,
+            );
 
             let mut transcript_f = Transcript::new(label);
 
-            let proof_f: FSECMP<Config, ECSMP<Config>> =
-                FSECMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR, &c1, &r1, &c2f, &c3f);
+            let proof_f: FSECMP<Config, ECSMP<Config>> = FSECMP::create(
+                &mut transcript_f,
+                &mut OsRng,
+                &s_fake,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2f,
+                &c3f,
+            );
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR, &c1, &c2f.comm, &c3f.comm));
         }
@@ -713,19 +857,37 @@ macro_rules! __test_pedersen {
             let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
             let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
-            let inter = ZKECSMP::<$config>::create_intermediates_with_existing_commitments(&mut transcript, &mut OsRng,
-                                                                                         &s, &lambda, &OGENERATOR,
-                                                                                         &c1, &r1, &c2, &c3);            
+            let inter = ZKECSMP::<$config>::create_intermediates_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
             assert!(inter.c4.comm.is_on_curve());
             assert!(inter.c5.comm.is_on_curve());
             assert!(inter.a1.is_on_curve());
             assert!(inter.a2.comm.is_on_curve());
             assert!(inter.a3.comm.is_on_curve());
-            
+
             let chal = ZKECSMP::<$config>::challenge_scalar(&mut transcript);
-            let proof = ZKECSMP::<$config>::create_proof(&s, &lambda, &OGENERATOR, &inter, &chal, &c1, &r1, &c2, &c3);             
-            
-            // Check everything lies on the curve.            
+            let proof = ZKECSMP::<$config>::create_proof(
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &inter,
+                &chal,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
+
+            // Check everything lies on the curve.
             assert!(proof.c4.is_on_curve());
             assert!(proof.c5.is_on_curve());
             assert!(proof.a1.is_on_curve());
@@ -746,24 +908,48 @@ macro_rules! __test_pedersen {
             let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
             let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
             let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
-            
+
             let mut transcript = Transcript::new(label);
 
-            let proof: FSECMP<Config, ZKECSMP<Config>> =
-                FSECMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR, &c1, &r1, &c2, &c3);
-           
+            let proof: FSECMP<Config, ZKECSMP<Config>> = FSECMP::create(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
+
             // Check it passes.
             let mut transcript_v = Transcript::new(label);
             assert!(proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm));
-            
+
             // Now make a fake transcript.
             let s_fake = (OGENERATOR.mul(lambda) + OGENERATOR).into_affine();
-            let c2f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.x), &mut OsRng);
-            let c3f = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s_fake.y), &mut OsRng);            
+            let c2f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.x),
+                &mut OsRng,
+            );
+            let c3f = PC::new(
+                <$config as PedersenConfig>::from_ob_to_sf(s_fake.y),
+                &mut OsRng,
+            );
             let mut transcript_f = Transcript::new(label);
 
-            let proof_f: FSECMP<Config, ZKECSMP<Config>> =
-                FSECMP::create(&mut transcript_f, &mut OsRng, &s_fake, &lambda, &OGENERATOR, &c1, &r1, &c2f, &c3f);
+            let proof_f: FSECMP<Config, ZKECSMP<Config>> = FSECMP::create(
+                &mut transcript_f,
+                &mut OsRng,
+                &s_fake,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2f,
+                &c3f,
+            );
             let mut transcript_fv = Transcript::new(label);
             assert!(!proof_f.verify(&mut transcript_fv, &OGENERATOR, &c1, &c2f.comm, &c3f.comm));
         }

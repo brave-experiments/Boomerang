@@ -162,11 +162,26 @@ macro_rules! bench_tcurve_point_add_prover_time {
             // Note: this needs to be forced into affine too, or the underlying
             // proof system breaks (this seems to be an ark_ff thing).
             let t = (a + b).into_affine();
+            // We now commit to t, a, b.
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
 
             c.bench_function(concat!($curve_name, " point add prover time"), |bf| {
                 bf.iter(|| {
                     let mut transcript = Transcript::new(label);
-                    EPAP::<$config>::create(&mut transcript, &mut OsRng, a, b, t);
+                    EPAP::<$config>::create_with_existing_commitments(
+                        &mut transcript,
+                        &mut OsRng,
+                        a,
+                        b,
+                        t,
+                        &cax,
+                        &cay,
+                        &cbx,
+                        &cby,
+                        &ctx,
+                        &cty,
+                    );
                 });
             });
         }
@@ -194,13 +209,36 @@ macro_rules! bench_tcurve_point_add_verifier_time {
             // Note: this needs to be forced into affine too, or the underlying
             // proof system breaks (this seems to be an ark_ff thing).
             let t = (a + b).into_affine();
+            // We now commit to t, a, b.
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
             let mut transcript = Transcript::new(label);
-            let proof: EPAP<Config> = EPAP::create(&mut transcript, &mut OsRng, a, b, t);
+            let proof: EPAP<Config> = EPAP::create_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                a,
+                b,
+                t,
+                &cax,
+                &cay,
+                &cbx,
+                &cby,
+                &ctx,
+                &cty,
+            );
 
             c.bench_function(concat!($curve_name, " point add verifier time"), |bf| {
                 bf.iter(|| {
                     let mut transcript_v = Transcript::new(label);
-                    proof.verify(&mut transcript_v);
+                    proof.verify(
+                        &mut transcript_v,
+                        &cax.comm,
+                        &cay.comm,
+                        &cbx.comm,
+                        &cby.comm,
+                        &ctx.comm,
+                        &cty.comm,
+                    );
                 });
             });
         }
@@ -228,13 +266,27 @@ macro_rules! bench_tcurve_zk_attest_point_add_prover_time {
             // Note: this needs to be forced into affine too, or the underlying
             // proof system breaks (this seems to be an ark_ff thing).
             let t = (a + b).into_affine();
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
 
             c.bench_function(
                 concat!($curve_name, " zk attest point add prover time"),
                 |bf| {
                     bf.iter(|| {
                         let mut transcript = Transcript::new(label);
-                        ZKEPAP::<$config>::create(&mut transcript, &mut OsRng, a, b, t);
+                        ZKEPAP::<$config>::create_with_existing_commitments(
+                            &mut transcript,
+                            &mut OsRng,
+                            a,
+                            b,
+                            t,
+                            &cax,
+                            &cay,
+                            &cbx,
+                            &cby,
+                            &ctx,
+                            &cty,
+                        );
                     });
                 },
             );
@@ -263,8 +315,22 @@ macro_rules! bench_tcurve_zk_attest_point_add_verifier_time {
             // Note: this needs to be forced into affine too, or the underlying
             // proof system breaks (this seems to be an ark_ff thing).
             let t = (a + b).into_affine();
+            let (cax, cay, cbx, cby, ctx, cty) =
+                <$config as PedersenConfig>::create_commitments_to_coords(a, b, t, &mut OsRng);
             let mut transcript = Transcript::new(label);
-            let proof: ZKEPAP<Config> = ZKEPAP::create(&mut transcript, &mut OsRng, a, b, t);
+            let proof: ZKEPAP<Config> = ZKEPAP::create_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                a,
+                b,
+                t,
+                &cax,
+                &cay,
+                &cbx,
+                &cby,
+                &ctx,
+                &cty,
+            );
 
             let mut transcript_v = Transcript::new(label);
             c.bench_function(
@@ -272,7 +338,15 @@ macro_rules! bench_tcurve_zk_attest_point_add_verifier_time {
                 |bf| {
                     bf.iter(|| {
                         let mut transcript_v = Transcript::new(label);
-                        proof.verify(&mut transcript_v);
+                        proof.verify(
+                            &mut transcript_v,
+                            &cax.comm,
+                            &cay.comm,
+                            &cbx.comm,
+                            &cby.comm,
+                            &ctx.comm,
+                            &cty.comm,
+                        );
                     });
                 },
             );
@@ -293,11 +367,36 @@ macro_rules! bench_tcurve_scalar_mul_prover_time {
             let label = b"PedersenScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             c.bench_function(concat!($curve_name, " scalar mul prover time"), |b| {
                 b.iter(|| {
                     let mut transcript = Transcript::new(label);
-                    ECSMP::<$config>::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+                    let inter = ECSMP::<$config>::create_intermediates_with_existing_commitments(
+                        &mut transcript,
+                        &mut OsRng,
+                        &s,
+                        &lambda,
+                        &OGENERATOR,
+                        &c1,
+                        &r1,
+                        &c2,
+                        &c3,
+                    );
+                    let chal = ECSMP::<$config>::challenge_scalar(&mut transcript);
+                    ECSMP::<$config>::create_proof(
+                        &s,
+                        &lambda,
+                        &OGENERATOR,
+                        &inter,
+                        &chal,
+                        &c1,
+                        &r1,
+                        &c2,
+                        &c3,
+                    );
                 });
             });
         }
@@ -319,20 +418,37 @@ macro_rules! bench_tcurve_scalar_mul_verifier_time {
             let s = (OGENERATOR.mul(lambda)).into_affine();
 
             let mut transcript = Transcript::new(label);
-            let proof_i =
-                ECSMP::create_intermediates(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
-            let chal = <$config as PedersenConfig>::make_single_bit_challenge(
-                ECScalarMulTranscript::challenge_scalar(&mut transcript, b"c")
-                    .last()
-                    .unwrap()
-                    & 1,
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
+
+            let inter = ECSMP::<$config>::create_intermediates_with_existing_commitments(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
             );
-            let proof: ECSMP<$config> =
-                ECSMP::create_proof_with_challenge(&s, &lambda, &OGENERATOR, &proof_i, &chal);
+            let chal = ECSMP::<$config>::challenge_scalar(&mut transcript);
+            let proof = ECSMP::<$config>::create_proof(
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &inter,
+                &chal,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
 
             c.bench_function(concat!($curve_name, " scalar mul verifier time"), |b| {
                 b.iter(|| {
-                    proof.verify_with_challenge(&OGENERATOR, &chal);
+                    proof.verify_proof(&OGENERATOR, &chal, &c1, &c2.comm, &c3.comm);
                 });
             });
         }
@@ -352,6 +468,9 @@ macro_rules! bench_tcurve_fs_scalar_mul_prover_time {
             let label = b"PedersenFSScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             c.bench_function(
                 concat!($curve_name, " fiat-shamir scalar mul prover time"),
@@ -364,6 +483,10 @@ macro_rules! bench_tcurve_fs_scalar_mul_prover_time {
                             &s,
                             &lambda,
                             &OGENERATOR,
+                            &c1,
+                            &r1,
+                            &c2,
+                            &c3,
                         );
                     });
                 },
@@ -385,17 +508,29 @@ macro_rules! bench_tcurve_fs_scalar_mul_verifier_time {
             let label = b"PedersenFSScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             let mut transcript = Transcript::new(label);
-            let proof: FSECSMP<$config, ECSMP<$config>> =
-                FSECSMP::create(&mut transcript, &mut OsRng, &s, &lambda, &OGENERATOR);
+            let proof: FSECSMP<$config, ECSMP<$config>> = FSECSMP::create(
+                &mut transcript,
+                &mut OsRng,
+                &s,
+                &lambda,
+                &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
+            );
 
             c.bench_function(
                 concat!($curve_name, " fiat-shamir scalar mul verifier time"),
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(label);
-                        proof.verify(&mut transcript_v, &OGENERATOR);
+                        proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm);
                     });
                 },
             );
@@ -417,18 +552,39 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_prover_time {
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
 
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
+
             c.bench_function(
                 concat!($curve_name, " zk attest scalar mul prover time"),
                 |b| {
                     b.iter(|| {
                         let mut transcript = Transcript::new(label);
-                        ZKECSMP::<$config>::create(
-                            &mut transcript,
-                            &mut OsRng,
+                        let inter =
+                            ZKECSMP::<$config>::create_intermediates_with_existing_commitments(
+                                &mut transcript,
+                                &mut OsRng,
+                                &s,
+                                &lambda,
+                                &OGENERATOR,
+                                &c1,
+                                &r1,
+                                &c2,
+                                &c3,
+                            );
+                        let chal = ZKECSMP::<$config>::challenge_scalar(&mut transcript);
+                        ZKECSMP::<$config>::create_proof(
                             &s,
                             &lambda,
                             &OGENERATOR,
-                        );
+                            &inter,
+                            &chal,
+                            &c1,
+                            &r1,
+                            &c2,
+                            &c3,
+                        )
                     });
                 },
             );
@@ -449,36 +605,41 @@ macro_rules! bench_tcurve_zk_attest_scalar_mul_verifier_time {
             let label = b"PedersenZKAttestScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             let mut transcript = Transcript::new(label);
-            let proof_i = ZKECSMP::create_intermediates(
+            let inter = ZKECSMP::<$config>::create_intermediates_with_existing_commitments(
                 &mut transcript,
                 &mut OsRng,
                 &s,
                 &lambda,
                 &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
             );
-            let c0 = <$config as PedersenConfig>::CP1;
-            let c1 = <$config as PedersenConfig>::make_single_bit_challenge(
-                ZKAttestECScalarMulTranscript::challenge_scalar(&mut transcript, b"c")
-                    .last()
-                    .unwrap()
-                    & 1,
-            );
-            let proof = ZKECSMP::<$config>::create_proof_with_challenge(
+            let chal = ZKECSMP::<$config>::challenge_scalar(&mut transcript);
+            let proof = ZKECSMP::<$config>::create_proof(
                 &s,
                 &lambda,
                 &OGENERATOR,
-                &proof_i,
-                &c0,
+                &inter,
+                &chal,
                 &c1,
+                &r1,
+                &c2,
+                &c3,
             );
 
             c.bench_function(
                 concat!($curve_name, " zk attest scalar mul verifier time"),
                 |b| {
+                    let mut transcript_v = Transcript::new(label);
                     b.iter(|| {
-                        proof.verify_with_challenge(&OGENERATOR, &c0, &c1);
+                        proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm);
                     });
                 },
             );
@@ -499,6 +660,9 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_prover_time {
             let label = b"PedersenFSZkAttestScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             c.bench_function(
                 concat!($curve_name, " fiat-shamir zk attest scalar mul prover time"),
@@ -511,6 +675,10 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_prover_time {
                             &s,
                             &lambda,
                             &OGENERATOR,
+                            &c1,
+                            &r1,
+                            &c2,
+                            &c3,
                         );
                     });
                 },
@@ -532,6 +700,9 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
             let label = b"PedersenFSZkAttestScalarMult";
             let lambda = OSF::rand(&mut OsRng);
             let s = (OGENERATOR.mul(lambda)).into_affine();
+            let (c1, r1) = <$config as PedersenConfig>::create_commit_other(&lambda, &mut OsRng);
+            let c2 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.x), &mut OsRng);
+            let c3 = PC::new(<$config as PedersenConfig>::from_ob_to_sf(s.y), &mut OsRng);
 
             let mut transcript = Transcript::new(label);
             let proof = FSECSMP::<$config, ZKECSMP<$config>>::create(
@@ -540,6 +711,10 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
                 &s,
                 &lambda,
                 &OGENERATOR,
+                &c1,
+                &r1,
+                &c2,
+                &c3,
             );
 
             c.bench_function(
@@ -550,7 +725,7 @@ macro_rules! bench_tcurve_fs_zk_attest_scalar_mul_verifier_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(label);
-                        proof.verify(&mut transcript_v, &OGENERATOR);
+                        proof.verify(&mut transcript_v, &OGENERATOR, &c1, &c2.comm, &c3.comm);
                     });
                 },
             );

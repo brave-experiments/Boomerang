@@ -40,6 +40,7 @@ pub trait ZKAttestPointAddProofTranscriptable<P: PedersenConfig> {
     /// *`self` - the proof object.
     /// *`transcript` - the transcript object that is used.
     /// * `ci` - the commitments to the co-ordinates.
+    #[allow(clippy::too_many_arguments)]
     fn add_to_transcript(
         &self,
         transcript: &mut Transcript,
@@ -253,7 +254,7 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ZKAttestPointAddProof<P> {
     fn challenge_scalar(transcript: &mut Transcript) -> [u8; 64] {
         ZKAttestECPointAdditionTranscript::challenge_scalar(transcript, b"c")
     }
-        
+
     /// make_intermediate_transcript. This function accepts a set of intermediates (`inter`) and builds
     /// a new intermediate transcript object from `inter`.
     /// # Arguments
@@ -271,7 +272,7 @@ impl<P: PedersenConfig> PointAddProtocol<P> for ZKAttestPointAddProof<P> {
             mp3: MulProof::make_intermediate_transcript(inter.mpi3),
             mp4: MulProof::make_intermediate_transcript(inter.mpi4),
             e1: EqualityProof::make_intermediate_transcript(inter.ei1),
-            e2: EqualityProof::make_intermediate_transcript(inter.ei2),           
+            e2: EqualityProof::make_intermediate_transcript(inter.ei2),
         }
     }
 
@@ -657,22 +658,21 @@ impl<P: PedersenConfig> ZKAttestPointAddProof<P> {
 
 impl<P: PedersenConfig> ZKAttestPointAddProofTranscriptable<P> for ZKAttestPointAddProof<P> {
     type Affine = sw::Affine<P>;
-    fn add_to_transcript(&self, transcript: &mut Transcript,
-                         c1: &sw::Affine<P>,
-                         c2: &sw::Affine<P>,
-                         c3: &sw::Affine<P>,
-                         c4: &sw::Affine<P>,
-                         c5: &sw::Affine<P>,
-                         c6: &sw::Affine<P>,
+    fn add_to_transcript(
+        &self,
+        transcript: &mut Transcript,
+        c1: &sw::Affine<P>,
+        c2: &sw::Affine<P>,
+        c3: &sw::Affine<P>,
+        c4: &sw::Affine<P>,
+        c5: &sw::Affine<P>,
+        c6: &sw::Affine<P>,
     ) {
-        ZKAttestPointAddProof::make_transcript(
-            transcript, c1, c2, c3, c4, c5, c6,
-        );
+        ZKAttestPointAddProof::make_transcript(transcript, c1, c2, c3, c4, c5, c6);
 
         ZKAttestPointAddProof::make_subproof_transcripts(
-            transcript, c1, c2, c3, c4, c5, c6, &self.c8,
-            &self.c10, &self.c11, &self.c13, &self.mp1, &self.mp2, &self.mp3, &self.mp4, &self.e1,
-            &self.e2,
+            transcript, c1, c2, c3, c4, c5, c6, &self.c8, &self.c10, &self.c11, &self.c13,
+            &self.mp1, &self.mp2, &self.mp3, &self.mp4, &self.e1, &self.e2,
         );
     }
 }
