@@ -27,7 +27,7 @@ pub trait PedersenConfig: SWCurveConfig {
     /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
     /// * `x` - the element ∈ OCurve's ScalarField.
-    /// Returns `x` as an element of Self::ScalarField.    
+    /// Returns `x` as an element of Self::ScalarField.
     fn from_oc(
         x: <Self::OCurve as CurveConfig>::ScalarField,
     ) -> <Self as CurveConfig>::ScalarField {
@@ -191,6 +191,33 @@ pub trait PedersenConfig: SWCurveConfig {
         )
     }
 
+    /// create_multi_commit_other_with_both. This function accepts a list of values (`vals` ∈ OCurve::ScalarField)
+    /// and some randomness (`r` ∈ OCurve::ScalarField) and returns a new Pedersen Commitment C =
+    /// (vals_i*g) + r*h, where `g`, `h` are public generators of OCurve.
+    /// # Arguments
+    /// * `vals - the values that are being committed to.
+    /// * `r` - the randomness value.
+    /// Returns a new commitment to `vals` as a tuple.
+    fn create_multi_commit_other_with_both(
+        vals: Vec<&<Self::OCurve as CurveConfig>::ScalarField>,
+        r: &<Self::OCurve as CurveConfig>::ScalarField,
+    ) -> (
+        sw::Affine<Self::OCurve>,
+        <Self::OCurve as CurveConfig>::ScalarField,
+    ) {
+        let mut total: <Self::OCurve as CurveConfig>::ScalarField = Default::default();
+
+        for i in &vals {
+            total += *i
+        }
+
+        let ret: sw::Affine<Self::OCurve> = ((<Self::OCurve as SWCurveConfig>::GENERATOR * total)
+            + (Self::OGENERATOR2.mul(r).into_affine()))
+        .into();
+
+        (ret, *r)
+    }
+
     /// new_other_with_both. This function accepts two values `x`, `r` ∈ OCurve::ScalarField
     /// and uses them to form a new Pedersen Commitment in Self::Curve. Namely, this function
     /// returns C = xg + rh, where `g` and `r` are publicly known generators of Self::Curve.
@@ -202,6 +229,25 @@ pub trait PedersenConfig: SWCurveConfig {
         r: &<Self::OCurve as CurveConfig>::ScalarField,
     ) -> sw::Affine<Self::OCurve> {
         (<Self::OCurve as SWCurveConfig>::GENERATOR * (*x) + Self::OGENERATOR2.mul(r)).into_affine()
+    }
+
+    /// new_other_multiple_with_both. This function accepts two values `vals`, `r` ∈ OCurve::ScalarField
+    /// and uses them to form a new Pedersen Commitment in Self::Curve. Namely, this function
+    /// returns C = g(vals) + rh, where `g` and `r` are publicly known generators of Self::Curve.
+    /// # Arguments
+    /// * `vals` - the value that is being committed to.
+    /// * `r` - the randomness value that is being used.
+    fn new_other_multiple_with_both(
+        vals: Vec<&<Self::OCurve as CurveConfig>::ScalarField>,
+        r: &<Self::OCurve as CurveConfig>::ScalarField,
+    ) -> sw::Affine<Self::OCurve> {
+        let mut total: <Self::OCurve as CurveConfig>::ScalarField = Default::default();
+        for i in &vals {
+            total += *i
+        }
+
+        (<Self::OCurve as SWCurveConfig>::GENERATOR * total + Self::OGENERATOR2.mul(r))
+            .into_affine()
     }
 }
 
