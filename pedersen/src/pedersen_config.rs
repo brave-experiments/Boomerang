@@ -170,6 +170,24 @@ pub trait PedersenConfig: SWCurveConfig {
         Self::create_commit_other_with_both(val, &Self::get_random_p(rng))
     }
 
+    /// create_multi_commit_other. This function accepts a values (`vals` ∈ OCurve::ScalarField)
+    /// and produces a new Pedersen Commitment C = (vals)*g + r*h, where `g`, `h` are public
+    /// generators of OCurve and `r` is a random element of OCurve::ScalarField.
+    /// # Arguments
+    /// * `vals - the values that is being committed to.
+    /// * `rng` - the random number generator used to produce the random value. Must be a cryptographically
+    /// secure RNG.
+    /// Returns a new commitment to `val` as a tuple.
+    fn create_multi_commit_other<T: RngCore + CryptoRng>(
+        vals: Vec<&<Self::OCurve as CurveConfig>::ScalarField>,
+        rng: &mut T,
+    ) -> (
+        sw::Affine<Self::OCurve>,
+        <Self::OCurve as CurveConfig>::ScalarField,
+    ) {
+        Self::create_multi_commit_other_with_both(vals, &Self::get_random_p(rng))
+    }
+
     /// create_commit_other_with_both. This function accepts a value (`val` ∈ OCurve::ScalarField)
     /// and some randomness (`r` ∈ OCurve::ScalarField) and returns a new Pedersen Commitment C =
     /// val*g + r*h, where `g`, `h` are public generators of OCurve.
