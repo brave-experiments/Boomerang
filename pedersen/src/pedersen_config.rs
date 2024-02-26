@@ -390,6 +390,20 @@ impl<P: PedersenConfig> PedersenComm<P> {
         Self::new_with_generators(x, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
     }
 
+    /// new_multi. This function accepts various ScalarField elements `val` and an rng, returning a Pedersen Commitment
+    /// to `vals`.
+    /// # Arguments
+    /// * `vals` - the values that are committed to.
+    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
+    /// secure.
+    /// Returns a new Pedersen Commitment to `x`.
+    pub fn new_multi<T: RngCore + CryptoRng>(
+        vals: Vec<<P as CurveConfig>::ScalarField>,
+        rng: &mut T,
+    ) -> Self {
+        Self::new_multi_with_generators(vals, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
+    }
+
     /// new_with_generator. This function accepts a ScalarField element `x`, an `rng`,
     /// and two generators (`g`, `q`) and returns a Pedersen Commitment C = xg + rq. Here `r` is
     /// the produced randomness.
@@ -416,6 +430,37 @@ impl<P: PedersenConfig> PedersenComm<P> {
         }
     }
 
+    /// new_multi_with_generator. This function accepts a list of ScalarField elements `val`, an `rng`,
+    /// and two generators (`g`, `q`) and returns a Pedersen Commitment C = valsg + rq. Here `r` is
+    /// the produced randomness.
+    /// # Arguments
+    /// * `vals` - the values that are committed to.
+    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
+    /// secure.
+    /// * `g` - a generator of `P`'s scalar field.
+    /// * `q` - a distinct generator of `P`'s scalar field.
+    /// Returns a new commitment to `x`.
+    pub fn new_multi_with_generators<T: RngCore + CryptoRng>(
+        vals: Vec<<P as CurveConfig>::ScalarField>,
+        rng: &mut T,
+        g: &sw::Affine<P>,
+        q: &sw::Affine<P>,
+    ) -> Self {
+        // Returns a new pedersen commitment using fixed generators.
+        // N.B First check that `g != q`.
+        assert!(g != q);
+        let r = <P as CurveConfig>::ScalarField::rand(rng);
+
+        let mut total = P::CP1;
+        for i in vals {
+            total += i
+        }
+        Self {
+            comm: (g.mul(total) + q.mul(r)).into_affine(),
+            r,
+        }
+    }
+
     /// new_with_both. This function returns a new Pedersen Commitment to `x` with randomness
     /// `r` (i.e the commitment is C = xg + rq, where `g` and `q` are pre-defined generators.
     /// # Arguments
@@ -428,6 +473,28 @@ impl<P: PedersenConfig> PedersenComm<P> {
     ) -> Self {
         Self {
             comm: (<P as SWCurveConfig>::GENERATOR.mul(x) + P::GENERATOR2.mul(r)).into_affine(),
+            r,
+        }
+    }
+
+    /// new_multi_with_both. This function returns a new Pedersen Commitment to `vals` with randomness
+    /// `r` (i.e the commitment is C = valsg + rq, where `g` and `q` are pre-defined generators.
+    /// # Arguments
+    /// * `vals` - the values that are being committed to.
+    /// * `r` - the randomness to use.
+    /// Returns a new commitment to `x`.
+    pub fn new_multi_with_both(
+        vals: Vec<<P as CurveConfig>::ScalarField>,
+        r: <P as CurveConfig>::ScalarField,
+    ) -> Self {
+        let mut total = P::CP1;
+
+        for i in vals {
+            total += i
+        }
+
+        Self {
+            comm: (<P as SWCurveConfig>::GENERATOR.mul(total) + P::GENERATOR2.mul(r)).into_affine(),
             r,
         }
     }
