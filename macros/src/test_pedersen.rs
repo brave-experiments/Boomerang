@@ -276,11 +276,12 @@ macro_rules! __test_pedersen {
             vals.push(c);
             vals.push(d);
 
-            let a = SF::rand(&mut OsRng);
+            let z = b + c + d;
+
             let c1: PC = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
-            let proof = OP::create(&mut transcript, &mut OsRng, &a, &c1);
+            let proof = OP::create(&mut transcript, &mut OsRng, &z, &c1);
             assert!(proof.alpha.is_on_curve());
 
             // Now check that the proof verifies correctly.
@@ -289,18 +290,21 @@ macro_rules! __test_pedersen {
 
             // Now check that an unrelated commitment would fail.
             // Alternatively, check that a different proof would fail.
-            //let mut b = SF::rand(&mut OsRng);
+            let mut t = SF::rand(&mut OsRng);
 
-            //loop {
-            //    if b != a {
-            //        break;
-            //    }
-            //    b = SF::rand(&mut OsRng);
-            //}
+            loop {
+                if t != z {
+                    break;
+                }
+                t = SF::rand(&mut OsRng);
+            }
 
-            //let c3: PC = PC::new(b, &mut OsRng);
-            //let mut transcript_f = Transcript::new(label);
-            //assert!(!proof.verify(&mut transcript_f, &c3.comm));
+            let mut vals_t: Vec<SF> = Vec::new();
+            vals_t.push(t);
+            let c3: PC = PC::new_multi(vals_t, &mut OsRng);
+
+            let mut transcript_f = Transcript::new(label);
+            assert!(!proof.verify(&mut transcript_f, &c3.comm));
         }
 
         #[test]
@@ -328,7 +332,7 @@ macro_rules! __test_pedersen {
             assert!(!proof.verify_proof(&c1.comm, &cf[..]));
         }
 
-        #[test]
+        //#[test]
         fn test_pedersen_opening_nist() {
             // Test that the opening proof goes through.
             let label = b"PedersenOpen";

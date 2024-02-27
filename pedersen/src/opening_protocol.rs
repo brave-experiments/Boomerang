@@ -71,7 +71,7 @@ pub trait OpeningProofTranscriptable {
     /// # Arguments
     /// * `self` - the proof object.
     /// * `transcript` - the transcript which is modified.
-    /// * `c1` - the commitment that is being added to the transcript.    
+    /// * `c1` - the commitment that is being added to the transcript.
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine);
 }
 
@@ -249,7 +249,6 @@ impl<P: PedersenConfig> OpeningProof<P> {
     pub fn verify_proof(&self, c1: &sw::Affine<P>, chal_buf: &[u8]) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        //println!("Opening challenge in verif {}", chal);
         self.verify_with_challenge(c1, &chal)
     }
 

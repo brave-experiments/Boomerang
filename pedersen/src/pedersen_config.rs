@@ -451,12 +451,13 @@ impl<P: PedersenConfig> PedersenComm<P> {
         assert!(g != q);
         let r = <P as CurveConfig>::ScalarField::rand(rng);
 
-        let mut total = P::CP1;
+        let mut total: sw::Affine<P> = sw::Affine::identity();
         for i in vals {
-            total += i
+            total = (total + g.mul(i)).into();
         }
+
         Self {
-            comm: (g.mul(total) + q.mul(r)).into_affine(),
+            comm: (total + q.mul(r)).into_affine(),
             r,
         }
     }
@@ -487,14 +488,13 @@ impl<P: PedersenConfig> PedersenComm<P> {
         vals: Vec<<P as CurveConfig>::ScalarField>,
         r: <P as CurveConfig>::ScalarField,
     ) -> Self {
-        let mut total = P::CP1;
-
+        let mut total: sw::Affine<P> = sw::Affine::identity();
         for i in vals {
-            total += i
+            total = (total + <P as SWCurveConfig>::GENERATOR.mul(i)).into();
         }
 
         Self {
-            comm: (<P as SWCurveConfig>::GENERATOR.mul(total) + P::GENERATOR2.mul(r)).into_affine(),
+            comm: (total + P::GENERATOR2.mul(r)).into_affine(),
             r,
         }
     }
