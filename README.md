@@ -1,4 +1,4 @@
-# CDLS (Cuddles): Committed Discrete Logarithms with Soundness
+# Boomerang in CDLS (Cuddles): Committed Discrete Logarithms with Soundness
 
 <img width="171" alt="logo" src="images/logo.png">
 
