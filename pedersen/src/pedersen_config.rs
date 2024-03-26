@@ -553,4 +553,8 @@ impl<P: PedersenConfig> PedersenComm<P> {
             r,
         }
     }
+
+    pub const fn commitment(&self) -> sw::Affine<P> {
+        self.comm
+    }
 }
