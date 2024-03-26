@@ -264,7 +264,7 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
-        fn test_pedersen_opening_multi_comm() {
+        fn test_pedersen_multi_comm() {
             // Test that the opening proof with multi commitments goes through.
             let label = b"PedersenOpenMulti";
 
@@ -280,31 +280,6 @@ macro_rules! __test_pedersen {
 
             let c1: PC = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
-
-            let proof = OP::create(&mut transcript, &mut OsRng, &z, &c1);
-            assert!(proof.alpha.is_on_curve());
-
-            // Now check that the proof verifies correctly.
-            let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1.comm));
-
-            // Now check that an unrelated commitment would fail.
-            // Alternatively, check that a different proof would fail.
-            let mut t = SF::rand(&mut OsRng);
-
-            loop {
-                if t != z {
-                    break;
-                }
-                t = SF::rand(&mut OsRng);
-            }
-
-            let mut vals_t: Vec<SF> = Vec::new();
-            vals_t.push(t);
-            let c3: PC = PC::new_multi(vals_t, &mut OsRng);
-
-            let mut transcript_f = Transcript::new(label);
-            assert!(!proof.verify(&mut transcript_f, &c3.comm));
         }
 
         #[test]

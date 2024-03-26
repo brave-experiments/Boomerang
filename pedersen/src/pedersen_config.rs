@@ -9,8 +9,11 @@ use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 use std::ops;
 
+use digest::{ExtendableOutputDirty, Update, XofReader};
+use sha3::Shake256;
+
 pub trait PedersenConfig: SWCurveConfig {
-    /// Second generator that's used in Pedersen commitments.
+    /// Second generator that's used in Pedersen commitments. Corresponds to H.
     const GENERATOR2: sw::Affine<Self>;
 
     /// The curve type that maps to this PedersenConfig.
@@ -420,7 +423,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
         g: &sw::Affine<P>,
         q: &sw::Affine<P>,
     ) -> Self {
-        // Returns a new pedersen commitment using fixed generators.
+        // Returns a new Pedersen commitment using fixed generators.
         // N.B First check that `g != q`.
         assert!(g != q);
         let r = <P as CurveConfig>::ScalarField::rand(rng);
@@ -430,6 +433,24 @@ impl<P: PedersenConfig> PedersenComm<P> {
         }
     }
 
+    pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<P> {
+        extern crate crypto;
+        use crypto::digest::Digest;
+        use crypto::sha3::Sha3;
+
+        for i in 0..=u8::max_value() {
+            let mut sha = Sha3::sha3_256();
+            sha.input(bytes);
+            sha.input(&[i]);
+            let mut buf = [0u8; 32];
+            sha.result(&mut buf);
+            let res = sw::Affine::<P>::from_random_bytes(&buf);
+            if let Some(point) = res {
+                return point;
+            }
+        }
+        panic!()
+    }
     /// new_multi_with_generator. This function accepts a list of ScalarField elements `val`, an `rng`,
     /// and two generators (`g`, `q`) and returns a Pedersen Commitment C = valsg + rq. Here `r` is
     /// the produced randomness.
@@ -446,14 +467,31 @@ impl<P: PedersenConfig> PedersenComm<P> {
         g: &sw::Affine<P>,
         q: &sw::Affine<P>,
     ) -> Self {
-        // Returns a new pedersen commitment using fixed generators.
+        // Returns a new multi pedersen commitment using fixed generators.
         // N.B First check that `g != q`.
         assert!(g != q);
         let r = <P as CurveConfig>::ScalarField::rand(rng);
 
+        let mut gens: Vec<sw::Affine<P>> = vec![];
+        gens.push(*g);
+
+        let label = [b'G', 0, 0, 0, 0];
+        let mut shake = Shake256::default();
+        shake.update(b"GeneratorsChain");
+        shake.update(label);
+        let mut reader = shake.finalize_xof_dirty();
+
+        for _ in 1..vals.len() {
+            let mut uniform_bytes = [0u8; 64];
+            reader.read(&mut uniform_bytes);
+
+            let rest = Self::affine_from_bytes_tai(&uniform_bytes);
+            gens.push(rest);
+        }
+
         let mut total: sw::Affine<P> = sw::Affine::identity();
-        for i in vals {
-            total = (total + g.mul(i)).into();
+        for i in 0..gens.len() {
+            total = (total + gens[i].mul(vals[i])).into();
         }
 
         Self {
@@ -488,9 +526,26 @@ impl<P: PedersenConfig> PedersenComm<P> {
         vals: Vec<<P as CurveConfig>::ScalarField>,
         r: <P as CurveConfig>::ScalarField,
     ) -> Self {
+        let mut gens: Vec<sw::Affine<P>> = vec![];
+        gens.push(<P as SWCurveConfig>::GENERATOR);
+
+        let label = [b'G', 0, 0, 0, 0];
+        let mut shake = Shake256::default();
+        shake.update(b"GeneratorsChain");
+        shake.update(label);
+        let mut reader = shake.finalize_xof_dirty();
+
+        for _ in 1..vals.len() {
+            let mut uniform_bytes = [0u8; 64];
+            reader.read(&mut uniform_bytes);
+
+            let rest = Self::affine_from_bytes_tai(&uniform_bytes);
+            gens.push(rest);
+        }
+
         let mut total: sw::Affine<P> = sw::Affine::identity();
-        for i in vals {
-            total = (total + <P as SWCurveConfig>::GENERATOR.mul(i)).into();
+        for i in 0..gens.len() {
+            total = (total + gens[i].mul(vals[i])).into();
         }
 
         Self {
