@@ -265,6 +265,25 @@ macro_rules! __test_pedersen {
 
         #[test]
         fn test_pedersen_multi_comm() {
+            // Test that creating multi commitments goes through.
+            let label = b"PedersenOpenMulti";
+
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let d = SF::rand(&mut OsRng);
+            let mut vals: Vec<SF> = Vec::new();
+            vals.push(b);
+            vals.push(c);
+            vals.push(d);
+
+            let z = b + c + d;
+
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let mut transcript = Transcript::new(label);
+        }
+
+        #[test]
+        fn test_pedersen_multi_comm_opening() {
             // Test that the opening proof with multi commitments goes through.
             let label = b"PedersenOpenMulti";
 
@@ -278,8 +297,15 @@ macro_rules! __test_pedersen {
 
             let z = b + c + d;
 
-            let (c1, gen) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
             let mut transcript = Transcript::new(label);
+
+            let proof = OPM::create(&mut transcript, &mut OsRng, vals.clone(), &c1, gens.clone());
+            assert!(proof.alpha.is_on_curve());
+
+            // Now check that the proof verifies correctly.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &c1.comm, vals.len(), gens.clone()));
         }
 
         #[test]
@@ -1401,6 +1427,7 @@ macro_rules! test_pedersen {
                 mul_protocol::MulProof as MP,
                 non_zero_protocol::NonZeroProof as NZP,
                 opening_protocol::OpeningProof as OP,
+                opening_protocol::OpeningProofMulti as OPM,
                 pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
                 point_add::PointAddProtocol,
