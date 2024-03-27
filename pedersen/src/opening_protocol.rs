@@ -429,17 +429,17 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         l: usize,
         gens: Generators<P>,
     ) -> OpeningProofMultiIntermediate<P> {
-        let t1 = <P as CurveConfig>::ScalarField::rand(rng);
-
         let mut total: sw::Affine<P> = sw::Affine::identity();
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
+
         for i in 0..l {
             let t = <P as CurveConfig>::ScalarField::rand(rng);
             ts.push(t);
             total = (total + gens.generators[i].mul(t)).into();
         }
-
+        let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (total + P::GENERATOR2.mul(t1)).into_affine();
+
         Self::make_transcript(transcript, &c1.comm, &alpha);
         OpeningProofMultiIntermediate { t1, ts, alpha }
     }
@@ -493,13 +493,13 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         c1: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
-        let z1 = c1.r * (*chal) + inter.t1;
-
         let mut z2: Vec<<P as CurveConfig>::ScalarField> = vec![];
         for i in 0..x.len() {
             let tmp = x[i] * (*chal) + inter.ts[i];
             z2.push(tmp);
         }
+
+        let z1 = c1.r * (*chal) + inter.t1;
 
         Self {
             alpha: inter.alpha,
@@ -575,10 +575,12 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     ) -> bool {
         let rhs = c1.mul(*chal) + self.alpha;
 
-        let mut lhs: sw::Affine<P> = sw::Affine::identity();
+        let mut tmp: sw::Affine<P> = sw::Affine::identity();
         for i in 0..l {
-            lhs = (lhs + gens.generators[i].mul(self.z2[i])).into();
+            tmp = (tmp + gens.generators[i].mul(self.z2[i])).into();
         }
+
+        let lhs = (tmp + P::GENERATOR2.mul(self.z1)).into_affine();
 
         lhs == rhs
     }

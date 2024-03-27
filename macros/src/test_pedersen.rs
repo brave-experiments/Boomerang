@@ -276,8 +276,6 @@ macro_rules! __test_pedersen {
             vals.push(c);
             vals.push(d);
 
-            let z = b + c + d;
-
             let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
             let mut transcript = Transcript::new(label);
         }
@@ -294,8 +292,6 @@ macro_rules! __test_pedersen {
             vals.push(b);
             vals.push(c);
             vals.push(d);
-
-            let z = b + c + d;
 
             let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
             let mut transcript = Transcript::new(label);
