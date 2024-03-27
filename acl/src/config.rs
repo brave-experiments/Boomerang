@@ -6,10 +6,11 @@ use ark_ec::{
 
 use ark_std::{ops::Mul, UniformRand};
 use digest::{ExtendableOutputDirty, Update, XofReader};
+use pedersen::pedersen_config::PedersenConfig;
 use rand::{CryptoRng, RngCore};
 use sha3::Shake256;
 
-pub trait ACLConfig: SWCurveConfig {
+pub trait ACLConfig: SWCurveConfig + PedersenConfig {
     /// A generator that's used in signature. Corresponds to H.
     const GENERATOR2: sw::Affine<Self>;
 
@@ -32,7 +33,7 @@ pub trait ACLConfig: SWCurveConfig {
     /// * `x` - the element ∈ OCurve's ScalarField.
     /// Returns `x` as an element of Self::ScalarField.
     fn from_oc(
-        x: <Self::OCurve as CurveConfig>::ScalarField,
+        x: <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField,
     ) -> <Self as CurveConfig>::ScalarField {
         let x_bt: num_bigint::BigUint = x.into();
         <Self as CurveConfig>::ScalarField::from(x_bt)
@@ -43,15 +44,15 @@ pub trait ACLConfig: SWCurveConfig {
     /// * `x` - the element ∈ OCurve's BaseField.
     /// Returns `y` ∈ OCurve's ScalarField.
     fn from_ob_to_os(
-        x: <Self::OCurve as CurveConfig>::BaseField,
-    ) -> <Self::OCurve as CurveConfig>::ScalarField;
+        x: <<Self as ACLConfig>::OCurve as CurveConfig>::BaseField,
+    ) -> <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField;
 
     /// from_ob_to_sf. This function takes an `x` in the OCurve's BaseField and converts
     /// it into an element of the ScalarField of the current curve.
     /// * `x` - the element ∈ OCurve's BaseField.
     /// Returns `x` as an element of Self::ScalarField.
     fn from_ob_to_sf(
-        x: <Self::OCurve as CurveConfig>::BaseField,
+        x: <<Self as ACLConfig>::OCurve as CurveConfig>::BaseField,
     ) -> <Self as CurveConfig>::ScalarField;
 
     /// from_ob_to_sf. This function takes an `x` in the OCurve's ScalarField and converts
@@ -59,7 +60,7 @@ pub trait ACLConfig: SWCurveConfig {
     /// * `x` - the element ∈ OCurve's ScalarField.
     /// Returns `x` as an element of Self::ScalarField.
     fn from_os_to_sf(
-        x: <Self::OCurve as CurveConfig>::ScalarField,
+        x: <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField,
     ) -> <Self as CurveConfig>::ScalarField;
 
     /// from_bf_to_sf. This function takes an `x` in  Self::BaseField and converts
