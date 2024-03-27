@@ -272,6 +272,19 @@ pub trait PedersenConfig: SWCurveConfig {
     }
 }
 
+/// Generators. This struct acts as a convenient wrapper for Pedersen Commitments.
+pub struct Generators<P: PedersenConfig> {
+    pub generators: Vec<sw::Affine<P>>,
+}
+
+impl<P: PedersenConfig> Clone for Generators<P> {
+    fn clone(&self) -> Self {
+        Generators {
+            generators: self.generators.clone(),
+        }
+    }
+}
+
 /// PedersenComm. This struct acts as a convenient wrapper for Pedersen Commitments.
 /// At a high-level, this struct is meant to be used whilst producing Pedersen Commitments
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
@@ -403,7 +416,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
     pub fn new_multi<T: RngCore + CryptoRng>(
         vals: Vec<<P as CurveConfig>::ScalarField>,
         rng: &mut T,
-    ) -> Self {
+    ) -> (Self, Generators<P>) {
         Self::new_multi_with_generators(vals, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
     }
 
@@ -466,7 +479,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
         rng: &mut T,
         g: &sw::Affine<P>,
         q: &sw::Affine<P>,
-    ) -> Self {
+    ) -> (Self, Generators<P>) {
         // Returns a new multi pedersen commitment using fixed generators.
         // N.B First check that `g != q`.
         assert!(g != q);
@@ -489,15 +502,22 @@ impl<P: PedersenConfig> PedersenComm<P> {
             gens.push(rest);
         }
 
+        let gens_s = Generators {
+            generators: gens.clone(),
+        };
+
         let mut total: sw::Affine<P> = sw::Affine::identity();
         for i in 0..gens.len() {
             total = (total + gens[i].mul(vals[i])).into();
         }
 
-        Self {
-            comm: (total + q.mul(r)).into_affine(),
-            r,
-        }
+        (
+            Self {
+                comm: (total + q.mul(r)).into_affine(),
+                r,
+            },
+            gens_s.clone(),
+        )
     }
 
     /// new_with_both. This function returns a new Pedersen Commitment to `x` with randomness
@@ -525,7 +545,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
     pub fn new_multi_with_both(
         vals: Vec<<P as CurveConfig>::ScalarField>,
         r: <P as CurveConfig>::ScalarField,
-    ) -> Self {
+    ) -> (Self, Generators<P>) {
         let mut gens: Vec<sw::Affine<P>> = vec![];
         gens.push(<P as SWCurveConfig>::GENERATOR);
 
@@ -543,15 +563,22 @@ impl<P: PedersenConfig> PedersenComm<P> {
             gens.push(rest);
         }
 
+        let gens_s = Generators {
+            generators: gens.clone(),
+        };
+
         let mut total: sw::Affine<P> = sw::Affine::identity();
         for i in 0..gens.len() {
             total = (total + gens[i].mul(vals[i])).into();
         }
 
-        Self {
-            comm: (total + P::GENERATOR2.mul(r)).into_affine(),
-            r,
-        }
+        (
+            Self {
+                comm: (total + P::GENERATOR2.mul(r)).into_affine(),
+                r,
+            },
+            gens_s.clone(),
+        )
     }
 
     pub const fn commitment(&self) -> sw::Affine<P> {
