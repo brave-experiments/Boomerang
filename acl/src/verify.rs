@@ -4,7 +4,7 @@
 
 use ark_ec::{
     models::CurveConfig,
-    short_weierstrass::{self as sw, SWCurveConfig},
+    short_weierstrass::{self as sw},
     CurveGroup,
 };
 use rand::{CryptoRng, RngCore};
@@ -169,7 +169,7 @@ impl<A: ACLConfig> SigSign<A> {
         c6: &sw::Affine<A>,
         c7: &sw::Affine<A>,
     ) {
-        transcript.append_message(b"dom-sep", b"acl-challenge");
+        transcript.append_message(b"dom-sep", b"acl-sign");
 
         let mut compressed_bytes = Vec::new();
         c1.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -236,7 +236,7 @@ impl<A: ACLConfig> SigSign<A> {
         );
 
         let mut buf = [0u8; CHALLENGE_SIZE];
-        let _ = &transcript_v.challenge_bytes(b"chall", &mut buf);
+        let _ = &transcript_v.challenge_bytes(b"sig", &mut buf);
 
         let epsilon: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
@@ -244,7 +244,7 @@ impl<A: ACLConfig> SigSign<A> {
         let e = omega + omega1;
 
         if e != epsilon {
-            panic!("Failed to create signature challenge: params are incorrect");
+            panic!("Failed to create a signature");
         } else {
             let sigma = Signature {
                 zeta1,
