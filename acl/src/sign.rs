@@ -1,22 +1,22 @@
 //!
-//! Module containing the definition of the private key container
+//! Module containing the definition of the singing side of the algorithm
 //!
 
 use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw, SWCurveConfig},
-    AffineRepr, CurveGroup,
+    CurveGroup,
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::{config::ACLConfig, config::KeyPair, config::StateSignatureComm};
-use ark_serialize::CanonicalSerialize;
+use crate::{config::ACLConfig, config::KeyPair};
 use ark_std::{ops::Mul, UniformRand};
 use pedersen::pedersen_config::PedersenComm;
-use pedersen::pedersen_config::PedersenConfig;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
 pub struct SigComm<A: ACLConfig> {
+    /// comms: the multi-commitment to chosen values.
+    pub comms: sw::Affine<A>,
     /// rand: the first message value.
     pub rand: <A as CurveConfig>::ScalarField,
     /// a: the second message value.
@@ -28,10 +28,10 @@ pub struct SigComm<A: ACLConfig> {
 }
 
 impl<A: ACLConfig> SigComm<A> {
-    /// create_message_one. This function creates the first signature message.
+    /// commit. This function creates the first signature message.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
-    pub fn create_message_one<T: RngCore + CryptoRng>(
+    pub fn commit<T: RngCore + CryptoRng>(
         keys: KeyPair<A>,
         rng: &mut T,
         vals: Vec<<A as CurveConfig>::ScalarField>,
@@ -50,6 +50,12 @@ impl<A: ACLConfig> SigComm<A> {
         let a1 = (A::GENERATOR.mul(r1) + z1.mul(c)).into_affine();
         let a2 = (A::GENERATOR.mul(r2) + z2.mul(c)).into_affine();
 
-        Self { rand, a, a1, a2 }
+        Self {
+            comms: comms.commitment(),
+            rand,
+            a,
+            a1,
+            a2,
+        }
     }
 }

@@ -11,9 +11,6 @@ use rand::{CryptoRng, RngCore};
 use sha3::Shake256;
 
 pub trait ACLConfig: SWCurveConfig + PedersenConfig {
-    /// A generator that's used in signature. Corresponds to H.
-    const GENERATOR2: sw::Affine<Self>;
-
     /// A tag public key. Corresponds to Z.
     const TAGKEY: sw::Affine<Self>;
 
