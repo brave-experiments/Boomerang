@@ -76,7 +76,7 @@ pub struct SigResp<A: ACLConfig> {
 }
 
 impl<A: ACLConfig> SigResp<A> {
-    /// respond. This function creates the thrid signature message.
+    /// respond. This function creates the third signature message.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn respond(
