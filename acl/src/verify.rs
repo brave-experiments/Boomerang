@@ -11,10 +11,8 @@ use rand::{CryptoRng, RngCore};
 
 use crate::config::ACLConfig;
 use crate::sign::SigComm;
-use ark_serialize::CanonicalDeserialize;
-use ark_serialize::CanonicalSerialize;
-use ark_std::Zero;
-use ark_std::{ops::Mul, UniformRand};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::{ops::Mul, UniformRand, Zero};
 use merlin::Transcript;
 
 pub const CHALLENGE_SIZE: usize = 64;

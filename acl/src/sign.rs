@@ -4,11 +4,12 @@
 
 use ark_ec::{
     models::CurveConfig,
-    short_weierstrass::{self as sw, SWCurveConfig},
+    short_weierstrass::{self as sw},
     CurveGroup,
 };
 use rand::{CryptoRng, RngCore};
 
+use crate::verify::SigChall;
 use crate::{config::ACLConfig, config::KeyPair};
 use ark_std::{ops::Mul, UniformRand};
 use pedersen::pedersen_config::PedersenComm;
@@ -57,5 +58,38 @@ impl<A: ACLConfig> SigComm<A> {
             a1,
             a2,
         }
+    }
+}
+
+/// SigResp. This struct acts as a container for the third message (the response) of the Signature.
+pub struct SigResp<A: ACLConfig> {
+    /// c: the first message value.
+    pub c: <A as CurveConfig>::ScalarField,
+    /// c1: the second message value.
+    pub c1: <A as CurveConfig>::ScalarField,
+    /// r: the second message value.
+    pub r: <A as CurveConfig>::ScalarField,
+    /// r1: the second message value.
+    pub r1: <A as CurveConfig>::ScalarField,
+    /// r2: the second message value.
+    pub r2: <A as CurveConfig>::ScalarField,
+}
+
+impl<A: ACLConfig> SigResp<A> {
+    /// respond. This function creates the thrid signature message.
+    /// # Arguments
+    /// * `inter` - the intermediate values to use.
+    pub fn respond(
+        keys: KeyPair<A>,
+        c1: <A as CurveConfig>::ScalarField,
+        u: <A as CurveConfig>::ScalarField,
+        r1: <A as CurveConfig>::ScalarField,
+        r2: <A as CurveConfig>::ScalarField,
+        chall_m: SigChall<A>,
+    ) -> SigResp<A> {
+        let c = chall_m.e - c1;
+        let r = u - c * keys.signing_key();
+
+        Self { c, c1, r, r1, r2 }
     }
 }

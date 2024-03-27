@@ -142,4 +142,9 @@ impl<A: ACLConfig> KeyPair<A> {
     pub const fn verifying_key(&self) -> &sw::Affine<A> {
         &self.verifying_key
     }
+
+    /// ACL private key
+    pub const fn signing_key(&self) -> &<A as CurveConfig>::ScalarField {
+        &self.x
+    }
 }
