@@ -40,7 +40,7 @@ impl<A: ACLConfig> SigComm<A> {
         rng: &mut T,
         vals: Vec<<A as CurveConfig>::ScalarField>,
     ) -> SigComm<A> {
-        let comms = PedersenComm::new_multi(vals, rng);
+        let (comms, _) = PedersenComm::new_multi(vals, rng);
 
         let rand = <A as CurveConfig>::ScalarField::rand(rng);
         let u = <A as CurveConfig>::ScalarField::rand(rng);

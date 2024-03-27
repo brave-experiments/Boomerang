@@ -278,7 +278,7 @@ macro_rules! __test_pedersen {
 
             let z = b + c + d;
 
-            let c1: PC = PC::new_multi(vals, &mut OsRng);
+            let (c1, gen) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
         }
 
