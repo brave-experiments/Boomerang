@@ -38,11 +38,11 @@ pub struct OpeningProof<P: PedersenConfig> {
 /// Essentially, a new proof object can be created by calling `create`, whereas
 /// an existing proof can be verified by calling `verify`.
 pub struct OpeningProofMulti<P: PedersenConfig> {
-    /// alpha. The random values that is used as a challenge.
+    /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,
     /// z1: the first challenge response (i.e z1 = xc + a_1).
     pub z1: <P as CurveConfig>::ScalarField,
-    /// z2: the second challenge response (i.e z2 = rc + t_2).
+    /// z2: the second challenge responses (i.e z2 = rc + t_2).
     pub z2: Vec<<P as CurveConfig>::ScalarField>,
 }
 
@@ -365,7 +365,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn make_intermediate_transcript(
-        inter: OpeningProofIntermediate<P>,
+        inter: OpeningProofMultiIntermediate<P>,
     ) -> OpeningProofMultiIntermediateTranscript<P> {
         OpeningProofMultiIntermediateTranscript { alpha: inter.alpha }
     }
@@ -594,14 +594,14 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
 impl<P: PedersenConfig> OpeningProofMultiTranscriptable for OpeningProofMulti<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        OpeningProof::make_transcript(transcript, c1, &self.alpha);
+        OpeningProofMulti::make_transcript(transcript, c1, &self.alpha);
     }
 }
 
 impl<P: PedersenConfig> OpeningProofMultiTranscriptable for OpeningProofMultiIntermediate<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        OpeningProof::make_transcript(transcript, c1, &self.alpha);
+        OpeningProofMulti::make_transcript(transcript, c1, &self.alpha);
     }
 }
 
@@ -610,6 +610,6 @@ impl<P: PedersenConfig> OpeningProofMultiTranscriptable
 {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        OpeningProof::make_transcript(transcript, c1, &self.alpha);
+        OpeningProofMulti::make_transcript(transcript, c1, &self.alpha);
     }
 }
