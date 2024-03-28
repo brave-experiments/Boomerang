@@ -7,6 +7,7 @@ pub mod equality_protocol;
 pub mod fs_scalar_mul_protocol;
 pub mod gk_zero_one_protocol;
 pub mod interpolate;
+pub mod issuance_protocol;
 pub mod mul_protocol;
 pub mod non_zero_protocol;
 pub mod opening_protocol;

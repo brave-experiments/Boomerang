@@ -25,6 +25,8 @@ use crate::{
 pub struct IssuanceProofMulti<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,
+    /// alpha2. The random value that is used as a challenge.
+    pub alpha2: sw::Affine<P>,
     /// z1: the first challenge response (i.e z1 = xc + a_1).
     pub z1: <P as CurveConfig>::ScalarField,
     /// z2: the second challenge responses (i.e z2 = rc + t_2).
@@ -38,6 +40,8 @@ pub struct IssuanceProofMulti<P: PedersenConfig> {
 pub struct IssuanceProofMultiIntermediate<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,
+    /// alpha2. The random value that is used as a challenge.
+    pub alpha2: sw::Affine<P>,
     /// t1: a uniformly random value.
     pub t1: <P as CurveConfig>::ScalarField,
     /// ts: a list of uniformly random values.
@@ -48,6 +52,7 @@ impl<P: PedersenConfig> Clone for IssuanceProofMultiIntermediate<P> {
     fn clone(&self) -> Self {
         IssuanceProofMultiIntermediate {
             alpha: self.alpha.clone(),
+            alpha2: self.alpha.clone(),
             t1: self.t1.clone(),
             ts: self.ts.clone(),
         }
@@ -60,6 +65,8 @@ impl<P: PedersenConfig> Clone for IssuanceProofMultiIntermediate<P> {
 pub struct IssuanceProofMultiIntermediateTranscript<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,
+    /// alpha2. The random value that is used as a challenge.
+    pub alpha2: sw::Affine<P>,
 }
 
 /// IssuanceProofMultiTranscriptable. This trait provides a notion of `Transcriptable`, which implies
@@ -84,7 +91,10 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
     pub fn make_intermediate_transcript(
         inter: IssuanceProofMultiIntermediate<P>,
     ) -> IssuanceProofMultiIntermediateTranscript<P> {
-        IssuanceProofMultiIntermediateTranscript { alpha: inter.alpha }
+        IssuanceProofMultiIntermediateTranscript {
+            alpha: inter.alpha,
+            alpha2: inter.alpha2,
+        }
     }
 
     /// make_transcript. This function simply adds `c1` and `alpha_p` to the `transcript` object.
@@ -96,6 +106,7 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         alpha_p: &sw::Affine<P>,
+        alpha_p_2: &sw::Affine<P>,
     ) {
         // This function just builds the transcript out of the various input values.
         // N.B Because of how we define the serialisation API to handle different numbers,
@@ -107,6 +118,11 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
 
         alpha_p.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_point(b"alpha", &compressed_bytes[..]);
+
+        alpha_p_2
+            .serialize_compressed(&mut compressed_bytes)
+            .unwrap();
+        transcript.append_point(b"alpha 2", &compressed_bytes[..]);
     }
 
     /// create. This function returns a new opening proof for `x` against `c1`.
@@ -150,15 +166,24 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
 
         for i in 0..l {
+            if i == 1 {
+                continue; // We assume that x[1] = 0
+            }
             let t = <P as CurveConfig>::ScalarField::rand(rng);
             ts.push(t);
             total = (total + gens.generators[i].mul(t)).into();
         }
         let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (total + P::GENERATOR2.mul(t1)).into_affine();
+        let alpha2 = (P::GENERATOR.mul(ts[1])).into_affine();
 
-        Self::make_transcript(transcript, &c1.comm, &alpha);
-        IssuanceProofMultiIntermediate { t1, ts, alpha }
+        Self::make_transcript(transcript, &c1.comm, &alpha, &alpha2);
+        IssuanceProofMultiIntermediate {
+            t1,
+            ts,
+            alpha,
+            alpha2,
+        }
     }
 
     /// create_proof. This function accepts a set of intermediaries (`inter`) and proves
@@ -212,6 +237,9 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
     ) -> Self {
         let mut z2: Vec<<P as CurveConfig>::ScalarField> = vec![];
         for i in 0..x.len() {
+            if i == 1 {
+                continue; // We assume that x[1] = 0
+            }
             let tmp = x[i] * (*chal) + inter.ts[i];
             z2.push(tmp);
         }
@@ -220,6 +248,7 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
 
         Self {
             alpha: inter.alpha,
+            alpha2: inter.alpha2,
             z1,
             z2,
         }
@@ -234,12 +263,13 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         &self,
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
+        pk: &sw::Affine<P>,
         l: usize,
         gens: Generators<P>,
     ) -> bool {
         // Make the transcript.
         self.add_to_transcript(transcript, c1);
-        self.verify_proof_own_challenge(transcript, c1, l, gens)
+        self.verify_proof_own_challenge(transcript, c1, pk, l, gens)
     }
 
     /// verify_proof_own_challenge. This function returns true if the proof held by `self` is valid, and false otherwise.
@@ -253,10 +283,11 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         &self,
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
+        pk: &sw::Affine<P>,
         l: usize,
         gens: Generators<P>,
     ) -> bool {
-        self.verify_proof(c1, &transcript.challenge_scalar(b"c")[..], l, gens)
+        self.verify_proof(c1, pk, &transcript.challenge_scalar(b"c")[..], l, gens)
     }
 
     /// verify_proof. This function verifies that `c1` is a valid opening
@@ -268,13 +299,14 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
     pub fn verify_proof(
         &self,
         c1: &sw::Affine<P>,
+        pk: &sw::Affine<P>,
         chal_buf: &[u8],
         l: usize,
         gens: Generators<P>,
     ) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
-        self.verify_with_challenge(c1, &chal, l, gens)
+        self.verify_with_challenge(c1, pk, &chal, l, gens)
     }
 
     /// verify_with_challenge. This function verifies that `c1` is a valid opening
@@ -286,20 +318,30 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
     pub fn verify_with_challenge(
         &self,
         c1: &sw::Affine<P>,
+        pk: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
         l: usize,
         gens: Generators<P>,
     ) -> bool {
+        // first proof
+
+        let rhs1 = pk.mul(*chal) + self.alpha2;
+        let lhs1 = P::GENERATOR2.mul(self.z2[1]);
+
+        // second proof
         let rhs = c1.mul(*chal) + self.alpha;
 
         let mut tmp: sw::Affine<P> = sw::Affine::identity();
         for i in 0..l {
+            if i == 1 {
+                continue; // We assume that x[1] = 0
+            }
             tmp = (tmp + gens.generators[i].mul(self.z2[i])).into();
         }
 
         let lhs = (tmp + P::GENERATOR2.mul(self.z1)).into_affine();
 
-        lhs == rhs
+        lhs == rhs && lhs1 == rhs1
     }
 
     /// serialized_size. Returns the number of bytes needed to represent this proof object once serialised.
@@ -311,14 +353,14 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
 impl<P: PedersenConfig> IssuanceProofMultiTranscriptable for IssuanceProofMulti<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        IssuanceProof::make_transcript(transcript, c1, &self.alpha);
+        IssuanceProofMulti::make_transcript(transcript, c1, &self.alpha, &self.alpha2);
     }
 }
 
 impl<P: PedersenConfig> IssuanceProofMultiTranscriptable for IssuanceProofMultiIntermediate<P> {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        IssuanceProof::make_transcript(transcript, c1, &self.alpha);
+        IssuanceProofMulti::make_transcript(transcript, c1, &self.alpha, &self.alpha2);
     }
 }
 
@@ -327,6 +369,6 @@ impl<P: PedersenConfig> IssuanceProofMultiTranscriptable
 {
     type Affine = sw::Affine<P>;
     fn add_to_transcript(&self, transcript: &mut Transcript, c1: &Self::Affine) {
-        IssuanceProof::make_transcript(transcript, c1, &self.alpha);
+        IssuanceProofMulti::make_transcript(transcript, c1, &self.alpha, &self.alpha2);
     }
 }
