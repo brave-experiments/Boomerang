@@ -6,14 +6,10 @@ use ark_ec::{
 
 use ark_std::{ops::Mul, UniformRand};
 use digest::{ExtendableOutputDirty, Update, XofReader};
-use pedersen::pedersen_config::PedersenConfig;
 use rand::{CryptoRng, RngCore};
 use sha3::Shake256;
 
-pub trait ACLConfig: SWCurveConfig + PedersenConfig {
-    /// A tag public key. Corresponds to Z.
-    const TAGKEY: sw::Affine<Self>;
-
+pub trait ACLConfig: SWCurveConfig {
     /// The curve type that maps to this Config.
     /// For example, for T256 it would be P256.
     /// This curve type needs to be both a CurveConfig (so we can access the ScalarField / BaseField
@@ -25,48 +21,8 @@ pub trait ACLConfig: SWCurveConfig + PedersenConfig {
     /// |p|/2 bits of security.
     const SECPARAM: usize;
 
-    /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
-    /// into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ OCurve's ScalarField.
-    /// Returns `x` as an element of Self::ScalarField.
-    fn from_oc(
-        x: <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField,
-    ) -> <Self as CurveConfig>::ScalarField {
-        let x_bt: num_bigint::BigUint = x.into();
-        <Self as CurveConfig>::ScalarField::from(x_bt)
-    }
-
-    /// from_ob_to_os. This function takes an `x` in the OCurve's BaseField and converts
-    /// it into an element of the Scalar field of the OCurve.
-    /// * `x` - the element ∈ OCurve's BaseField.
-    /// Returns `y` ∈ OCurve's ScalarField.
-    fn from_ob_to_os(
-        x: <<Self as ACLConfig>::OCurve as CurveConfig>::BaseField,
-    ) -> <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField;
-
-    /// from_ob_to_sf. This function takes an `x` in the OCurve's BaseField and converts
-    /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ OCurve's BaseField.
-    /// Returns `x` as an element of Self::ScalarField.
-    fn from_ob_to_sf(
-        x: <<Self as ACLConfig>::OCurve as CurveConfig>::BaseField,
-    ) -> <Self as CurveConfig>::ScalarField;
-
-    /// from_ob_to_sf. This function takes an `x` in the OCurve's ScalarField and converts
-    /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ OCurve's ScalarField.
-    /// Returns `x` as an element of Self::ScalarField.
-    fn from_os_to_sf(
-        x: <<Self as ACLConfig>::OCurve as CurveConfig>::ScalarField,
-    ) -> <Self as CurveConfig>::ScalarField;
-
-    /// from_bf_to_sf. This function takes an `x` in  Self::BaseField and converts
-    /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ Self::BaseField.
-    /// Returns `x` as an element of Self::ScalarField.
-    fn from_bf_to_sf(x: <Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
-
-    fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField;
+    /// Second generator that's used in Pedersen commitments. Corresponds to H.
+    const GENERATOR2: sw::Affine<Self>;
 }
 
 /// StateSignatureComm. This struct acts as a convenient wrapper for Pedersen Commitments.

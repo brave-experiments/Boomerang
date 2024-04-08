@@ -1,7 +1,7 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __derive_conversion {
-    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty) => {
         // Define the conversion functions for this particular
         // mapping.
         type OtherBaseField = <$OtherCurve as CurveConfig>::BaseField;
@@ -143,12 +143,23 @@ macro_rules! __derive_conversion {
             const CM1: Self::ScalarField = StrToFr!("-1");
             const CP1: Self::ScalarField = StrToFr!("1");
         }
+
+        // Define the Pedersen commitment type.
+        impl ACLConfig for $aclconfig {
+            type OCurve = $OtherCurve;
+
+            const SECPARAM: usize = $sec_param;
+
+            /// GENERATOR2 = (G2_X, G2_Y)
+            const GENERATOR2: $affine = <$affine>::new_unchecked($G2_X, $G2_Y);
+        }
     };
 }
 
 #[macro_export]
 macro_rules! derive_conversion {
-    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty) => {
+        use acl::config::ACLConfig;
         use ark_ff::BigInt;
         use ark_ff::{Field, MontConfig, MontFp};
         use ark_ff_macros::to_sign_and_limbs;
@@ -169,7 +180,8 @@ macro_rules! derive_conversion {
             $other_r_conf,
             $affine,
             $GSX,
-            $GSY
+            $GSY,
+            $aclconfig
         );
     };
 }

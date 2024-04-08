@@ -14,7 +14,6 @@ use crate::{config::ACLConfig, config::KeyPair};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use merlin::Transcript;
-use pedersen::pedersen_config::PedersenComm;
 use std::marker::PhantomData;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
@@ -38,24 +37,22 @@ impl<A: ACLConfig> SigComm<A> {
     pub fn commit<T: RngCore + CryptoRng>(
         keys: KeyPair<A>,
         rng: &mut T,
-        vals: Vec<<A as CurveConfig>::ScalarField>,
+        comm: sw::Affine<A>,
     ) -> SigComm<A> {
-        let (comms, _) = PedersenComm::new_multi(vals, rng);
-
         let rand = <A as CurveConfig>::ScalarField::rand(rng);
         let u = <A as CurveConfig>::ScalarField::rand(rng);
         let r1 = <A as CurveConfig>::ScalarField::rand(rng);
         let r2 = <A as CurveConfig>::ScalarField::rand(rng);
         let c = <A as CurveConfig>::ScalarField::rand(rng);
 
-        let z1 = (A::GENERATOR.mul(rand) + comms.commitment()).into_affine();
+        let z1 = (A::GENERATOR.mul(rand) + comm).into_affine();
         let z2 = (keys.tag_key - z1).into_affine();
         let a = (A::GENERATOR.mul(u)).into_affine();
         let a1 = (A::GENERATOR.mul(r1) + z1.mul(c)).into_affine();
         let a2 = (A::GENERATOR.mul(r2) + z2.mul(c)).into_affine();
 
         Self {
-            comms: comms.commitment(),
+            comms: comm,
             rand,
             a,
             a1,
