@@ -17,6 +17,7 @@ use crate::{
     pedersen_config::Generators, pedersen_config::PedersenComm, pedersen_config::PedersenConfig,
     transcript::IssuanceTranscript,
 };
+use ark_std::Zero;
 
 /// IssuanceProofMulti. This struct acts as a container for an IssuanceProofMulti.
 /// Note that this is aimed to work with multi-commitments.
@@ -166,16 +167,19 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
 
         for i in 0..l {
+            let t: <P as CurveConfig>::ScalarField;
             if i == 1 {
-                continue; // We assume that x[1] = 0
+                t = <P as CurveConfig>::ScalarField::zero();
+            } else {
+                t = <P as CurveConfig>::ScalarField::rand(rng);
             }
-            let t = <P as CurveConfig>::ScalarField::rand(rng);
+
             ts.push(t);
             total = (total + gens.generators[i].mul(t)).into();
         }
         let t1 = <P as CurveConfig>::ScalarField::rand(rng);
         let alpha = (total + P::GENERATOR2.mul(t1)).into_affine();
-        let alpha2 = (P::GENERATOR.mul(ts[1])).into_affine();
+        let alpha2 = (P::GENERATOR.mul(ts[2])).into_affine();
 
         Self::make_transcript(transcript, &c1.comm, &alpha, &alpha2);
         IssuanceProofMultiIntermediate {
@@ -237,10 +241,12 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
     ) -> Self {
         let mut z2: Vec<<P as CurveConfig>::ScalarField> = vec![];
         for i in 0..x.len() {
+            let tmp: <P as CurveConfig>::ScalarField;
             if i == 1 {
-                continue; // We assume that x[1] = 0
+                tmp = <P as CurveConfig>::ScalarField::zero();
+            } else {
+                tmp = x[i] * (*chal) + inter.ts[i];
             }
-            let tmp = x[i] * (*chal) + inter.ts[i];
             z2.push(tmp);
         }
 
@@ -326,7 +332,7 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         // first proof
 
         let rhs1 = pk.mul(*chal) + self.alpha2;
-        let lhs1 = P::GENERATOR2.mul(self.z2[1]);
+        let lhs1 = P::GENERATOR.mul(self.z2[2]);
 
         // second proof
         let rhs = c1.mul(*chal) + self.alpha;

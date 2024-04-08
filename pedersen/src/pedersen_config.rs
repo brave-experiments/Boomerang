@@ -272,7 +272,7 @@ pub trait PedersenConfig: SWCurveConfig {
     }
 }
 
-/// Generators. This struct acts as a convenient wrapper for Pedersen Commitments.
+/// Generators. This structure holds the generators for a multi-commitment.
 pub struct Generators<P: PedersenConfig> {
     pub generators: Vec<sw::Affine<P>>,
 }
@@ -395,6 +395,10 @@ impl<P: PedersenConfig> ops::Sub<PedersenComm<P>> for &PedersenComm<P> {
 }
 
 impl<P: PedersenConfig> PedersenComm<P> {
+    pub fn get_main_generator() -> sw::Affine<P> {
+        <P as SWCurveConfig>::GENERATOR
+    }
+
     /// new. This function accepts a ScalarField element `x` and an rng, returning a Pedersen Commitment
     /// to `x`.
     /// # Arguments
@@ -494,7 +498,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
         shake.update(label);
         let mut reader = shake.finalize_xof_dirty();
 
-        for _ in 1..vals.len() {
+        for _ in 0..vals.len() {
             let mut uniform_bytes = [0u8; 64];
             reader.read(&mut uniform_bytes);
 
@@ -507,7 +511,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
         };
 
         let mut total: sw::Affine<P> = sw::Affine::identity();
-        for i in 0..gens.len() {
+        for i in 0..vals.len() {
             total = (total + gens[i].mul(vals[i])).into();
         }
 

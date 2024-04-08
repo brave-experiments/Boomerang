@@ -305,6 +305,38 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
+        fn test_pedersen_multi_comm_issuance() {
+            // Test that the issuance proof with multi commitments goes through.
+            let label = b"PedersenIssuanceMulti";
+
+            let a = SF::rand(&mut OsRng);
+            let b = SF::zero(); // zero
+            let lambda = SF::rand(&mut OsRng); // pk
+            let d = SF::rand(&mut OsRng);
+            let e = SF::rand(&mut OsRng);
+
+            let gen = PC::get_main_generator();
+            let pk = gen.mul(lambda).into_affine();
+
+            let mut vals: Vec<SF> = Vec::new();
+            vals.push(a);
+            vals.push(b);
+            vals.push(lambda);
+            vals.push(d);
+            vals.push(e);
+
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let mut transcript = Transcript::new(label);
+
+            let proof = IPM::create(&mut transcript, &mut OsRng, vals.clone(), &c1, gens.clone());
+            assert!(proof.alpha.is_on_curve());
+
+            // Now check that the proof verifies correctly.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &pk, vals.len(), gens.clone()));
+        }
+
+        #[test]
         fn test_pedersen_opening_other_challenge() {
             // Test that the proof fails if the wrong challenge is used.
             let label = b"PedersenOpen";
@@ -1410,6 +1442,7 @@ macro_rules! test_pedersen {
             use ark_ff::{Field, PrimeField};
             use ark_serialize::CanonicalSerialize;
             use ark_std::UniformRand;
+            use ark_std::Zero;
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
@@ -1420,6 +1453,7 @@ macro_rules! test_pedersen {
                 fs_scalar_mul_protocol::FSECScalarMulProof as FSECMP,
                 gk_zero_one_protocol::{ZeroOneProof as ZOP, ZeroOneProofIntermediate as ZOPI},
                 interpolate::PolynomialInterpolation,
+                issuance_protocol::IssuanceProofMulti as IPM,
                 mul_protocol::MulProof as MP,
                 non_zero_protocol::NonZeroProof as NZP,
                 opening_protocol::OpeningProof as OP,
