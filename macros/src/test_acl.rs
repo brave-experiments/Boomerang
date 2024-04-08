@@ -5,6 +5,8 @@ macro_rules! __test_acl {
     ($aclconfig: ty, $config: ty, $OtherProjectiveType: ty) => {
         type ACLKP = KeyPair<$aclconfig>;
         type ACLSC = SigComm<$aclconfig>;
+        type ACLCH = SigChall<$aclconfig>;
+        type ACLSR = SigResp<$aclconfig>;
         type PC = PedersenComm<$config>;
         type SF = <$config as CurveConfig>::ScalarField;
         type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
@@ -17,7 +19,7 @@ macro_rules! __test_acl {
         #[test]
         fn test_sign_m1() {
             // Test that creating multi commitments goes through.
-            let label = b"PedersenOpenMulti";
+            let label = b"ACLSignM1";
 
             let b = SF::rand(&mut OsRng);
             let c = SF::rand(&mut OsRng);
@@ -41,6 +43,68 @@ macro_rules! __test_acl {
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
         }
+
+        #[test]
+        fn test_sign_m2() {
+            // Test that creating multi commitments goes through.
+            let label = b"ACLSignM2";
+
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let d = SF::rand(&mut OsRng);
+            let mut vals: Vec<SF> = Vec::new();
+            vals.push(b);
+            vals.push(c);
+            vals.push(d);
+
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let mut transcript = Transcript::new(label);
+
+            // Test that committing to a random point works.
+            assert!(c1.comm.is_on_curve());
+
+            let kp = ACLKP::generate(&mut OsRng);
+            assert!(kp.verifying_key.is_on_curve());
+
+            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            assert!(m1.a.is_on_curve());
+            assert!(m1.a1.is_on_curve());
+            assert!(m1.a2.is_on_curve());
+
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+        }
+
+        #[test]
+        fn test_sign_m3() {
+            // Test that creating multi commitments goes through.
+            let label = b"ACLSignM2";
+
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let d = SF::rand(&mut OsRng);
+            let mut vals: Vec<SF> = Vec::new();
+            vals.push(b);
+            vals.push(c);
+            vals.push(d);
+
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let mut transcript = Transcript::new(label);
+
+            // Test that committing to a random point works.
+            assert!(c1.comm.is_on_curve());
+
+            let kp = ACLKP::generate(&mut OsRng);
+            assert!(kp.verifying_key.is_on_curve());
+
+            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            assert!(m1.a.is_on_curve());
+            assert!(m1.a1.is_on_curve());
+            assert!(m1.a2.is_on_curve());
+
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+
+            //ACLSR::respond(kp.clone(), m2);
+        }
     };
 }
 
@@ -49,7 +113,10 @@ macro_rules! test_acl {
     ($mod_name: ident; $aclconfig: ty, $config: ty, $OtherProjectiveType: ty) => {
         mod $mod_name {
             use super::*;
-            use acl::{config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp};
+            use acl::{
+                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, sign::SigResp,
+                verify::SigChall,
+            };
             use ark_ec::{
                 models::CurveConfig,
                 short_weierstrass::{self as sw, SWCurveConfig},
