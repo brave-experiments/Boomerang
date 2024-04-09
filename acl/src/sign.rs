@@ -62,7 +62,7 @@ impl<A: ACLConfig> SigComm<A> {
         let z2 = (keys.tag_key - z1).into_affine();
         let a = (A::GENERATOR.mul(u)).into_affine();
         let a1 = (A::GENERATOR.mul(r1) + z1.mul(c)).into_affine();
-        let a2 = (A::GENERATOR.mul(r2) + z2.mul(c)).into_affine();
+        let a2 = (A::GENERATOR2.mul(r2) + z2.mul(c)).into_affine();
 
         Self {
             comms: comm,

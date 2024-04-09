@@ -21,6 +21,26 @@ pub const CHALLENGE_SIZE: usize = 64;
 pub struct SigChall<A: ACLConfig> {
     /// e: the first message value.
     pub e: <A as CurveConfig>::ScalarField,
+
+    zeta: sw::Affine<A>,
+    zeta1: sw::Affine<A>,
+    zeta2: sw::Affine<A>,
+    gamma: <A as CurveConfig>::ScalarField,
+    rand: <A as CurveConfig>::ScalarField,
+    tau: <A as CurveConfig>::ScalarField,
+    t1: <A as CurveConfig>::ScalarField,
+    t2: <A as CurveConfig>::ScalarField,
+    t3: <A as CurveConfig>::ScalarField,
+    t4: <A as CurveConfig>::ScalarField,
+    t5: <A as CurveConfig>::ScalarField,
+}
+
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigChall<A> {}
+impl<A: ACLConfig> Clone for SigChall<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<A: ACLConfig> SigChall<A> {
@@ -32,7 +52,6 @@ impl<A: ACLConfig> SigChall<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
-        c7: &sw::Affine<A>,
     ) {
         transcript.append_message(b"dom-sep", b"acl-challenge");
 
@@ -54,9 +73,6 @@ impl<A: ACLConfig> SigChall<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
-
-        c7.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c7", &compressed_bytes[..]);
     }
 
     /// challenge. This function creates the second signature message.
@@ -103,11 +119,10 @@ impl<A: ACLConfig> SigChall<A> {
                 &mut transcript_v,
                 &zeta,
                 &zeta1,
-                &zeta2,
                 &alpha,
                 &alpha1,
                 &alpha2,
-                &mu,
+                &mu, // TODO: add message
             );
 
             let mut buf = [0u8; CHALLENGE_SIZE];
@@ -117,7 +132,20 @@ impl<A: ACLConfig> SigChall<A> {
                 <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
             let e = epsilon - t2 - t4;
 
-            Self { e }
+            Self {
+                e,
+                zeta,
+                zeta1,
+                zeta2,
+                gamma,
+                rand: comm_m.rand,
+                tau,
+                t1,
+                t2,
+                t3,
+                t4,
+                t5,
+            }
         }
     }
 }
@@ -167,9 +195,8 @@ impl<A: ACLConfig> SigSign<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
-        c7: &sw::Affine<A>,
     ) {
-        transcript.append_message(b"dom-sep", b"acl-sign");
+        transcript.append_message(b"dom-sep", b"acl-challenge");
 
         let mut compressed_bytes = Vec::new();
         c1.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -189,46 +216,32 @@ impl<A: ACLConfig> SigSign<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
-
-        c7.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c7", &compressed_bytes[..]);
     }
 
     pub fn sign(
         pub_key: sw::Affine<A>,
         tag_key: sw::Affine<A>,
-        zeta: sw::Affine<A>,
-        zeta1: sw::Affine<A>,
-        zeta2: sw::Affine<A>,
+        chall_m: SigChall<A>,
         resp_m: SigResp<A>,
-        gamma: <A as CurveConfig>::ScalarField,
-        rand: <A as CurveConfig>::ScalarField,
-        tau: <A as CurveConfig>::ScalarField,
-        t1: <A as CurveConfig>::ScalarField,
-        t2: <A as CurveConfig>::ScalarField,
-        t3: <A as CurveConfig>::ScalarField,
-        t4: <A as CurveConfig>::ScalarField,
-        t5: <A as CurveConfig>::ScalarField,
     ) -> SigSign<A> {
-        let rho = resp_m.r + t1;
-        let omega = resp_m.c + t2;
-        let rho1 = gamma * resp_m.r1 + t3;
-        let rho2 = gamma * resp_m.r2 + t5;
-        let omega1 = resp_m.c1 + t4;
-        let v = tau + omega1 * gamma;
+        let rho = resp_m.r + chall_m.t1;
+        let omega = resp_m.c + chall_m.t2;
+        let rho1 = chall_m.gamma * resp_m.r1 + chall_m.t3;
+        let rho2 = chall_m.gamma * resp_m.r2 + chall_m.t5;
+        let omega1 = resp_m.c1 + chall_m.t4;
+        let v = chall_m.tau - omega1 * chall_m.gamma;
 
         let tmp1 = (A::GENERATOR.mul(rho) + pub_key.mul(omega)).into_affine();
-        let tmp2 = (A::GENERATOR.mul(rho1) + zeta1.mul(omega1)).into_affine();
-        let tmp3 = (A::GENERATOR2.mul(rho2) + zeta2.mul(omega1)).into_affine();
-        let tmp4 = (tag_key.mul(v) + zeta.mul(omega1)).into_affine();
+        let tmp2 = (A::GENERATOR.mul(rho1) + chall_m.zeta1.mul(omega1)).into_affine();
+        let tmp3 = (A::GENERATOR2.mul(rho2) + chall_m.zeta2.mul(omega1)).into_affine();
+        let tmp4 = (tag_key.mul(v) + chall_m.zeta.mul(omega1)).into_affine();
 
-        let label = b"Sign ACL";
+        let label = b"Chall ACL";
         let mut transcript_v = Transcript::new(label);
         Self::make_transcript(
             &mut transcript_v,
-            &zeta,
-            &zeta1,
-            &zeta2,
+            &chall_m.zeta,
+            &chall_m.zeta1,
             &tmp1,
             &tmp2,
             &tmp3,
@@ -236,7 +249,7 @@ impl<A: ACLConfig> SigSign<A> {
         );
 
         let mut buf = [0u8; CHALLENGE_SIZE];
-        let _ = &transcript_v.challenge_bytes(b"sig", &mut buf);
+        let _ = &transcript_v.challenge_bytes(b"chall", &mut buf);
 
         let epsilon: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
@@ -247,8 +260,8 @@ impl<A: ACLConfig> SigSign<A> {
             panic!("Failed to create a signature");
         } else {
             let sigma = Signature {
-                zeta1,
-                zeta,
+                zeta1: chall_m.zeta1,
+                zeta: chall_m.zeta,
                 rho,
                 omega,
                 rho1,
@@ -257,7 +270,10 @@ impl<A: ACLConfig> SigSign<A> {
                 omega1,
             };
 
-            let opening = Opening { gamma, rand };
+            let opening = Opening {
+                gamma: chall_m.gamma,
+                rand: chall_m.rand,
+            };
 
             Self { sigma, opening }
         }

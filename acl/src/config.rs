@@ -37,7 +37,7 @@ pub struct StateSignatureComm<P: ACLConfig> {
     pub r: <P as CurveConfig>::ScalarField,
 }
 
-/// ACL private key.
+/// ACL keypair.
 ///
 #[derive(Clone, PartialEq)]
 #[must_use]
