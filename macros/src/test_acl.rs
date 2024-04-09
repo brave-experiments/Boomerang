@@ -32,9 +32,10 @@ macro_rules! __test_acl {
             let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
             let mut transcript = Transcript::new(label);
 
-            // Test that committing to a random point works.
+            // Test that committing to a random points works.
             assert!(c1.comm.is_on_curve());
 
+            // Test the first message of the signature scheme.
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
@@ -71,6 +72,7 @@ macro_rules! __test_acl {
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
 
+            // Test the second message of the signature scheme.
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
         }
 
@@ -103,7 +105,8 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
 
-            //ACLSR::respond(kp.clone(), m2);
+            // Test the third message of the signature scheme.
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
         }
     };
 }
@@ -114,8 +117,7 @@ macro_rules! test_acl {
         mod $mod_name {
             use super::*;
             use acl::{
-                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, sign::SigResp,
-                verify::SigChall,
+                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, verify::SigChall,
             };
             use ark_ec::{
                 models::CurveConfig,

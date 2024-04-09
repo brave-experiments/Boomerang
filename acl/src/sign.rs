@@ -28,6 +28,19 @@ pub struct SigComm<A: ACLConfig> {
     pub a1: sw::Affine<A>,
     /// a2: the fourth message value.
     pub a2: sw::Affine<A>,
+
+    c: <A as CurveConfig>::ScalarField,
+    u: <A as CurveConfig>::ScalarField,
+    r1: <A as CurveConfig>::ScalarField,
+    r2: <A as CurveConfig>::ScalarField,
+}
+
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigComm<A> {}
+impl<A: ACLConfig> Clone for SigComm<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<A: ACLConfig> SigComm<A> {
@@ -57,6 +70,10 @@ impl<A: ACLConfig> SigComm<A> {
             a,
             a1,
             a2,
+            c,
+            u,
+            r1,
+            r2,
         }
     }
 }
@@ -79,18 +96,17 @@ impl<A: ACLConfig> SigResp<A> {
     /// respond. This function creates the third signature message.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
-    pub fn respond(
-        keys: KeyPair<A>,
-        c1: <A as CurveConfig>::ScalarField,
-        u: <A as CurveConfig>::ScalarField,
-        r1: <A as CurveConfig>::ScalarField,
-        r2: <A as CurveConfig>::ScalarField,
-        chall_m: SigChall<A>,
-    ) -> SigResp<A> {
-        let c = chall_m.e - c1;
-        let r = u - c * keys.signing_key();
+    pub fn respond(keys: KeyPair<A>, comm_m: SigComm<A>, chall_m: SigChall<A>) -> SigResp<A> {
+        let c = chall_m.e - comm_m.c;
+        let r = comm_m.u - c * keys.signing_key();
 
-        Self { c, c1, r, r1, r2 }
+        Self {
+            c,
+            c1: comm_m.c,
+            r,
+            r1: comm_m.r1,
+            r2: comm_m.r2,
+        }
     }
 }
 
