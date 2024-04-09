@@ -157,8 +157,6 @@ pub struct Signature<A: ACLConfig> {
     /// e: the first message value.
     pub zeta1: sw::Affine<A>,
     /// e: the first message value.
-    pub zeta2: sw::Affine<A>,
-    /// e: the first message value.
     pub rho: <A as CurveConfig>::ScalarField,
     /// omega: the first message value.
     pub omega: <A as CurveConfig>::ScalarField,
@@ -184,7 +182,7 @@ impl<A: ACLConfig> Clone for Signature<A> {
 pub struct Opening<A: ACLConfig> {
     /// gamma: the first message value.
     pub gamma: <A as CurveConfig>::ScalarField,
-    /// rand: the first message value.
+    /// rand: the second message value.
     pub rand: <A as CurveConfig>::ScalarField,
 }
 
@@ -198,9 +196,9 @@ impl<A: ACLConfig> Clone for Opening<A> {
 
 /// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
 pub struct SigSign<A: ACLConfig> {
-    /// sigma: the first message value.
+    /// sigma: the signature itself.
     pub sigma: Signature<A>,
-    /// opening: the first message value.
+    /// opening: the opening values.
     pub opening: Opening<A>,
 }
 
@@ -286,9 +284,8 @@ impl<A: ACLConfig> SigSign<A> {
             panic!("Failed to create a signature");
         } else {
             let sigma = Signature {
-                zeta1: chall_m.zeta1,
-                zeta2: chall_m.zeta2,
                 zeta: chall_m.zeta,
+                zeta1: chall_m.zeta1,
                 rho,
                 omega,
                 rho1,

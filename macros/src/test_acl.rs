@@ -182,7 +182,7 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), m4.sigma.zeta2);
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone());
             assert!(check == true);
         }
     };

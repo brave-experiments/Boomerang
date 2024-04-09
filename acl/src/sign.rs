@@ -146,18 +146,13 @@ impl<A: ACLConfig> SigVerify<A> {
         transcript.append_message(b"c6", &compressed_bytes[..]);
     }
 
-    pub fn verify(
-        pub_key: sw::Affine<A>,
-        tag_key: sw::Affine<A>,
-        sig_m: SigSign<A>,
-        zeta2: sw::Affine<A>,
-    ) -> bool {
+    pub fn verify(pub_key: sw::Affine<A>, tag_key: sw::Affine<A>, sig_m: SigSign<A>) -> bool {
+        let z2 = sig_m.sigma.zeta - sig_m.sigma.zeta1;
         let tmp1 =
             (A::GENERATOR.mul(sig_m.sigma.rho) + pub_key.mul(sig_m.sigma.omega)).into_affine();
         let tmp2 = (A::GENERATOR.mul(sig_m.sigma.rho1) + sig_m.sigma.zeta1.mul(sig_m.sigma.omega1))
             .into_affine();
-        let tmp3 =
-            (A::GENERATOR2.mul(sig_m.sigma.rho2) + zeta2.mul(sig_m.sigma.omega1)).into_affine();
+        let tmp3 = (A::GENERATOR2.mul(sig_m.sigma.rho2) + z2.mul(sig_m.sigma.omega1)).into_affine();
         let tmp4 =
             (tag_key.mul(sig_m.sigma.v) + sig_m.sigma.zeta.mul(sig_m.sigma.omega1)).into_affine();
 
@@ -182,5 +177,84 @@ impl<A: ACLConfig> SigVerify<A> {
         let e = sig_m.sigma.omega + sig_m.sigma.omega1;
 
         return e == epsilon;
+    }
+}
+
+/// SigProof. This struct acts as a container for the proof of signature.
+pub struct SigProof<A: ACLConfig> {
+    /// b_gamma: the first message value.
+    pub b_gamma: sw::Affine<A>,
+    /// p1: the first proof.
+    pub pi1: <A as CurveConfig>::ScalarField,
+    /// p2: the second proof.
+    pub pi2: <A as CurveConfig>::ScalarField,
+    /// h_vec: the commitment to the sub values.
+    pub h_vec: Vec<sw::Affine<A>>,
+}
+
+impl<A: ACLConfig> SigProof<A> {
+    pub fn make_transcript(transcript: &mut Transcript, c1: &sw::Affine<A>, c2: &sw::Affine<A>) {
+        transcript.append_message(b"dom-sep", b"acl-challenge-zk");
+
+        let mut compressed_bytes = Vec::new();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
+        transcript.append_message(b"c1", &compressed_bytes[..]);
+
+        c2.serialize_compressed(&mut compressed_bytes).unwrap();
+        transcript.append_message(b"c2", &compressed_bytes[..]);
+    }
+
+    pub fn prove<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        tag_key: sw::Affine<A>,
+        sig_m: SigSign<A>,
+        vals: Vec<<A as CurveConfig>::ScalarField>,
+        gens: Vec<sw::Affine<A>>,
+        vals_sub: Vec<<A as CurveConfig>::ScalarField>,
+    ) -> SigProof<A> {
+        let b_gamma = (A::GENERATOR.mul(sig_m.opening.gamma)).into_affine();
+
+        let mut h_vec: Vec<sw::Affine<A>> = vec![];
+        for i in 1..vals.len() {
+            let h = (gens[i].mul(sig_m.opening.gamma)).into_affine();
+            h_vec.push(h);
+        }
+
+        // Equality proofs of zeta = b_gamma
+        let r = <A as CurveConfig>::ScalarField::rand(rng);
+        let t1 = (tag_key.mul(r)).into_affine();
+        let t2 = (A::GENERATOR.mul(r)).into_affine();
+
+        let label = b"Chall ACLZK";
+        let mut transcript_v = Transcript::new(label);
+        Self::make_transcript(&mut transcript_v, &t1, &t2);
+
+        let mut buf = [0u8; 64];
+        let _ = &transcript_v.challenge_bytes(b"challzk", &mut buf);
+
+        let ch: <A as CurveConfig>::ScalarField =
+            <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
+
+        let pi1 = r + sig_m.opening.gamma * ch;
+
+        // Equality proofs of zeta = h_vec -> TODO
+
+        // Compute partial commitment
+
+        let mut total: sw::Affine<A> = sw::Affine::identity();
+        for i in 1..vals_sub.len() {
+            total = (total + (gens[i].mul(vals_sub[i] + sig_m.opening.gamma))).into();
+        }
+
+        let zeta1_o = sig_m.sigma.zeta1 - total;
+
+        let pi2 = r + sig_m.opening.gamma * ch; // for the moment
+
+        Self {
+            b_gamma,
+            pi1,
+            pi2,
+            h_vec,
+        }
     }
 }
