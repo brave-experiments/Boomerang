@@ -8,6 +8,7 @@ macro_rules! __test_acl {
         type ACLCH = SigChall<$aclconfig>;
         type ACLSR = SigResp<$aclconfig>;
         type ACLSG = SigSign<$aclconfig>;
+        type ACLSV = SigVerify<$aclconfig>;
         type PC = PedersenComm<$config>;
         type SF = <$config as CurveConfig>::ScalarField;
         type OSF = <<$config as PedersenConfig>::OCurve as CurveConfig>::ScalarField;
@@ -142,6 +143,47 @@ macro_rules! __test_acl {
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
 
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3);
+            assert!(m4.sigma.zeta.is_on_curve());
+            assert!(m4.sigma.zeta1.is_on_curve());
+        }
+
+        #[test]
+        fn test_sign_complete() {
+            // Test that creating multi commitments goes through.
+            let label = b"ACLSignM5";
+
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let d = SF::rand(&mut OsRng);
+            let mut vals: Vec<SF> = Vec::new();
+            vals.push(b);
+            vals.push(c);
+            vals.push(d);
+
+            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let mut transcript = Transcript::new(label);
+
+            // Test that committing to a random point works.
+            assert!(c1.comm.is_on_curve());
+
+            let kp = ACLKP::generate(&mut OsRng);
+            assert!(kp.verifying_key.is_on_curve());
+
+            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            assert!(m1.a.is_on_curve());
+            assert!(m1.a1.is_on_curve());
+            assert!(m1.a2.is_on_curve());
+
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3);
+            assert!(m4.sigma.zeta.is_on_curve());
+            assert!(m4.sigma.zeta1.is_on_curve());
+
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), m4.sigma.zeta2);
+            assert!(check == true);
         }
     };
 }
@@ -152,8 +194,8 @@ macro_rules! test_acl {
         mod $mod_name {
             use super::*;
             use acl::{
-                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, verify::SigChall,
-                verify::SigSign,
+                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, sign::SigVerify,
+                verify::SigChall, verify::SigSign,
             };
             use ark_ec::{
                 models::CurveConfig,

@@ -157,6 +157,8 @@ pub struct Signature<A: ACLConfig> {
     /// e: the first message value.
     pub zeta1: sw::Affine<A>,
     /// e: the first message value.
+    pub zeta2: sw::Affine<A>,
+    /// e: the first message value.
     pub rho: <A as CurveConfig>::ScalarField,
     /// omega: the first message value.
     pub omega: <A as CurveConfig>::ScalarField,
@@ -170,6 +172,14 @@ pub struct Signature<A: ACLConfig> {
     pub omega1: <A as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for Signature<A> {}
+impl<A: ACLConfig> Clone for Signature<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 /// Opening. This struct acts as a container for the opening.
 pub struct Opening<A: ACLConfig> {
     /// gamma: the first message value.
@@ -178,12 +188,28 @@ pub struct Opening<A: ACLConfig> {
     pub rand: <A as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for Opening<A> {}
+impl<A: ACLConfig> Clone for Opening<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 /// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
 pub struct SigSign<A: ACLConfig> {
     /// sigma: the first message value.
     pub sigma: Signature<A>,
     /// opening: the first message value.
     pub opening: Opening<A>,
+}
+
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigSign<A> {}
+impl<A: ACLConfig> Clone for SigSign<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 impl<A: ACLConfig> SigSign<A> {
@@ -261,6 +287,7 @@ impl<A: ACLConfig> SigSign<A> {
         } else {
             let sigma = Signature {
                 zeta1: chall_m.zeta1,
+                zeta2: chall_m.zeta2,
                 zeta: chall_m.zeta,
                 rho,
                 omega,

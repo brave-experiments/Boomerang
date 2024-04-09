@@ -123,9 +123,8 @@ impl<A: ACLConfig> SigVerify<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
-        c7: &sw::Affine<A>,
     ) {
-        transcript.append_message(b"dom-sep", b"acl-sign");
+        transcript.append_message(b"dom-sep", b"acl-challenge");
 
         let mut compressed_bytes = Vec::new();
         c1.serialize_compressed(&mut compressed_bytes).unwrap();
@@ -145,9 +144,6 @@ impl<A: ACLConfig> SigVerify<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
-
-        c7.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c7", &compressed_bytes[..]);
     }
 
     pub fn verify(
@@ -165,13 +161,12 @@ impl<A: ACLConfig> SigVerify<A> {
         let tmp4 =
             (tag_key.mul(sig_m.sigma.v) + sig_m.sigma.zeta.mul(sig_m.sigma.omega1)).into_affine();
 
-        let label = b"Sign ACL";
+        let label = b"Chall ACL";
         let mut transcript_v = Transcript::new(label);
         Self::make_transcript(
             &mut transcript_v,
             &sig_m.sigma.zeta,
             &sig_m.sigma.zeta1,
-            &zeta2,
             &tmp1,
             &tmp2,
             &tmp3,
@@ -179,7 +174,7 @@ impl<A: ACLConfig> SigVerify<A> {
         );
 
         let mut buf = [0u8; 64];
-        let _ = &transcript_v.challenge_bytes(b"sig", &mut buf);
+        let _ = &transcript_v.challenge_bytes(b"chall", &mut buf);
 
         let epsilon: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
