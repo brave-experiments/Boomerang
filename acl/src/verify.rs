@@ -1,5 +1,5 @@
 //!
-//! Module containing the definition of the verification side of the algorithm
+//! Module containing the definition of the singing side of the algorithm
 //!
 
 use ark_ec::{
@@ -9,208 +9,112 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::config::ACLConfig;
-use crate::sign::{SigComm, SigResp};
+use crate::sign::{SigChall, SigProof, SigSign, SubVals};
+use crate::{config::ACLConfig, config::KeyPair};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{ops::Mul, UniformRand, Zero};
+use ark_std::{ops::Mul, UniformRand};
 use merlin::Transcript;
+use std::marker::PhantomData;
 
-pub const CHALLENGE_SIZE: usize = 64;
+/// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
+pub struct SigComm<A: ACLConfig> {
+    /// comms: the multi-commitment to chosen values.
+    pub comms: sw::Affine<A>,
+    /// rand: the first message value.
+    pub rand: <A as CurveConfig>::ScalarField,
+    /// a: the second message value.
+    pub a: sw::Affine<A>,
+    /// a1: the third message value.
+    pub a1: sw::Affine<A>,
+    /// a2: the fourth message value.
+    pub a2: sw::Affine<A>,
 
-/// SigChall. This struct acts as a container for the second message (the challenge) of the Signature.
-pub struct SigChall<A: ACLConfig> {
-    /// e: the first message value.
-    pub e: <A as CurveConfig>::ScalarField,
-
-    zeta: sw::Affine<A>,
-    zeta1: sw::Affine<A>,
-    zeta2: sw::Affine<A>,
-    gamma: <A as CurveConfig>::ScalarField,
-    rand: <A as CurveConfig>::ScalarField,
-    tau: <A as CurveConfig>::ScalarField,
-    t1: <A as CurveConfig>::ScalarField,
-    t2: <A as CurveConfig>::ScalarField,
-    t3: <A as CurveConfig>::ScalarField,
-    t4: <A as CurveConfig>::ScalarField,
-    t5: <A as CurveConfig>::ScalarField,
+    c: <A as CurveConfig>::ScalarField,
+    u: <A as CurveConfig>::ScalarField,
+    r1: <A as CurveConfig>::ScalarField,
+    r2: <A as CurveConfig>::ScalarField,
 }
 
 // We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigChall<A> {}
-impl<A: ACLConfig> Clone for SigChall<A> {
+impl<A: ACLConfig> Copy for SigComm<A> {}
+impl<A: ACLConfig> Clone for SigComm<A> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<A: ACLConfig> SigChall<A> {
-    pub fn make_transcript(
-        transcript: &mut Transcript,
-        c1: &sw::Affine<A>,
-        c2: &sw::Affine<A>,
-        c3: &sw::Affine<A>,
-        c4: &sw::Affine<A>,
-        c5: &sw::Affine<A>,
-        c6: &sw::Affine<A>,
-    ) {
-        transcript.append_message(b"dom-sep", b"acl-challenge");
-
-        let mut compressed_bytes = Vec::new();
-        c1.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c1", &compressed_bytes[..]);
-
-        c2.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c2", &compressed_bytes[..]);
-
-        c3.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c3", &compressed_bytes[..]);
-
-        c4.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c4", &compressed_bytes[..]);
-
-        c5.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c5", &compressed_bytes[..]);
-
-        c6.serialize_compressed(&mut compressed_bytes).unwrap();
-        transcript.append_message(b"c6", &compressed_bytes[..]);
-    }
-
-    /// challenge. This function creates the second signature message.
+impl<A: ACLConfig> SigComm<A> {
+    /// commit. This function creates the first signature message.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
-    pub fn challenge<T: RngCore + CryptoRng>(
-        tag_key: sw::Affine<A>,
-        pub_key: sw::Affine<A>,
+    pub fn commit<T: RngCore + CryptoRng>(
+        keys: KeyPair<A>,
         rng: &mut T,
-        comm_m: SigComm<A>,
-    ) -> SigChall<A> {
-        if comm_m.rand.is_zero()
-            || !comm_m.a.is_on_curve()
-            || !comm_m.a1.is_on_curve()
-            || !comm_m.a2.is_on_curve()
-        {
-            panic!("Failed to create signature challenge: params are incorrect");
-        } else {
-            let z1 = (A::GENERATOR.mul(comm_m.rand) + comm_m.comms).into_affine();
+        comm: sw::Affine<A>,
+    ) -> SigComm<A> {
+        let rand = <A as CurveConfig>::ScalarField::rand(rng);
+        let u = <A as CurveConfig>::ScalarField::rand(rng);
+        let r1 = <A as CurveConfig>::ScalarField::rand(rng);
+        let r2 = <A as CurveConfig>::ScalarField::rand(rng);
+        let c = <A as CurveConfig>::ScalarField::rand(rng);
 
-            let gamma = <A as CurveConfig>::ScalarField::rand(rng);
-            let tau = <A as CurveConfig>::ScalarField::rand(rng);
+        let z1 = (A::GENERATOR.mul(rand) + comm).into_affine();
+        let z2 = (keys.tag_key - z1).into_affine();
+        let a = (A::GENERATOR.mul(u)).into_affine();
+        let a1 = (A::GENERATOR.mul(r1) + z1.mul(c)).into_affine();
+        let a2 = (A::GENERATOR2.mul(r2) + z2.mul(c)).into_affine();
 
-            let zeta = (tag_key.mul(gamma)).into_affine();
-            let zeta1 = (z1.mul(gamma)).into_affine();
-            let zeta2 = (zeta - zeta1).into_affine();
-            let mu = (tag_key.mul(tau)).into_affine();
-
-            let t1 = <A as CurveConfig>::ScalarField::rand(rng);
-            let t2 = <A as CurveConfig>::ScalarField::rand(rng);
-            let t3 = <A as CurveConfig>::ScalarField::rand(rng);
-            let t4 = <A as CurveConfig>::ScalarField::rand(rng);
-            let t5 = <A as CurveConfig>::ScalarField::rand(rng);
-
-            let alpha = (comm_m.a + A::GENERATOR.mul(t1) + pub_key.mul(t2)).into_affine();
-            let alpha1 =
-                (comm_m.a1.mul(gamma) + A::GENERATOR.mul(t3) + zeta1.mul(t4)).into_affine();
-            let alpha2 =
-                (comm_m.a2.mul(gamma) + A::GENERATOR2.mul(t5) + zeta2.mul(t4)).into_affine();
-
-            let label = b"Chall ACL";
-            let mut transcript_v = Transcript::new(label);
-            Self::make_transcript(
-                &mut transcript_v,
-                &zeta,
-                &zeta1,
-                &alpha,
-                &alpha1,
-                &alpha2,
-                &mu, // TODO: add message
-            );
-
-            let mut buf = [0u8; CHALLENGE_SIZE];
-            let _ = &transcript_v.challenge_bytes(b"chall", &mut buf);
-
-            let epsilon: <A as CurveConfig>::ScalarField =
-                <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
-            let e = epsilon - t2 - t4;
-
-            Self {
-                e,
-                zeta,
-                zeta1,
-                zeta2,
-                gamma,
-                rand: comm_m.rand,
-                tau,
-                t1,
-                t2,
-                t3,
-                t4,
-                t5,
-            }
+        Self {
+            comms: comm,
+            rand,
+            a,
+            a1,
+            a2,
+            c,
+            u,
+            r1,
+            r2,
         }
     }
 }
 
-/// Signature. This struct acts as a container for the signature.
-pub struct Signature<A: ACLConfig> {
-    /// e: the first message value.
-    pub zeta: sw::Affine<A>,
-    /// e: the first message value.
-    pub zeta1: sw::Affine<A>,
-    /// e: the first message value.
-    pub rho: <A as CurveConfig>::ScalarField,
-    /// omega: the first message value.
-    pub omega: <A as CurveConfig>::ScalarField,
-    /// rho1: the first message value.
-    pub rho1: <A as CurveConfig>::ScalarField,
-    /// rho2: the first message value.
-    pub rho2: <A as CurveConfig>::ScalarField,
-    /// v: the first message value.
-    pub v: <A as CurveConfig>::ScalarField,
-    /// omega1: the first message value.
-    pub omega1: <A as CurveConfig>::ScalarField,
+/// SigResp. This struct acts as a container for the third message (the response) of the Signature.
+pub struct SigResp<A: ACLConfig> {
+    /// c: the first message value.
+    pub c: <A as CurveConfig>::ScalarField,
+    /// c1: the second message value.
+    pub c1: <A as CurveConfig>::ScalarField,
+    /// r: the second message value.
+    pub r: <A as CurveConfig>::ScalarField,
+    /// r1: the second message value.
+    pub r1: <A as CurveConfig>::ScalarField,
+    /// r2: the second message value.
+    pub r2: <A as CurveConfig>::ScalarField,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for Signature<A> {}
-impl<A: ACLConfig> Clone for Signature<A> {
-    fn clone(&self) -> Self {
-        *self
+impl<A: ACLConfig> SigResp<A> {
+    /// respond. This function creates the third signature message.
+    /// # Arguments
+    /// * `inter` - the intermediate values to use.
+    pub fn respond(keys: KeyPair<A>, comm_m: SigComm<A>, chall_m: SigChall<A>) -> SigResp<A> {
+        let c = chall_m.e - comm_m.c;
+        let r = comm_m.u - c * keys.signing_key();
+
+        Self {
+            c,
+            c1: comm_m.c,
+            r,
+            r1: comm_m.r1,
+            r2: comm_m.r2,
+        }
     }
 }
 
-/// Opening. This struct acts as a container for the opening.
-pub struct Opening<A: ACLConfig> {
-    /// gamma: the first message value.
-    pub gamma: <A as CurveConfig>::ScalarField,
-    /// rand: the second message value.
-    pub rand: <A as CurveConfig>::ScalarField,
+pub struct SigVerify<A: ACLConfig> {
+    _marker: PhantomData<A>,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for Opening<A> {}
-impl<A: ACLConfig> Clone for Opening<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-/// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
-pub struct SigSign<A: ACLConfig> {
-    /// sigma: the signature itself.
-    pub sigma: Signature<A>,
-    /// opening: the opening values.
-    opening: Opening<A>,
-}
-
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigSign<A> {}
-impl<A: ACLConfig> Clone for SigSign<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<A: ACLConfig> SigSign<A> {
+impl<A: ACLConfig> SigVerify<A> {
     pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<A>,
@@ -242,106 +146,46 @@ impl<A: ACLConfig> SigSign<A> {
         transcript.append_message(b"c6", &compressed_bytes[..]);
     }
 
-    pub fn sign(
-        pub_key: sw::Affine<A>,
-        tag_key: sw::Affine<A>,
-        chall_m: SigChall<A>,
-        resp_m: SigResp<A>,
-    ) -> SigSign<A> {
-        let rho = resp_m.r + chall_m.t1;
-        let omega = resp_m.c + chall_m.t2;
-        let rho1 = chall_m.gamma * resp_m.r1 + chall_m.t3;
-        let rho2 = chall_m.gamma * resp_m.r2 + chall_m.t5;
-        let omega1 = resp_m.c1 + chall_m.t4;
-        let v = chall_m.tau - omega1 * chall_m.gamma;
-
-        let tmp1 = (A::GENERATOR.mul(rho) + pub_key.mul(omega)).into_affine();
-        let tmp2 = (A::GENERATOR.mul(rho1) + chall_m.zeta1.mul(omega1)).into_affine();
-        let tmp3 = (A::GENERATOR2.mul(rho2) + chall_m.zeta2.mul(omega1)).into_affine();
-        let tmp4 = (tag_key.mul(v) + chall_m.zeta.mul(omega1)).into_affine();
+    pub fn verify(pub_key: sw::Affine<A>, tag_key: sw::Affine<A>, sig_m: SigSign<A>) -> bool {
+        let z2 = sig_m.sigma.zeta - sig_m.sigma.zeta1;
+        let tmp1 =
+            (A::GENERATOR.mul(sig_m.sigma.rho) + pub_key.mul(sig_m.sigma.omega)).into_affine();
+        let tmp2 = (A::GENERATOR.mul(sig_m.sigma.rho1) + sig_m.sigma.zeta1.mul(sig_m.sigma.omega1))
+            .into_affine();
+        let tmp3 = (A::GENERATOR2.mul(sig_m.sigma.rho2) + z2.mul(sig_m.sigma.omega1)).into_affine();
+        let tmp4 =
+            (tag_key.mul(sig_m.sigma.v) + sig_m.sigma.zeta.mul(sig_m.sigma.omega1)).into_affine();
 
         let label = b"Chall ACL";
         let mut transcript_v = Transcript::new(label);
         Self::make_transcript(
             &mut transcript_v,
-            &chall_m.zeta,
-            &chall_m.zeta1,
+            &sig_m.sigma.zeta,
+            &sig_m.sigma.zeta1,
             &tmp1,
             &tmp2,
             &tmp3,
             &tmp4,
         );
 
-        let mut buf = [0u8; CHALLENGE_SIZE];
+        let mut buf = [0u8; 64];
         let _ = &transcript_v.challenge_bytes(b"chall", &mut buf);
 
         let epsilon: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
 
-        let e = omega + omega1;
+        let e = sig_m.sigma.omega + sig_m.sigma.omega1;
 
-        if e != epsilon {
-            panic!("Failed to create a signature");
-        } else {
-            let sigma = Signature {
-                zeta: chall_m.zeta,
-                zeta1: chall_m.zeta1,
-                rho,
-                omega,
-                rho1,
-                rho2,
-                v,
-                omega1,
-            };
-
-            let opening = Opening {
-                gamma: chall_m.gamma,
-                rand: chall_m.rand,
-            };
-
-            Self { sigma, opening }
-        }
+        return e == epsilon;
     }
 }
 
-pub struct SubVals<A: ACLConfig> {
-    pub vals_sub: Vec<<A as CurveConfig>::ScalarField>,
-    pub pos: Vec<usize>,
+/// SigVerifProof. This struct acts as a container for the proof of signature.
+pub struct SigVerifProof<A: ACLConfig> {
+    _marker: PhantomData<A>,
 }
 
-/// DLogProof. This struct acts as a container for the opening proof.
-pub struct SigProofD<A: ACLConfig> {
-    /// t2: the second proof.
-    pub t1: sw::Affine<A>,
-    /// t2: the second proof.
-    pub t2: sw::Affine<A>,
-    /// b_gamma: the first message value.
-    pub a1: <A as CurveConfig>::ScalarField,
-}
-
-/// OpeningProof. This struct acts as a container for the opening proof.
-pub struct SigProofO<A: ACLConfig> {
-    /// t2: the second proof.
-    pub t3: sw::Affine<A>,
-    /// t2: the second proof.
-    pub a3: <A as CurveConfig>::ScalarField,
-    /// b_gamma: the first message value.
-    pub a4: <A as CurveConfig>::ScalarField,
-}
-
-/// SigProof. This struct acts as a container for the proof of signature.
-pub struct SigProof<A: ACLConfig> {
-    /// b_gamma: the first message value.
-    pub b_gamma: sw::Affine<A>,
-    /// p1: the first proof.
-    pub pi1: SigProofD<A>,
-    /// p2: the second proof.
-    pub pi2: SigProofO<A>,
-    /// h_vec: the commitment to the sub values.
-    pub h_vec: Vec<sw::Affine<A>>,
-}
-
-impl<A: ACLConfig> SigProof<A> {
+impl<A: ACLConfig> SigVerifProof<A> {
     pub fn make_transcript(transcript: &mut Transcript, c1: &sw::Affine<A>, c2: &sw::Affine<A>) {
         transcript.append_message(b"dom-sep", b"acl-challenge-zk");
 
@@ -361,30 +205,20 @@ impl<A: ACLConfig> SigProof<A> {
         transcript.append_message(b"c1", &compressed_bytes[..]);
     }
 
-    pub fn prove<T: RngCore + CryptoRng>(
-        rng: &mut T,
+    pub fn verify(
+        proof: SigProof<A>,
         tag_key: sw::Affine<A>,
-        sig_m: SigSign<A>,
-        vals: Vec<<A as CurveConfig>::ScalarField>,
+        vals_sub_s: SubVals<A>,
         gens: Vec<sw::Affine<A>>,
-        comm_r: <A as CurveConfig>::ScalarField,
-    ) -> SigProof<A> {
-        let b_gamma = (A::GENERATOR.mul(sig_m.opening.gamma)).into_affine();
-
-        let mut h_vec: Vec<sw::Affine<A>> = vec![];
-        for i in 1..vals.len() {
-            let h = (gens[i].mul(sig_m.opening.gamma)).into_affine();
-            h_vec.push(h);
-        }
-
+        sig_m: SigSign<A>,
+    ) -> bool {
         // Equality proof of zeta = b_gamma
-        let r = <A as CurveConfig>::ScalarField::rand(rng);
-        let t1 = (tag_key.mul(r)).into_affine();
-        let t2 = (A::GENERATOR.mul(r)).into_affine();
+        let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
+        let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();
 
         let label = b"Chall ACLZK";
         let mut transcript_v = Transcript::new(label);
-        Self::make_transcript(&mut transcript_v, &t1, &t2);
+        Self::make_transcript(&mut transcript_v, &proof.pi1.t1, &proof.pi1.t2);
 
         let mut buf = [0u8; 64];
         let _ = &transcript_v.challenge_bytes(b"challzk", &mut buf);
@@ -392,33 +226,28 @@ impl<A: ACLConfig> SigProof<A> {
         let ch: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
 
-        let a1 = r + sig_m.opening.gamma * ch;
+        let lhs1 = proof.pi1.t1 + (sig_m.sigma.zeta.mul(ch));
+        let lhs2 = proof.pi1.t2 + (proof.b_gamma.mul(ch));
 
-        let pi1 = SigProofD { t1, t2, a1 };
+        let c = rhs1 == lhs1 && rhs2 == lhs2;
 
         // Equality proofs of zeta = h_vec -> TODO
 
         // Compute partial commitment
-        //let mut total: sw::Affine<A> = sw::Affine::identity();
-        //for i in 0..vals_sub_s.vals_sub.len() {
-        //    total = (total
-        //        + (gens[vals_sub_s.pos[i]].mul(vals_sub_s.vals_sub[i] + sig_m.opening.gamma)))
-        //    .into();
-        //}
+        let mut total: sw::Affine<A> = sw::Affine::identity();
+        for i in 0..vals_sub_s.vals_sub.len() {
+            total = (total + (gens[vals_sub_s.pos[i]].mul(vals_sub_s.vals_sub[i]))).into();
+        }
 
-        //let _ = sig_m.sigma.zeta1 - total;
+        let zeta1 = sig_m.sigma.zeta1 - total;
 
         // For our cases, we will always prove knowledge of all signed committed values,
         // but this is not for all cases.
         // Hence, we only need to prove knowledge of g^rand and h^r
 
-        let alpha1 = <A as CurveConfig>::ScalarField::rand(rng);
-        let alpha2 = <A as CurveConfig>::ScalarField::rand(rng);
-        let t3 = (A::GENERATOR.mul(alpha1) + A::GENERATOR2.mul(alpha2)).into_affine();
-
         let label2 = b"Chall ACLZK2";
         let mut transcript_v = Transcript::new(label2);
-        Self::make_transcript_one(&mut transcript_v, &t3);
+        Self::make_transcript_one(&mut transcript_v, &proof.pi2.t3);
 
         let mut buf2 = [0u8; 64];
         let _ = &transcript_v.challenge_bytes(b"challzk2", &mut buf2);
@@ -426,16 +255,11 @@ impl<A: ACLConfig> SigProof<A> {
         let ch2: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf2[..]).unwrap();
 
-        let a3 = alpha1 + sig_m.opening.rand * ch2; // proof g^rand
-        let a4 = alpha2 + comm_r * ch2; // proof h^r
+        let rhs3 = zeta1.mul(ch2) + proof.pi2.t3;
+        let lhs3 = (A::GENERATOR2.mul(proof.pi2.a3) + A::GENERATOR.mul(proof.pi2.a4)).into_affine();
 
-        let pi2 = SigProofO { t3, a3, a4 };
+        let c2 = rhs3 == lhs3;
 
-        Self {
-            b_gamma,
-            pi1,
-            pi2,
-            h_vec,
-        }
+        c && c2
     }
 }

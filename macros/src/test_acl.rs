@@ -194,8 +194,8 @@ macro_rules! test_acl {
         mod $mod_name {
             use super::*;
             use acl::{
-                config::ACLConfig, config::KeyPair, sign::SigComm, sign::SigResp, sign::SigVerify,
-                verify::SigChall, verify::SigSign,
+                config::ACLConfig, config::KeyPair, sign::SigChall, sign::SigSign, verify::SigComm,
+                verify::SigResp, verify::SigVerify,
             };
             use ark_ec::{
                 models::CurveConfig,
