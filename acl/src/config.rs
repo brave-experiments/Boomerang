@@ -89,7 +89,7 @@ impl<A: ACLConfig> KeyPair<A> {
 
         Self {
             tag_key: rest,
-            verifying_key: (&<A as SWCurveConfig>::GENERATOR.mul(x)).into_affine(),
+            verifying_key: (<A as SWCurveConfig>::GENERATOR.mul(x)).into_affine(),
             x,
         }
     }

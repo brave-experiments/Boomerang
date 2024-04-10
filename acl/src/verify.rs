@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::sign::{SigChall, SigProof, SigSign, SubVals};
+use crate::sign::{SigChall, SigProof, SigSign};
 use crate::{config::ACLConfig, config::KeyPair};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
@@ -174,7 +174,7 @@ impl<A: ACLConfig> SigVerify<A> {
             &tmp2,
             &tmp3,
             &tmp4,
-            &message,
+            message,
         );
 
         let mut buf = [0u8; 64];
@@ -185,7 +185,7 @@ impl<A: ACLConfig> SigVerify<A> {
 
         let e = sig_m.sigma.omega + sig_m.sigma.omega1;
 
-        return e == epsilon;
+        e == epsilon
     }
 }
 

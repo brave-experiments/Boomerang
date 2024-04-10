@@ -127,7 +127,7 @@ impl<A: ACLConfig> SigChall<A> {
                 &alpha1,
                 &alpha2,
                 &mu,
-                &message,
+                message,
             );
 
             let mut buf = [0u8; CHALLENGE_SIZE];
@@ -279,7 +279,7 @@ impl<A: ACLConfig> SigSign<A> {
             &tmp2,
             &tmp3,
             &tmp4,
-            &message,
+            message,
         );
 
         let mut buf = [0u8; CHALLENGE_SIZE];
@@ -384,8 +384,8 @@ impl<A: ACLConfig> SigProof<A> {
         let b_gamma = (A::GENERATOR.mul(sig_m.opening.gamma)).into_affine();
 
         let mut h_vec: Vec<sw::Affine<A>> = vec![];
-        for i in 1..vals.len() {
-            let h = (gens[i].mul(sig_m.opening.gamma)).into_affine();
+        for item in gens.iter().take(vals.len()).skip(1) {
+            let h = (item.mul(sig_m.opening.gamma)).into_affine();
             h_vec.push(h);
         }
 
