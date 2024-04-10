@@ -44,6 +44,7 @@ impl<A: ACLConfig> Clone for SigChall<A> {
 }
 
 impl<A: ACLConfig> SigChall<A> {
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<A>,
@@ -216,6 +217,7 @@ impl<A: ACLConfig> Clone for SigSign<A> {
 }
 
 impl<A: ACLConfig> SigSign<A> {
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<A>,

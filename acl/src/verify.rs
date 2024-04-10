@@ -115,6 +115,7 @@ pub struct SigVerify<A: ACLConfig> {
 }
 
 impl<A: ACLConfig> SigVerify<A> {
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<A>,
