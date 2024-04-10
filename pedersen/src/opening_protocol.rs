@@ -83,8 +83,8 @@ impl<P: PedersenConfig> Clone for OpeningProofIntermediate<P> {
 impl<P: PedersenConfig> Clone for OpeningProofMultiIntermediate<P> {
     fn clone(&self) -> Self {
         OpeningProofMultiIntermediate {
-            alpha: self.alpha.clone(),
-            t1: self.t1.clone(),
+            alpha: self.alpha,
+            t1: self.t1,
             ts: self.ts.clone(),
         }
     }
@@ -494,8 +494,8 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
         let mut z2: Vec<<P as CurveConfig>::ScalarField> = vec![];
-        for i in 0..x.len() {
-            let tmp = x[i] * (*chal) + inter.ts[i];
+        for (i, item) in x.iter().enumerate() {
+            let tmp = *item * (*chal) + inter.ts[i];
             z2.push(tmp);
         }
 

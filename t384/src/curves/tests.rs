@@ -7,5 +7,5 @@ use cdls_macros::test_pedersen;
 type OtherProject = sw::Projective<secp384r1conf>;
 
 test_group!(g1; Projective; sw);
-//test_pedersen!(tp; Config, OtherProject);
+test_pedersen!(tp; Config, OtherProject);
 test_acl!(acl; Config, Config, OtherProject);

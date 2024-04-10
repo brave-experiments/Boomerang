@@ -52,9 +52,9 @@ pub struct IssuanceProofMultiIntermediate<P: PedersenConfig> {
 impl<P: PedersenConfig> Clone for IssuanceProofMultiIntermediate<P> {
     fn clone(&self) -> Self {
         IssuanceProofMultiIntermediate {
-            alpha: self.alpha.clone(),
-            alpha2: self.alpha.clone(),
-            t1: self.t1.clone(),
+            alpha: self.alpha,
+            alpha2: self.alpha2,
+            t1: self.t1,
             ts: self.ts.clone(),
         }
     }
@@ -167,12 +167,11 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
 
         for i in 0..l {
-            let t: <P as CurveConfig>::ScalarField;
-            if i == 1 {
-                t = <P as CurveConfig>::ScalarField::zero();
+            let t: <P as CurveConfig>::ScalarField = if i == 1 {
+                <P as CurveConfig>::ScalarField::zero()
             } else {
-                t = <P as CurveConfig>::ScalarField::rand(rng);
-            }
+                <P as CurveConfig>::ScalarField::rand(rng)
+            };
 
             ts.push(t);
             total = (total + gens.generators[i].mul(t)).into();
@@ -240,13 +239,12 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
         let mut z2: Vec<<P as CurveConfig>::ScalarField> = vec![];
-        for i in 0..x.len() {
-            let tmp: <P as CurveConfig>::ScalarField;
-            if i == 1 {
-                tmp = <P as CurveConfig>::ScalarField::zero();
+        for (i, item) in x.iter().enumerate() {
+            let tmp: <P as CurveConfig>::ScalarField = if i == 1 {
+                <P as CurveConfig>::ScalarField::zero()
             } else {
-                tmp = x[i] * (*chal) + inter.ts[i];
-            }
+                *item * (*chal) + inter.ts[i]
+            };
             z2.push(tmp);
         }
 
