@@ -123,6 +123,7 @@ impl<A: ACLConfig> SigVerify<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
+        message: &str,
     ) {
         transcript.append_message(b"dom-sep", b"acl-challenge");
 
@@ -144,9 +145,16 @@ impl<A: ACLConfig> SigVerify<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
+
+        transcript.append_message(b"message", message.as_bytes());
     }
 
-    pub fn verify(pub_key: sw::Affine<A>, tag_key: sw::Affine<A>, sig_m: SigSign<A>) -> bool {
+    pub fn verify(
+        pub_key: sw::Affine<A>,
+        tag_key: sw::Affine<A>,
+        sig_m: SigSign<A>,
+        message: &str,
+    ) -> bool {
         let z2 = sig_m.sigma.zeta - sig_m.sigma.zeta1;
         let tmp1 =
             (A::GENERATOR.mul(sig_m.sigma.rho) + pub_key.mul(sig_m.sigma.omega)).into_affine();
@@ -166,6 +174,7 @@ impl<A: ACLConfig> SigVerify<A> {
             &tmp2,
             &tmp3,
             &tmp4,
+            &message,
         );
 
         let mut buf = [0u8; 64];

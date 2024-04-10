@@ -75,7 +75,7 @@ macro_rules! __test_acl {
             assert!(m1.a2.is_on_curve());
 
             // Test the second message of the signature scheme.
-            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
         }
 
         #[test]
@@ -105,7 +105,7 @@ macro_rules! __test_acl {
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
 
-            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
             // Test the third message of the signature scheme.
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
@@ -138,11 +138,11 @@ macro_rules! __test_acl {
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
 
-            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3);
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
         }
@@ -174,15 +174,15 @@ macro_rules! __test_acl {
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
 
-            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1);
+            let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3);
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone());
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
             assert!(check == true);
         }
     };

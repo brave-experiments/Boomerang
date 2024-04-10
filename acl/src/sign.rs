@@ -52,6 +52,7 @@ impl<A: ACLConfig> SigChall<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
+        message: &str,
     ) {
         transcript.append_message(b"dom-sep", b"acl-challenge");
 
@@ -73,6 +74,8 @@ impl<A: ACLConfig> SigChall<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
+
+        transcript.append_message(b"message", message.as_bytes());
     }
 
     /// challenge. This function creates the second signature message.
@@ -83,6 +86,7 @@ impl<A: ACLConfig> SigChall<A> {
         pub_key: sw::Affine<A>,
         rng: &mut T,
         comm_m: SigComm<A>,
+        message: &str,
     ) -> SigChall<A> {
         if comm_m.rand.is_zero()
             || !comm_m.a.is_on_curve()
@@ -122,7 +126,8 @@ impl<A: ACLConfig> SigChall<A> {
                 &alpha,
                 &alpha1,
                 &alpha2,
-                &mu, // TODO: add message
+                &mu,
+                &message,
             );
 
             let mut buf = [0u8; CHALLENGE_SIZE];
@@ -219,6 +224,7 @@ impl<A: ACLConfig> SigSign<A> {
         c4: &sw::Affine<A>,
         c5: &sw::Affine<A>,
         c6: &sw::Affine<A>,
+        message: &str,
     ) {
         transcript.append_message(b"dom-sep", b"acl-challenge");
 
@@ -240,6 +246,8 @@ impl<A: ACLConfig> SigSign<A> {
 
         c6.serialize_compressed(&mut compressed_bytes).unwrap();
         transcript.append_message(b"c6", &compressed_bytes[..]);
+
+        transcript.append_message(b"message", message.as_bytes());
     }
 
     pub fn sign(
@@ -247,6 +255,7 @@ impl<A: ACLConfig> SigSign<A> {
         tag_key: sw::Affine<A>,
         chall_m: SigChall<A>,
         resp_m: SigResp<A>,
+        message: &str,
     ) -> SigSign<A> {
         let rho = resp_m.r + chall_m.t1;
         let omega = resp_m.c + chall_m.t2;
@@ -270,6 +279,7 @@ impl<A: ACLConfig> SigSign<A> {
             &tmp2,
             &tmp3,
             &tmp4,
+            &message,
         );
 
         let mut buf = [0u8; CHALLENGE_SIZE];
