@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::verify::{SigChall, SigSign};
+use crate::verify::{SigChall, SigProof, SigSign, SubVals};
 use crate::{config::ACLConfig, config::KeyPair};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
@@ -180,19 +180,12 @@ impl<A: ACLConfig> SigVerify<A> {
     }
 }
 
-/// SigProof. This struct acts as a container for the proof of signature.
-pub struct SigProof<A: ACLConfig> {
-    /// b_gamma: the first message value.
-    pub b_gamma: sw::Affine<A>,
-    /// p1: the first proof.
-    pub pi1: <A as CurveConfig>::ScalarField,
-    /// p2: the second proof.
-    pub pi2: <A as CurveConfig>::ScalarField,
-    /// h_vec: the commitment to the sub values.
-    pub h_vec: Vec<sw::Affine<A>>,
+/// SigVerifProof. This struct acts as a container for the proof of signature.
+pub struct SigVerifProof<A: ACLConfig> {
+    _marker: PhantomData<A>,
 }
 
-impl<A: ACLConfig> SigProof<A> {
+impl<A: ACLConfig> SigVerifProof<A> {
     pub fn make_transcript(transcript: &mut Transcript, c1: &sw::Affine<A>, c2: &sw::Affine<A>) {
         transcript.append_message(b"dom-sep", b"acl-challenge-zk");
 
@@ -204,30 +197,28 @@ impl<A: ACLConfig> SigProof<A> {
         transcript.append_message(b"c2", &compressed_bytes[..]);
     }
 
-    pub fn prove<T: RngCore + CryptoRng>(
-        rng: &mut T,
+    pub fn make_transcript_one(transcript: &mut Transcript, c1: &sw::Affine<A>) {
+        transcript.append_message(b"dom-sep", b"acl-challenge-zk2");
+
+        let mut compressed_bytes = Vec::new();
+        c1.serialize_compressed(&mut compressed_bytes).unwrap();
+        transcript.append_message(b"c1", &compressed_bytes[..]);
+    }
+
+    pub fn verify(
+        proof: SigProof<A>,
         tag_key: sw::Affine<A>,
-        sig_m: SigSign<A>,
-        vals: Vec<<A as CurveConfig>::ScalarField>,
+        vals_sub_s: SubVals<A>,
         gens: Vec<sw::Affine<A>>,
-        vals_sub: Vec<<A as CurveConfig>::ScalarField>,
-    ) -> SigProof<A> {
-        let b_gamma = (A::GENERATOR.mul(sig_m.opening.gamma)).into_affine();
-
-        let mut h_vec: Vec<sw::Affine<A>> = vec![];
-        for i in 1..vals.len() {
-            let h = (gens[i].mul(sig_m.opening.gamma)).into_affine();
-            h_vec.push(h);
-        }
-
-        // Equality proofs of zeta = b_gamma
-        let r = <A as CurveConfig>::ScalarField::rand(rng);
-        let t1 = (tag_key.mul(r)).into_affine();
-        let t2 = (A::GENERATOR.mul(r)).into_affine();
+        sig_m: SigSign<A>,
+    ) -> bool {
+        // Equality proof of zeta = b_gamma
+        let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
+        let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();
 
         let label = b"Chall ACLZK";
         let mut transcript_v = Transcript::new(label);
-        Self::make_transcript(&mut transcript_v, &t1, &t2);
+        Self::make_transcript(&mut transcript_v, &proof.pi1.t1, &proof.pi1.t2);
 
         let mut buf = [0u8; 64];
         let _ = &transcript_v.challenge_bytes(b"challzk", &mut buf);
@@ -235,26 +226,40 @@ impl<A: ACLConfig> SigProof<A> {
         let ch: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
 
-        let pi1 = r + sig_m.opening.gamma * ch;
+        let lhs1 = proof.pi1.t1 + (sig_m.sigma.zeta.mul(ch));
+        let lhs2 = proof.pi1.t2 + (proof.b_gamma.mul(ch));
+
+        let c = rhs1 == lhs1 && rhs2 == lhs2;
 
         // Equality proofs of zeta = h_vec -> TODO
 
         // Compute partial commitment
-
         let mut total: sw::Affine<A> = sw::Affine::identity();
-        for i in 1..vals_sub.len() {
-            total = (total + (gens[i].mul(vals_sub[i] + sig_m.opening.gamma))).into();
+        for i in 0..vals_sub_s.vals_sub.len() {
+            total = (total + (gens[vals_sub_s.pos[i]].mul(vals_sub_s.vals_sub[i]))).into();
         }
 
-        let zeta1_o = sig_m.sigma.zeta1 - total;
+        let zeta1 = sig_m.sigma.zeta1 - total;
 
-        let pi2 = r + sig_m.opening.gamma * ch; // for the moment
+        // For our cases, we will always prove knowledge of all signed committed values,
+        // but this is not for all cases.
+        // Hence, we only need to prove knowledge of g^rand and h^r
 
-        Self {
-            b_gamma,
-            pi1,
-            pi2,
-            h_vec,
-        }
+        let label2 = b"Chall ACLZK2";
+        let mut transcript_v = Transcript::new(label2);
+        Self::make_transcript_one(&mut transcript_v, &proof.pi2.t3);
+
+        let mut buf2 = [0u8; 64];
+        let _ = &transcript_v.challenge_bytes(b"challzk2", &mut buf2);
+
+        let ch2: <A as CurveConfig>::ScalarField =
+            <A as CurveConfig>::ScalarField::deserialize_compressed(&buf2[..]).unwrap();
+
+        let rhs3 = zeta1.mul(ch2) + proof.pi2.t3;
+        let lhs3 = (A::GENERATOR2.mul(proof.pi2.a3) + A::GENERATOR.mul(proof.pi2.a4)).into_affine();
+
+        let c2 = rhs3 == lhs3;
+
+        c && c2
     }
 }
