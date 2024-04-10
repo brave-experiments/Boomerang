@@ -214,13 +214,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         transcript.append_message(b"c1", &compressed_bytes[..]);
     }
 
-    pub fn verify(
-        proof: SigProof<A>,
-        tag_key: sw::Affine<A>,
-        vals_sub_s: SubVals<A>,
-        gens: Vec<sw::Affine<A>>,
-        sig_m: SigSign<A>,
-    ) -> bool {
+    pub fn verify(proof: SigProof<A>, tag_key: sw::Affine<A>, sig_m: SigSign<A>) -> bool {
         // Equality proof of zeta = b_gamma
         let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
         let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();
@@ -242,14 +236,6 @@ impl<A: ACLConfig> SigVerifProof<A> {
 
         // Equality proofs of zeta = h_vec -> TODO
 
-        // Compute partial commitment
-        let mut total: sw::Affine<A> = sw::Affine::identity();
-        for i in 0..vals_sub_s.vals_sub.len() {
-            total = (total + (gens[vals_sub_s.pos[i]].mul(vals_sub_s.vals_sub[i]))).into();
-        }
-
-        let zeta1 = sig_m.sigma.zeta1 - total;
-
         // For our cases, we will always prove knowledge of all signed committed values,
         // but this is not for all cases.
         // Hence, we only need to prove knowledge of g^rand and h^r
@@ -264,8 +250,8 @@ impl<A: ACLConfig> SigVerifProof<A> {
         let ch2: <A as CurveConfig>::ScalarField =
             <A as CurveConfig>::ScalarField::deserialize_compressed(&buf2[..]).unwrap();
 
-        let rhs3 = zeta1.mul(ch2) + proof.pi2.t3;
-        let lhs3 = (A::GENERATOR2.mul(proof.pi2.a3) + A::GENERATOR.mul(proof.pi2.a4)).into_affine();
+        let rhs3 = proof.val.mul(ch2) + proof.pi2.t3;
+        let lhs3 = (A::GENERATOR2.mul(proof.pi2.a4) + A::GENERATOR.mul(proof.pi2.a3)).into_affine();
 
         let c2 = rhs3 == lhs3;
 

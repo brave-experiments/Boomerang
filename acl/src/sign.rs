@@ -349,6 +349,8 @@ pub struct SigProof<A: ACLConfig> {
     pub pi2: SigProofO<A>,
     /// h_vec: the commitment to the sub values.
     pub h_vec: Vec<sw::Affine<A>>,
+    /// val: the first message value.
+    pub val: sw::Affine<A>,
 }
 
 impl<A: ACLConfig> SigProof<A> {
@@ -441,11 +443,14 @@ impl<A: ACLConfig> SigProof<A> {
 
         let pi2 = SigProofO { t3, a3, a4 };
 
+        let val = (A::GENERATOR.mul(sig_m.opening.rand) + A::GENERATOR2.mul(comm_r)).into_affine();
+
         Self {
             b_gamma,
             pi1,
             pi2,
             h_vec,
+            val,
         }
     }
 }
