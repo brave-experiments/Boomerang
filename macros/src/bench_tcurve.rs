@@ -45,6 +45,168 @@ macro_rules! bench_tcurve_opening_verifier_time {
 }
 
 #[macro_export]
+macro_rules! bench_tcurve_opening_multi_prover_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            // Sample a new random scalars.
+            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
+            vals.push(b);
+            vals.push(e);
+            vals.push(d);
+
+            // And commit to them.
+            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+
+            // Now we can just benchmark how long it takes to create a new multi proof.
+            c.bench_function(
+                concat!($curve_name, " opening multi proof prover time"),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript = Transcript::new(b"test-open-multi");
+                        OPM::create(
+                            &mut transcript,
+                            &mut OsRng,
+                            vals.clone(),
+                            &com,
+                            gens.clone(),
+                        )
+                    });
+                },
+            );
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_opening_multi_verifier_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            // Sample a new random scalars.
+            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
+            vals.push(b);
+            vals.push(e);
+            vals.push(d);
+
+            // And commit to them.
+            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+
+            // Make the proof object.
+            let mut transcript = Transcript::new(b"test-open-multi");
+            let proof = OPM::create(
+                &mut transcript,
+                &mut OsRng,
+                vals.clone(),
+                &com,
+                gens.clone(),
+            );
+
+            // And now just check how long it takes to verify the proof.
+            c.bench_function(
+                concat!($curve_name, " opening proof multi verifier time"),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript_v = Transcript::new(b"test-open-multi");
+                        proof.verify(&mut transcript_v, &com.comm, vals.len(), gens.clone());
+                    });
+                },
+            );
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_issuance_multi_prover_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            // Sample a new random scalars.
+            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let sk = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
+            vals.push(b);
+            vals.push(e);
+            vals.push(d);
+            vals.push(sk);
+
+            let gen = PedersenComm::<$config>::get_main_generator();
+            let pk = gen.mul(sk).into_affine();
+
+            // And commit to them.
+            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+
+            // Now we can just benchmark how long it takes to create a new multi proof.
+            c.bench_function(
+                concat!($curve_name, " issuance multi proof prover time"),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript = Transcript::new(b"test-issue-multi");
+                        IPM::create(
+                            &mut transcript,
+                            &mut OsRng,
+                            vals.clone(),
+                            &com,
+                            gens.clone(),
+                        )
+                    });
+                },
+            );
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_issuance_multi_verifier_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            // Sample a new random scalars.
+            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let sk = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
+            vals.push(b);
+            vals.push(e);
+            vals.push(d);
+            vals.push(sk);
+
+            let gen = PedersenComm::<$config>::get_main_generator();
+            let pk = gen.mul(sk).into_affine();
+
+            // And commit to them.
+            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+
+            // Make the proof object.
+            let mut transcript = Transcript::new(b"test-issue-multi");
+            let proof = IPM::create(
+                &mut transcript,
+                &mut OsRng,
+                vals.clone(),
+                &com,
+                gens.clone(),
+            );
+
+            // And now just check how long it takes to verify the proof.
+            c.bench_function(
+                concat!($curve_name, " issuance proof multi verifier time"),
+                |b| {
+                    b.iter(|| {
+                        let mut transcript_v = Transcript::new(b"test-issue-multi");
+                        proof.verify(&mut transcript_v, &com.comm, &pk, vals.len(), gens.clone());
+                    });
+                },
+            );
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! bench_tcurve_equality_prover_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
@@ -1259,9 +1421,11 @@ macro_rules! bench_tcurve_import_everything {
             equality_protocol::EqualityProof as EP,
             fs_scalar_mul_protocol::FSECScalarMulProof as FSECSMP,
             gk_zero_one_protocol::ZeroOneProof as ZOP,
+            issuance_protocol::IssuanceProofMulti as IPM,
             mul_protocol::MulProof as MP,
             non_zero_protocol::NonZeroProof as NZP,
             opening_protocol::OpeningProof as OP,
+            opening_protocol::OpeningProofMulti as OPM,
             pedersen_config::PedersenComm,
             pedersen_config::PedersenConfig,
             point_add::PointAddProtocol,
@@ -1298,6 +1462,30 @@ macro_rules! bench_tcurve_make_all {
         $crate::bench_tcurve_opening_verifier_time!(
             $config,
             open_proof_verification,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        $crate::bench_tcurve_opening_multi_prover_time!(
+            $config,
+            open_proof_multi_creation,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        $crate::bench_tcurve_opening_multi_verifier_time!(
+            $config,
+            open_proof_multi_verification,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        $crate::bench_tcurve_issuance_multi_prover_time!(
+            $config,
+            issue_proof_multi_creation,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        $crate::bench_tcurve_issuance_multi_verifier_time!(
+            $config,
+            issue_proof_multi_verification,
             $curve_name,
             $OtherProjectiveType
         );
