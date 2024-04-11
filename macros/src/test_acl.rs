@@ -294,16 +294,6 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
 
-            let mut indices = Vec::new();
-            for i in 0..vals.len() {
-                indices.push(i);
-            }
-
-            let sub_vals = ACLSubVals {
-                vals_sub: vals.clone(),
-                pos: indices,
-            };
-
             let check = ACLSPV::verify(proof, kp.tag_key, m4.clone());
             assert!(check == true);
         }

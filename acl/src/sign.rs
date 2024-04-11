@@ -331,6 +331,14 @@ pub struct SigProofD<A: ACLConfig> {
     pub a1: <A as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigProofD<A> {}
+impl<A: ACLConfig> Clone for SigProofD<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 /// OpeningProof. This struct acts as a container for the opening proof.
 pub struct SigProofO<A: ACLConfig> {
     /// t2: the second proof.
@@ -339,6 +347,14 @@ pub struct SigProofO<A: ACLConfig> {
     pub a3: <A as CurveConfig>::ScalarField,
     /// b_gamma: the first message value.
     pub a4: <A as CurveConfig>::ScalarField,
+}
+
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigProofO<A> {}
+impl<A: ACLConfig> Clone for SigProofO<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
 }
 
 /// SigProof. This struct acts as a container for the proof of signature.
@@ -353,6 +369,18 @@ pub struct SigProof<A: ACLConfig> {
     pub h_vec: Vec<sw::Affine<A>>,
     /// val: the first message value.
     pub val: sw::Affine<A>,
+}
+
+impl<A: ACLConfig> Clone for SigProof<A> {
+    fn clone(&self) -> Self {
+        SigProof {
+            b_gamma: self.b_gamma,
+            pi1: self.pi1.clone(),
+            pi2: self.pi2.clone(),
+            h_vec: self.h_vec.clone(),
+            val: self.val,
+        }
+    }
 }
 
 impl<A: ACLConfig> SigProof<A> {
