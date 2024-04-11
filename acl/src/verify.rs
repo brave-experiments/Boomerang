@@ -92,6 +92,14 @@ pub struct SigResp<A: ACLConfig> {
     pub r2: <A as CurveConfig>::ScalarField,
 }
 
+// We need to implement these manually for generic structs.
+impl<A: ACLConfig> Copy for SigResp<A> {}
+impl<A: ACLConfig> Clone for SigResp<A> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
 impl<A: ACLConfig> SigResp<A> {
     /// respond. This function creates the third signature message.
     /// # Arguments
