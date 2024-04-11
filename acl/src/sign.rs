@@ -18,6 +18,7 @@ use merlin::Transcript;
 pub const CHALLENGE_SIZE: usize = 64;
 
 /// SigChall. This struct acts as a container for the second message (the challenge) of the Signature.
+#[derive(Clone)]
 pub struct SigChall<A: ACLConfig> {
     /// e: the first message value.
     pub e: <A as CurveConfig>::ScalarField,
@@ -33,14 +34,6 @@ pub struct SigChall<A: ACLConfig> {
     t3: <A as CurveConfig>::ScalarField,
     t4: <A as CurveConfig>::ScalarField,
     t5: <A as CurveConfig>::ScalarField,
-}
-
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigChall<A> {}
-impl<A: ACLConfig> Clone for SigChall<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<A: ACLConfig> SigChall<A> {
@@ -157,6 +150,7 @@ impl<A: ACLConfig> SigChall<A> {
 }
 
 /// Signature. This struct acts as a container for the signature.
+#[derive(Clone)]
 pub struct Signature<A: ACLConfig> {
     /// e: the first message value.
     pub zeta: sw::Affine<A>,
@@ -176,15 +170,8 @@ pub struct Signature<A: ACLConfig> {
     pub omega1: <A as CurveConfig>::ScalarField,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for Signature<A> {}
-impl<A: ACLConfig> Clone for Signature<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 /// Opening. This struct acts as a container for the opening.
+#[derive(Clone)]
 pub struct Opening<A: ACLConfig> {
     /// gamma: the first message value.
     pub gamma: <A as CurveConfig>::ScalarField,
@@ -192,28 +179,13 @@ pub struct Opening<A: ACLConfig> {
     pub rand: <A as CurveConfig>::ScalarField,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for Opening<A> {}
-impl<A: ACLConfig> Clone for Opening<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 /// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
+#[derive(Clone)]
 pub struct SigSign<A: ACLConfig> {
     /// sigma: the signature itself.
     pub sigma: Signature<A>,
     /// opening: the opening values.
     opening: Opening<A>,
-}
-
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigSign<A> {}
-impl<A: ACLConfig> Clone for SigSign<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
 }
 
 impl<A: ACLConfig> SigSign<A> {
@@ -322,6 +294,7 @@ pub struct SubVals<A: ACLConfig> {
 }
 
 /// DLogProof. This struct acts as a container for the opening proof.
+#[derive(Clone)]
 pub struct SigProofD<A: ACLConfig> {
     /// t2: the second proof.
     pub t1: sw::Affine<A>,
@@ -331,15 +304,8 @@ pub struct SigProofD<A: ACLConfig> {
     pub a1: <A as CurveConfig>::ScalarField,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigProofD<A> {}
-impl<A: ACLConfig> Clone for SigProofD<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 /// OpeningProof. This struct acts as a container for the opening proof.
+#[derive(Clone)]
 pub struct SigProofO<A: ACLConfig> {
     /// t2: the second proof.
     pub t3: sw::Affine<A>,
@@ -349,15 +315,8 @@ pub struct SigProofO<A: ACLConfig> {
     pub a4: <A as CurveConfig>::ScalarField,
 }
 
-// We need to implement these manually for generic structs.
-impl<A: ACLConfig> Copy for SigProofO<A> {}
-impl<A: ACLConfig> Clone for SigProofO<A> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
 /// SigProof. This struct acts as a container for the proof of signature.
+#[derive(Clone)]
 pub struct SigProof<A: ACLConfig> {
     /// b_gamma: the first message value.
     pub b_gamma: sw::Affine<A>,
@@ -369,18 +328,6 @@ pub struct SigProof<A: ACLConfig> {
     pub h_vec: Vec<sw::Affine<A>>,
     /// val: the first message value.
     pub val: sw::Affine<A>,
-}
-
-impl<A: ACLConfig> Clone for SigProof<A> {
-    fn clone(&self) -> Self {
-        SigProof {
-            b_gamma: self.b_gamma,
-            pi1: self.pi1.clone(),
-            pi2: self.pi2.clone(),
-            h_vec: self.h_vec.clone(),
-            val: self.val,
-        }
-    }
 }
 
 impl<A: ACLConfig> SigProof<A> {
