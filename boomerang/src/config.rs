@@ -45,7 +45,9 @@ pub struct State<B: BoomerangConfig> {
     /// The token state
     pub state: Vec<Token<B>>,
     /// The signature state
-    pub sig_state: SigSign<B::ACL>,
+    pub sig_state: Vec<SigSign<B::ACL>>,
+    /// The commitment state
+    pub comm_state: Vec<PedersenComm<B::Pedersen>>,
 }
 
 impl<B: BoomerangConfig> State<B> {
