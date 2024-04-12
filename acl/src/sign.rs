@@ -1,5 +1,5 @@
 //!
-//! Module containing the definition of the verification side of the algorithm
+//! Module containing the definition of the signing side of the algorithm
 //!
 
 use ark_ec::{

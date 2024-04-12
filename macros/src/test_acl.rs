@@ -318,7 +318,6 @@ macro_rules! test_acl {
             use ark_ff::{Field, PrimeField};
             use ark_serialize::CanonicalSerialize;
             use ark_std::UniformRand;
-            use ark_std::Zero;
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};

@@ -1,13 +1,4 @@
-use ark_ec::{
-    models::CurveConfig,
-    short_weierstrass::{self as sw, SWCurveConfig},
-    AffineRepr, CurveGroup,
-};
-
-use ark_std::{ops::Mul, UniformRand};
-use digest::{ExtendableOutputDirty, Update, XofReader};
-use rand::{CryptoRng, RngCore};
-use sha3::Shake256;
+use ark_ec::{models::CurveConfig, short_weierstrass::SWCurveConfig};
 
 use acl::{config::ACLConfig, sign::SigSign};
 use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};
@@ -19,7 +10,7 @@ pub trait BoomerangConfig: SWCurveConfig {
     /// structures) and a SWCurveConfig (so we can access the generators).
     type OCurve: CurveConfig + SWCurveConfig;
 
-    type Pedersen: PedersenConfig;
+    type Pedersen: PedersenConfig<ScalarField = <Self as CurveConfig>::ScalarField>;
     type ACL: ACLConfig;
 }
 
