@@ -75,7 +75,7 @@ macro_rules! bench_tacl_respond_time {
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(concat!($curve_name, " acl respond time"), |b| {
                 b.iter(|| {
-                    ACLSR::respond(kp.clone(), m1.clone(), m2);
+                    ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
                 });
             });
         }
@@ -100,7 +100,7 @@ macro_rules! bench_tacl_sign_time {
             let kp = ACLKP::generate(&mut OsRng);
             let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
 
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(concat!($curve_name, " acl sign time"), |b| {
@@ -136,7 +136,7 @@ macro_rules! bench_tacl_verify_time {
             let kp = ACLKP::generate(&mut OsRng);
             let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
 
             // Now we can just benchmark how long it takes to create a new multi proof.
@@ -167,7 +167,7 @@ macro_rules! bench_tacl_sign_proof_time {
             let kp = ACLKP::generate(&mut OsRng);
             let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
             ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
 
@@ -206,7 +206,7 @@ macro_rules! bench_tacl_sign_verify_time {
             let kp = ACLKP::generate(&mut OsRng);
             let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
             ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
             let proof = ACLSP::prove(
