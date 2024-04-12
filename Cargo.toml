@@ -4,6 +4,7 @@ members = [
   "./t256",
   "./t384",
   "./acl",
+  "./boomerang",
   "./macros",
 ]
 resolver = "2"

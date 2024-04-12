@@ -25,18 +25,6 @@ pub trait ACLConfig: SWCurveConfig {
     const GENERATOR2: sw::Affine<Self>;
 }
 
-/// StateSignatureComm. This struct acts as a convenient wrapper for Pedersen Commitments.
-/// At a high-level, this struct is meant to be used whilst producing Pedersen Commitments
-/// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
-/// and the associated randomness. Any serialised proofs should solely use `comm` in their transcripts /
-/// serialisations.
-pub struct StateSignatureComm<P: ACLConfig> {
-    /// comm: the multi-commitment to the attributes.
-    pub comm: sw::Affine<P>,
-    /// r: the randomness used to generate `comm`. Should not be serialised.
-    pub r: <P as CurveConfig>::ScalarField,
-}
-
 /// ACL keypair.
 ///
 #[derive(Clone, PartialEq)]
