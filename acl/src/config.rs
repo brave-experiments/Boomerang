@@ -27,8 +27,6 @@ pub trait ACLConfig: SWCurveConfig {
 
 /// ACL keypair.
 ///
-#[derive(Clone, PartialEq)]
-#[must_use]
 pub struct KeyPair<A: ACLConfig> {
     /// Public key
     pub verifying_key: sw::Affine<A>,
@@ -38,6 +36,16 @@ pub struct KeyPair<A: ACLConfig> {
 
     /// Private component x
     x: <A as CurveConfig>::ScalarField,
+}
+
+impl<A: ACLConfig> Clone for KeyPair<A> {
+    fn clone(&self) -> Self {
+        Self {
+            verifying_key: self.verifying_key.clone(),
+            tag_key: self.tag_key.clone(),
+            x: self.x.clone(),
+        }
+    }
 }
 
 impl<A: ACLConfig> KeyPair<A> {

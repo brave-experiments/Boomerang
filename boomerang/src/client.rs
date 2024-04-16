@@ -10,6 +10,8 @@ use ark_ec::{
 use rand::{CryptoRng, RngCore};
 
 use crate::config::BoomerangConfig;
+use crate::server::{IssuanceS, ServerKeyPair};
+
 use acl::{config::ACLConfig, sign::SigChall, sign::SigSign};
 use merlin::Transcript;
 use pedersen::{
@@ -81,9 +83,11 @@ pub struct IssuanceM1<B: BoomerangConfig> {
     pub len: usize,
     /// gens: the generators of the committed values.
     pub gens: Generators<B>,
+    /// Serial Number
+    id_0: <B as CurveConfig>::ScalarField,
 }
 
-/// IssuanceM2. This struct acts as a container for the thrid message of
+/// IssuanceM3. This struct acts as a container for the thrid message of
 /// the issuance protocol.
 pub struct IssuanceM3<B: BoomerangConfig> {
     /// e: the signature challenge value.
@@ -95,7 +99,7 @@ pub struct IssuanceC<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: IssuanceM1<B>,
     /// m3: the third message value.
-    pub m3: Option<<B as CurveConfig>::ScalarField>,
+    pub m3: Option<IssuanceM3<B>>,
 }
 
 impl<B: BoomerangConfig> IssuanceC<B> {
@@ -130,8 +134,46 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             u_pk: key_pair.public_key,
             len: vals.len(),
             gens: gens.clone(),
+            id_0,
         };
 
         Self { m1: m1, m3: None }
+    }
+
+    pub fn generate_issuance_m3<T: RngCore + CryptoRng>(
+        m1: IssuanceM1<B>,
+        s_m: IssuanceS<B>,
+        key_pair: ServerKeyPair<B>,
+        rng: &mut T,
+    ) -> IssuanceC<B> {
+        let c = s_m.m2.comm + m1.comm;
+        let id = s_m.m2.id_1 + m1.id_0;
+
+        let sig_chall = SigChall::challenge(
+            s_m.m2.tag_key,
+            s_m.m2.verifying_key,
+            rng,
+            s_m.m2.sig_commit,
+            "message",
+        );
+
+        let m3 = IssuanceM3 { e: sig_chall };
+
+        Self {
+            m1: m1,
+            m3: Some(m3),
+        }
+    }
+
+    pub fn populate_state(c_m: IssuanceC<B>, s_m: IssuanceS<B>, key_pair: ServerKeyPair<B>) {
+        let sig = SigSign::sign(
+            key_pair.s_key_pair.verifying_key.clone(),
+            key_pair.s_key_pair.tag_key.clone(),
+            c_m.m3.unwrap().e,
+            s_m.m4.unwrap().s,
+            "message",
+        );
+
+        // TODO: build state
     }
 }

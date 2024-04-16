@@ -26,7 +26,6 @@ pub struct Token<B: BoomerangConfig> {
 /// Boomerang state.
 ///
 #[derive(Clone)]
-#[must_use]
 pub struct State<B: BoomerangConfig> {
     /// The token state
     pub state: Vec<Token<B>>,

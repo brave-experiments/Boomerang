@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::client::IssuanceM1;
+use crate::client::IssuanceC;
 use crate::config::BoomerangConfig;
 
 use acl::{config::ACLConfig, config::KeyPair, verify::SigComm, verify::SigResp};
@@ -20,8 +20,7 @@ use ark_std::{ops::Mul, UniformRand, Zero};
 
 /// Server keypair.
 ///
-#[derive(Clone, PartialEq)]
-#[must_use]
+#[derive(Clone)]
 pub struct ServerKeyPair<B: BoomerangConfig> {
     /// Public key
     pub s_key_pair: KeyPair<B>,
@@ -56,6 +55,10 @@ pub struct IssuanceM2<B: BoomerangConfig> {
     pub sig_commit: SigComm<B>,
     /// Serial Number
     pub id_1: <B as CurveConfig>::ScalarField,
+    /// Public key
+    pub verifying_key: sw::Affine<B>,
+    /// Tag public key
+    pub tag_key: sw::Affine<B>,
 }
 
 /// IssuanceM4. This struct acts as a container for the fourth message of
@@ -70,7 +73,7 @@ pub struct IssuanceS<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: IssuanceM2<B>,
     /// m4: the fourth message value.
-    pub m4: Option<<B as CurveConfig>::ScalarField>,
+    pub m4: Option<IssuanceM4<B>>,
 }
 
 impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::config::ACLConfig>
@@ -80,18 +83,18 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn generate_issuance_m2<T: RngCore + CryptoRng>(
-        m1: IssuanceM1<B>,
+        c_m: IssuanceC<B>,
         key_pair: ServerKeyPair<B>,
         rng: &mut T,
     ) -> IssuanceS<B> {
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
-        m1.pi_issuance.verify(
+        c_m.m1.pi_issuance.verify(
             &mut transcript,
-            &m1.comm.comm,
-            &m1.u_pk,
-            m1.len,
-            m1.gens.clone(),
+            &c_m.m1.comm.comm,
+            &c_m.m1.u_pk,
+            c_m.m1.len,
+            c_m.m1.gens.clone(),
         );
 
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -107,17 +110,37 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
         vals.push(v3);
         vals.push(v4);
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, m1.gens);
+        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m1.gens);
 
-        let c = c1 + m1.comm;
+        let c = c1 + c_m.m1.comm;
 
-        let sig_comm = SigComm::commit(key_pair.s_key_pair, rng, c.comm);
+        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
         let m2 = IssuanceM2 {
             id_1,
             comm: c.into(),
             sig_commit: sig_comm,
+            verifying_key: key_pair.s_key_pair.verifying_key.clone(),
+            tag_key: key_pair.s_key_pair.tag_key.clone(),
         };
 
         Self { m2: m2, m4: None }
+    }
+
+    pub fn generate_issuance_m4(
+        c_m: IssuanceC<B>,
+        s_m: IssuanceS<B>,
+        key_pair: ServerKeyPair<B>,
+    ) -> IssuanceS<B> {
+        let sig_resp = SigResp::respond(
+            key_pair.s_key_pair.clone(),
+            s_m.m2.sig_commit,
+            c_m.m3.unwrap().e,
+        );
+        let m4 = IssuanceM4 { s: sig_resp };
+
+        Self {
+            m2: s_m.m2,
+            m4: Some(m4),
+        }
     }
 }
