@@ -3,15 +3,10 @@ use ark_ec::{models::CurveConfig, short_weierstrass::SWCurveConfig};
 use acl::{config::ACLConfig, sign::SigSign};
 use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};
 
-pub trait BoomerangConfig: SWCurveConfig {
-    /// The curve type that maps to this Config.
-    /// For example, for T256 it would be P256.
-    /// This curve type needs to be both a CurveConfig (so we can access the ScalarField / BaseField
-    /// structures) and a SWCurveConfig (so we can access the generators).
-    type OCurve: CurveConfig + SWCurveConfig;
-
-    type Pedersen: PedersenConfig<ScalarField = <Self as CurveConfig>::ScalarField>;
-    type ACL: ACLConfig;
+pub trait BoomerangConfig:
+    ACLConfig<OCurve = Self::Curve> + PedersenConfig<OCurve = Self::Curve>
+{
+    type Curve: CurveConfig + SWCurveConfig;
 }
 
 /// Boomerang token
@@ -36,9 +31,9 @@ pub struct State<B: BoomerangConfig> {
     /// The token state
     pub state: Vec<Token<B>>,
     /// The signature state
-    pub sig_state: Vec<SigSign<B::ACL>>,
+    pub sig_state: Vec<SigSign<B>>,
     /// The commitment state
-    pub comm_state: Vec<PedersenComm<B::Pedersen>>,
+    pub comm_state: Vec<PedersenComm<B>>,
 }
 
 impl<B: BoomerangConfig> State<B> {
