@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::config::BoomerangConfig;
+use crate::config::{BoomerangConfig, State};
 use crate::server::{IssuanceS, ServerKeyPair};
 
 use acl::{sign::SigChall, sign::SigSign};
@@ -53,6 +53,7 @@ impl<B: BoomerangConfig> UKeyPair<B> {
 
 /// IssuanceM1. This struct acts as a container for the first message of
 /// the issuance protocol.
+#[derive(Clone)]
 pub struct IssuanceM1<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -70,17 +71,21 @@ pub struct IssuanceM1<B: BoomerangConfig> {
 
 /// IssuanceM3. This struct acts as a container for the thrid message of
 /// the issuance protocol.
+#[derive(Clone)]
 pub struct IssuanceM3<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// IssuanceC. This struct represents the issuance protocol for the client.
+#[derive(Clone)]
 pub struct IssuanceC<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: IssuanceM1<B>,
     /// m3: the third message value.
     pub m3: Option<IssuanceM3<B>>,
+    /// c: the commit value.
+    c: Option<PedersenComm<B>>,
 }
 
 impl<B: BoomerangConfig> IssuanceC<B> {
@@ -118,17 +123,21 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             id_0,
         };
 
-        Self { m1: m1, m3: None }
+        Self {
+            m1: m1,
+            m3: None,
+            c: None,
+        }
     }
 
     pub fn generate_issuance_m3<T: RngCore + CryptoRng>(
-        m1: IssuanceM1<B>,
+        c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
-        key_pair: ServerKeyPair<B>,
         rng: &mut T,
     ) -> IssuanceC<B> {
-        let c = s_m.m2.comm + m1.comm;
-        let id = s_m.m2.id_1 + m1.id_0;
+        // TODO: in order to populate later
+        let c = s_m.m2.comm + c_m.m1.comm;
+        let id = s_m.m2.id_1 + c_m.m1.id_0;
 
         let sig_chall = SigChall::challenge(
             s_m.m2.tag_key,
@@ -141,12 +150,17 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let m3 = IssuanceM3 { e: sig_chall };
 
         Self {
-            m1: m1,
+            m1: c_m.m1,
             m3: Some(m3),
+            c: Some(c),
         }
     }
 
-    pub fn populate_state(c_m: IssuanceC<B>, s_m: IssuanceS<B>, key_pair: ServerKeyPair<B>) {
+    pub fn populate_state(
+        c_m: IssuanceC<B>,
+        s_m: IssuanceS<B>,
+        key_pair: ServerKeyPair<B>,
+    ) -> State<B> {
         let sig = SigSign::sign(
             key_pair.s_key_pair.verifying_key.clone(),
             key_pair.s_key_pair.tag_key.clone(),
@@ -155,6 +169,17 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             "message",
         );
 
-        // TODO: build state
+        let mut commits: Vec<PedersenComm<B>> = Vec::new();
+        commits.push(c_m.c.unwrap());
+
+        let mut sigs: Vec<SigSign<B>> = Vec::new();
+        sigs.push(sig);
+
+        let state = State {
+            comm_state: commits,
+            sig_state: sigs,
+        };
+
+        state
     }
 }

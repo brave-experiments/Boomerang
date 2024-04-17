@@ -48,6 +48,7 @@ impl<B: BoomerangConfig> ServerKeyPair<B> {
 
 /// IssuanceM2. This struct acts as a container for the second message of
 /// the issuance protocol.
+#[derive(Clone)]
 pub struct IssuanceM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -63,12 +64,14 @@ pub struct IssuanceM2<B: BoomerangConfig> {
 
 /// IssuanceM4. This struct acts as a container for the fourth message of
 /// the issuance protocol.
+#[derive(Clone)]
 pub struct IssuanceM4<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
 /// IssuanceS. This struct represents the issuance protocol for the server.
+#[derive(Clone)]
 pub struct IssuanceS<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: IssuanceM2<B>,
@@ -89,13 +92,17 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
     ) -> IssuanceS<B> {
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
-        c_m.m1.pi_issuance.verify(
+        let check = c_m.m1.pi_issuance.verify(
             &mut transcript,
             &c_m.m1.comm.comm,
             &c_m.m1.u_pk,
             c_m.m1.len,
             c_m.m1.gens.clone(),
         );
+
+        if check == false {
+            panic!("Boomerang: invalid proof");
+        }
 
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
 
