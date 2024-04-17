@@ -5,18 +5,18 @@
 use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw, SWCurveConfig},
-    AffineRepr, CurveGroup,
+    CurveGroup,
 };
 use rand::{CryptoRng, RngCore};
 
 use crate::config::BoomerangConfig;
 use crate::server::{IssuanceS, ServerKeyPair};
 
-use acl::{config::ACLConfig, sign::SigChall, sign::SigSign};
+use acl::{sign::SigChall, sign::SigSign};
 use merlin::Transcript;
 use pedersen::{
     issuance_protocol::IssuanceProofMulti, pedersen_config::Generators,
-    pedersen_config::PedersenComm, pedersen_config::PedersenConfig,
+    pedersen_config::PedersenComm,
 };
 
 use ark_std::{ops::Mul, UniformRand, Zero};
@@ -34,25 +34,6 @@ pub struct UKeyPair<B: BoomerangConfig> {
 }
 
 impl<B: BoomerangConfig> UKeyPair<B> {
-    pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<B> {
-        extern crate crypto;
-        use crypto::digest::Digest;
-        use crypto::sha3::Sha3;
-
-        for i in 0..=u8::max_value() {
-            let mut sha = Sha3::sha3_256();
-            sha.input(bytes);
-            sha.input(&[i]);
-            let mut buf = [0u8; 32];
-            sha.result(&mut buf);
-            let res = sw::Affine::<B>::from_random_bytes(&buf);
-            if let Some(point) = res {
-                return point;
-            }
-        }
-        panic!()
-    }
-
     /// Generate a new user keypair
     #[inline]
     pub fn generate<T: RngCore + CryptoRng>(rng: &mut T) -> Self {

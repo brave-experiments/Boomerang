@@ -1,7 +1,7 @@
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __derive_conversion {
-    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty, $boomerangconfig: ty) => {
         // Define the conversion functions for this particular
         // mapping.
         type OtherBaseField = <$OtherCurve as CurveConfig>::BaseField;
@@ -144,7 +144,7 @@ macro_rules! __derive_conversion {
             const CP1: Self::ScalarField = StrToFr!("1");
         }
 
-        // Define the Pedersen commitment type.
+        // Define the ACLConfig.
         impl ACLConfig for $aclconfig {
             type OCurve = $OtherCurve;
 
@@ -153,16 +153,22 @@ macro_rules! __derive_conversion {
             /// GENERATOR2 = (G2_X, G2_Y)
             const GENERATOR2: $affine = <$affine>::new_unchecked($G2_X, $G2_Y);
         }
+
+        // Define the BoomerangConfig.
+        impl BoomerangConfig for $boomerangconfig {
+            type Curve = $OtherCurve;
+        }
     };
 }
 
 #[macro_export]
 macro_rules! derive_conversion {
-    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty) => {
+    ($config: ty, $dim: expr, $sec_param: expr, $OtherCurve: ty, $G2_X: ident, $G2_Y: ident, $fr: ty, $fr_config: ty, $other_q: ty, $other_r: ty, $other_q_conf: ty, $other_r_conf: ty, $affine: ty, $GSX: expr, $GSY: expr, $aclconfig: ty, $boomerangconfig: ty) => {
         use acl::config::ACLConfig;
         use ark_ff::BigInt;
         use ark_ff::{Field, MontConfig, MontFp};
         use ark_ff_macros::to_sign_and_limbs;
+        use boomerang::config::BoomerangConfig;
         use pedersen::pedersen_config::PedersenConfig;
 
         $crate::__derive_conversion!(
@@ -181,7 +187,8 @@ macro_rules! derive_conversion {
             $affine,
             $GSX,
             $GSY,
-            $aclconfig
+            $aclconfig,
+            $boomerangconfig
         );
     };
 }

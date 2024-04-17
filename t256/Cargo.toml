@@ -13,6 +13,7 @@ ark-std = { version = "0.4.0", default-features = false }
 ark-secp256r1 = {default-features = false, git = "https://github.com/arkworks-rs/curves" }
 pedersen = { path="../pedersen" }
 acl = { path="../acl" }
+boomerang = { path="../boomerang" }
 cdls-macros = { path="../macros"}
 rand = { version = "0.8.5" }
 rand_core = { version = "0.6.4" }
