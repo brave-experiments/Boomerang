@@ -40,6 +40,10 @@ harness = false
 name = "bench_tacl"
 harness = false
 
+[[bench]]
+name = "bench_tboomerang"
+harness = false
+
 [features]
 default = []
 std = [ "ark-std/std", "ark-ff/std", "ark-ec/std" ]
