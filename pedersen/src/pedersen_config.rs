@@ -602,8 +602,8 @@ impl<P: PedersenConfig> PedersenComm<P> {
         let r = <P as CurveConfig>::ScalarField::rand(rng);
 
         let mut total: sw::Affine<P> = sw::Affine::identity();
-        for i in 0..vals.len() {
-            total = (total + gens.generators[i].mul(vals[i])).into();
+        for (i, item) in vals.iter().enumerate() {
+            total = (total + gens.generators[i].mul(item)).into();
         }
 
         Self {

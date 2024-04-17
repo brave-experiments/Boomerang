@@ -4,19 +4,18 @@
 
 use ark_ec::{
     models::CurveConfig,
-    short_weierstrass::{self as sw, SWCurveConfig},
-    AffineRepr, CurveGroup,
+    short_weierstrass::{self as sw},
 };
 use rand::{CryptoRng, RngCore};
 
 use crate::client::IssuanceC;
 use crate::config::BoomerangConfig;
 
-use acl::{config::ACLConfig, config::KeyPair, verify::SigComm, verify::SigResp};
+use acl::{config::KeyPair, verify::SigComm, verify::SigResp};
 use merlin::Transcript;
-use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};
+use pedersen::pedersen_config::PedersenComm;
 
-use ark_std::{ops::Mul, UniformRand, Zero};
+use ark_std::{UniformRand, Zero};
 
 /// Server keypair.
 ///
@@ -100,7 +99,7 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
             c_m.m1.gens.clone(),
         );
 
-        if check == false {
+        if !check {
             panic!("Boomerang: invalid proof");
         }
 
@@ -109,13 +108,7 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
         let v1 = <B as CurveConfig>::ScalarField::zero();
         let v2 = <B as CurveConfig>::ScalarField::zero();
         let v3 = <B as CurveConfig>::ScalarField::zero();
-        let v4 = <B as CurveConfig>::ScalarField::zero();
-        let mut vals: Vec<<B as CurveConfig>::ScalarField> = Vec::new();
-        vals.push(id_1);
-        vals.push(v1);
-        vals.push(v2);
-        vals.push(v3);
-        vals.push(v4);
+        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v1, v2, v3];
 
         let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m1.gens);
 
@@ -124,13 +117,13 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
         let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
         let m2 = IssuanceM2 {
             id_1,
-            comm: c.into(),
+            comm: c,
             sig_commit: sig_comm,
-            verifying_key: key_pair.s_key_pair.verifying_key.clone(),
-            tag_key: key_pair.s_key_pair.tag_key.clone(),
+            verifying_key: key_pair.s_key_pair.verifying_key,
+            tag_key: key_pair.s_key_pair.tag_key,
         };
 
-        Self { m2: m2, m4: None }
+        Self { m2, m4: None }
     }
 
     pub fn generate_issuance_m4(

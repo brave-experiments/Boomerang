@@ -100,11 +100,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let v = <B as CurveConfig>::ScalarField::zero();
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
 
-        let mut vals: Vec<<B as CurveConfig>::ScalarField> = Vec::new();
-        vals.push(id_0);
-        vals.push(v);
-        vals.push(key_pair.x);
-        vals.push(r_0);
+        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_0, v, key_pair.x, r_0];
 
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
 
@@ -124,7 +120,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         };
 
         Self {
-            m1: m1,
+            m1,
             m3: None,
             c: None,
         }
@@ -137,7 +133,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     ) -> IssuanceC<B> {
         // TODO: in order to populate later
         let c = s_m.m2.comm + c_m.m1.comm;
-        let id = s_m.m2.id_1 + c_m.m1.id_0;
+        let _ = s_m.m2.id_1 + c_m.m1.id_0;
 
         let sig_chall = SigChall::challenge(
             s_m.m2.tag_key,
@@ -162,24 +158,19 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         key_pair: ServerKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
-            key_pair.s_key_pair.verifying_key.clone(),
-            key_pair.s_key_pair.tag_key.clone(),
+            key_pair.s_key_pair.verifying_key,
+            key_pair.s_key_pair.tag_key,
             c_m.m3.unwrap().e,
             s_m.m4.unwrap().s,
             "message",
         );
 
-        let mut commits: Vec<PedersenComm<B>> = Vec::new();
-        commits.push(c_m.c.unwrap());
+        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let sigs: Vec<SigSign<B>> = vec![sig];
 
-        let mut sigs: Vec<SigSign<B>> = Vec::new();
-        sigs.push(sig);
-
-        let state = State {
+        State {
             comm_state: commits,
             sig_state: sigs,
-        };
-
-        state
+        }
     }
 }

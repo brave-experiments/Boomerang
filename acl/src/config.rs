@@ -41,9 +41,9 @@ pub struct KeyPair<A: ACLConfig> {
 impl<A: ACLConfig> Clone for KeyPair<A> {
     fn clone(&self) -> Self {
         Self {
-            verifying_key: self.verifying_key.clone(),
-            tag_key: self.tag_key.clone(),
-            x: self.x.clone(),
+            verifying_key: self.verifying_key,
+            tag_key: self.tag_key,
+            x: self.x,
         }
     }
 }
