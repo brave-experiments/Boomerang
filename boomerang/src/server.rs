@@ -1,5 +1,5 @@
 //!
-//! Module containing the definition of the client side of the algorithm
+//! Module containing the definition of the server side of the algorithm
 //!
 
 use ark_ec::{
@@ -45,6 +45,7 @@ impl<B: BoomerangConfig> ServerKeyPair<B> {
     }
 }
 
+/// Issuance protocol
 /// IssuanceM2. This struct acts as a container for the second message of
 /// the issuance protocol.
 #[derive(Clone)]
@@ -78,9 +79,7 @@ pub struct IssuanceS<B: BoomerangConfig> {
     pub m4: Option<IssuanceM4<B>>,
 }
 
-impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::config::ACLConfig>
-    IssuanceS<B>
-{
+impl<B: BoomerangConfig> IssuanceS<B> {
     /// generate_issuance_m2. This function generates the second message of the Issuance Protocol.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
@@ -141,6 +140,60 @@ impl<B: BoomerangConfig + pedersen::pedersen_config::PedersenConfig + acl::confi
         Self {
             m2: s_m.m2,
             m4: Some(m4),
+        }
+    }
+}
+
+/// Collection protocol
+/// CollectionM1. This struct acts as a container for the first message of
+/// the collection protocol.
+#[derive(Clone)]
+pub struct CollectionM1<B: BoomerangConfig> {
+    /// r2: the random double-spending tag value.
+    pub r2: <B as CurveConfig>::ScalarField,
+}
+
+/// CollectionM3. This struct acts as a container for the fourth message of
+/// the collection protocol.
+#[derive(Clone)]
+pub struct CollectionM3<B: BoomerangConfig> {
+    /// s: the signature response value.
+    pub s: SigResp<B>,
+}
+
+/// CollectionM3. This struct acts as a container for the fourth message of
+/// the collection protocol.
+#[derive(Clone)]
+pub struct CollectionM5<B: BoomerangConfig> {
+    /// s: the signature response value.
+    pub s: SigResp<B>,
+}
+
+/// CollectionS. This struct represents the collection protocol for the server.
+#[derive(Clone)]
+pub struct CollectionS<B: BoomerangConfig> {
+    /// m1: the first message value.
+    pub m1: CollectionM1<B>,
+    /// m3: the third message value.
+    pub m3: Option<CollectionM3<B>>,
+    /// m5: the fifth message value.
+    pub m5: Option<CollectionM5<B>>,
+}
+
+impl<B: BoomerangConfig> CollectionS<B> {
+    /// generate_collection_m1. This function generates the first message of
+    /// the Collection Protocol.
+    /// # Arguments
+    /// * `inter` - the intermediate values to use.
+    pub fn generate_collection_m1<T: RngCore + CryptoRng>(rng: &mut T) -> CollectionS<B> {
+        let r2 = <B as CurveConfig>::ScalarField::rand(rng);
+
+        let m1 = CollectionM1 { r2 };
+
+        Self {
+            m1,
+            m3: None,
+            m5: None,
         }
     }
 }

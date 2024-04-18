@@ -150,7 +150,6 @@ impl<A: ACLConfig> SigChall<A> {
 }
 
 /// Signature. This struct acts as a container for the signature.
-#[derive(Clone)]
 pub struct Signature<A: ACLConfig> {
     /// e: the first message value.
     pub zeta: sw::Affine<A>,
@@ -170,8 +169,22 @@ pub struct Signature<A: ACLConfig> {
     pub omega1: <A as CurveConfig>::ScalarField,
 }
 
+impl<A: ACLConfig> Clone for Signature<A> {
+    fn clone(&self) -> Self {
+        Self {
+            zeta: self.zeta.clone(),
+            zeta1: self.zeta1.clone(),
+            rho: self.rho.clone(),
+            omega: self.omega.clone(),
+            rho1: self.rho1.clone(),
+            rho2: self.rho2.clone(),
+            v: self.v.clone(),
+            omega1: self.omega1.clone(),
+        }
+    }
+}
+
 /// Opening. This struct acts as a container for the opening.
-#[derive(Clone)]
 pub struct Opening<A: ACLConfig> {
     /// gamma: the first message value.
     pub gamma: <A as CurveConfig>::ScalarField,
@@ -179,13 +192,30 @@ pub struct Opening<A: ACLConfig> {
     pub rand: <A as CurveConfig>::ScalarField,
 }
 
+impl<A: ACLConfig> Clone for Opening<A> {
+    fn clone(&self) -> Self {
+        Self {
+            gamma: self.gamma.clone(),
+            rand: self.rand.clone(),
+        }
+    }
+}
+
 /// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
-#[derive(Clone)]
 pub struct SigSign<A: ACLConfig> {
     /// sigma: the signature itself.
     pub sigma: Signature<A>,
     /// opening: the opening values.
     opening: Opening<A>,
+}
+
+impl<A: ACLConfig> Clone for SigSign<A> {
+    fn clone(&self) -> Self {
+        Self {
+            sigma: self.sigma.clone(),
+            opening: self.opening.clone(),
+        }
+    }
 }
 
 impl<A: ACLConfig> SigSign<A> {
