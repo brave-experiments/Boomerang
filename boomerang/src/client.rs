@@ -21,6 +21,20 @@ use pedersen::{
 
 use ark_std::{ops::Mul, UniformRand, Zero};
 
+/// The token representation.
+#[derive(Clone)]
+#[must_use]
+pub struct Token<B: BoomerangConfig> {
+    /// Serial Number
+    id: <B as CurveConfig>::ScalarField,
+    /// The value
+    v: <B as CurveConfig>::ScalarField,
+    /// User's secret key
+    sk: <B as CurveConfig>::ScalarField,
+    /// Random value
+    r: <B as CurveConfig>::ScalarField,
+}
+
 /// Client keypair.
 ///
 #[derive(Clone, PartialEq)]
@@ -67,6 +81,8 @@ pub struct IssuanceM1<B: BoomerangConfig> {
     pub gens: Generators<B>,
     /// Serial Number
     id_0: <B as CurveConfig>::ScalarField,
+    /// r: the random double-spending tag value.
+    r: <B as CurveConfig>::ScalarField,
 }
 
 /// IssuanceM3. This struct acts as a container for the thrid message of
@@ -86,6 +102,8 @@ pub struct IssuanceC<B: BoomerangConfig> {
     pub m3: Option<IssuanceM3<B>>,
     /// c: the commit value.
     c: Option<PedersenComm<B>>,
+    /// id: the serial number value.
+    id: Option<<B as CurveConfig>::ScalarField>,
 }
 
 impl<B: BoomerangConfig> IssuanceC<B> {
@@ -117,12 +135,14 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             len: vals.len(),
             gens: gens.clone(),
             id_0,
+            r: r_0,
         };
 
         Self {
             m1,
             m3: None,
             c: None,
+            id: None,
         }
     }
 
@@ -133,7 +153,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     ) -> IssuanceC<B> {
         // TODO: in order to populate later
         let c = s_m.m2.comm + c_m.m1.comm;
-        let _ = s_m.m2.id_1 + c_m.m1.id_0;
+        let id = s_m.m2.id_1 + c_m.m1.id_0;
 
         let sig_chall = SigChall::challenge(
             s_m.m2.tag_key,
@@ -149,17 +169,19 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             m1: c_m.m1,
             m3: Some(m3),
             c: Some(c),
+            id: Some(id),
         }
     }
 
     pub fn populate_state(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
-        key_pair: ServerKeyPair<B>,
+        s_key_pair: ServerKeyPair<B>,
+        c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
-            key_pair.s_key_pair.verifying_key,
-            key_pair.s_key_pair.tag_key,
+            s_key_pair.s_key_pair.verifying_key,
+            s_key_pair.s_key_pair.tag_key,
             c_m.m3.unwrap().e,
             s_m.m4.unwrap().s,
             "message",
@@ -167,10 +189,18 @@ impl<B: BoomerangConfig> IssuanceC<B> {
 
         let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
         let sigs: Vec<SigSign<B>> = vec![sig];
+        let token = Token {
+            id: c_m.id.unwrap(),
+            v: <B as CurveConfig>::ScalarField::zero(),
+            sk: c_key_pair.x,
+            r: c_m.m1.r,
+        };
+        let tokens: Vec<Token<B>> = vec![token];
 
         State {
             comm_state: commits,
             sig_state: sigs,
+            token_state: tokens,
         }
     }
 }

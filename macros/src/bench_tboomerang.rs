@@ -90,7 +90,7 @@ macro_rules! bench_tboomerang_issuance_m5_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m5 time"), |b| {
                 b.iter(|| {
-                    IBCM::populate_state(m3.clone(), m4.clone(), skp.clone());
+                    IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
                 });
             });
         }

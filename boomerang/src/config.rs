@@ -1,5 +1,6 @@
 use ark_ec::{models::CurveConfig, short_weierstrass::SWCurveConfig};
 
+use crate::client::Token;
 use acl::{config::ACLConfig, sign::SigSign};
 use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};
 
@@ -17,6 +18,8 @@ pub struct State<B: BoomerangConfig> {
     pub sig_state: Vec<SigSign<B>>,
     /// The commitment state
     pub comm_state: Vec<PedersenComm<B>>,
+    /// The token state
+    pub token_state: Vec<Token<B>>,
 }
 
 impl<B: BoomerangConfig> State<B> {
