@@ -237,6 +237,8 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub sig: SigSign<B>,
     /// s_proof: the proof of the commitments under the signature
     pub s_proof: SigProof<B>,
+    /// r: the random double-spending tag value.
+    r: <B as CurveConfig>::ScalarField,
 }
 
 /// CollectionM4. This struct acts as a container for the fourth message of
@@ -254,6 +256,10 @@ pub struct CollectionC<B: BoomerangConfig> {
     pub m2: CollectionM2<B>,
     /// m4: the fourth message value.
     pub m4: Option<CollectionM4<B>>,
+    /// c: the commit value.
+    c: Option<PedersenComm<B>>,
+    /// id: the serial number value.
+    id: Option<<B as CurveConfig>::ScalarField>,
 }
 
 impl<B: BoomerangConfig> CollectionC<B> {
@@ -339,8 +345,70 @@ impl<B: BoomerangConfig> CollectionC<B> {
             id: state.token_state[0].id,
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
+            r: r1,
         };
 
-        Self { m2, m4: None }
+        Self {
+            m2,
+            m4: None,
+            c: None,
+            id: None,
+        }
+    }
+
+    pub fn generate_collection_m4<T: RngCore + CryptoRng>(
+        c_m: CollectionC<B>,
+        s_m: CollectionS<B>,
+        rng: &mut T,
+    ) -> CollectionC<B> {
+        let m3 = s_m.m3.clone().unwrap();
+
+        let c = m3.comm + c_m.m2.comm;
+        let id = m3.id_1 + c_m.m2.id;
+
+        let sig_chall =
+            SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
+
+        let m4 = CollectionM4 { e: sig_chall };
+
+        Self {
+            m2: c_m.m2,
+            m4: Some(m4),
+            c: Some(c),
+            id: Some(id),
+        }
+    }
+
+    pub fn populate_state(
+        c_m: CollectionC<B>,
+        s_m: CollectionS<B>,
+        s_key_pair: ServerKeyPair<B>,
+        c_key_pair: UKeyPair<B>,
+    ) -> State<B> {
+        let sig = SigSign::sign(
+            s_key_pair.s_key_pair.verifying_key,
+            s_key_pair.s_key_pair.tag_key,
+            c_m.m4.unwrap().e,
+            s_m.m5.unwrap().s,
+            "message",
+        );
+
+        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let sigs: Vec<SigSign<B>> = vec![sig];
+        let token = Token {
+            id: c_m.id.unwrap(),
+            v: <B as CurveConfig>::ScalarField::zero(),
+            sk: c_key_pair.x,
+            r: c_m.m2.r,
+            gens: c_m.m2.gens,
+        };
+        let tokens: Vec<Token<B>> = vec![token];
+
+        State {
+            comm_state: commits,
+            sig_state: sigs,
+            token_state: tokens,
+            c_key_pair,
+        }
     }
 }

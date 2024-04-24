@@ -166,7 +166,6 @@ pub struct CollectionM1<B: BoomerangConfig> {
 
 /// CollectionM3. This struct acts as a container for the fourth message of
 /// the collection protocol.
-#[derive(Clone)]
 pub struct CollectionM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -180,7 +179,25 @@ pub struct CollectionM3<B: BoomerangConfig> {
     pub tag_key: sw::Affine<B>,
 }
 
-/// CollectionM3. This struct acts as a container for the fourth message of
+impl<B: BoomerangConfig> Clone for CollectionM3<B>
+where
+    PedersenComm<B>: Clone,
+    SigComm<B>: Clone,
+    <B as CurveConfig>::ScalarField: Clone,
+    sw::Affine<B>: Clone,
+{
+    fn clone(&self) -> Self {
+        CollectionM3 {
+            comm: self.comm.clone(),
+            sig_commit: self.sig_commit.clone(),
+            id_1: self.id_1.clone(),
+            verifying_key: self.verifying_key.clone(),
+            tag_key: self.tag_key.clone(),
+        }
+    }
+}
+
+/// CollectionM5. This struct acts as a container for the fourth message of
 /// the collection protocol.
 #[derive(Clone)]
 pub struct CollectionM5<B: BoomerangConfig> {
@@ -297,6 +314,25 @@ impl<B: BoomerangConfig> CollectionS<B> {
             m1: s_m.m1,
             m3: Some(m3),
             m5: None,
+        }
+    }
+
+    pub fn generate_collection_m5(
+        c_m: CollectionC<B>,
+        s_m: CollectionS<B>,
+        key_pair: ServerKeyPair<B>,
+    ) -> CollectionS<B> {
+        let sig_resp = SigResp::respond(
+            key_pair.s_key_pair.clone(),
+            s_m.m3.clone().unwrap().sig_commit,
+            c_m.m4.unwrap().e,
+        );
+        let m5 = CollectionM5 { s: sig_resp };
+
+        Self {
+            m1: s_m.m1,
+            m3: s_m.m3,
+            m5: Some(m5),
         }
     }
 }
