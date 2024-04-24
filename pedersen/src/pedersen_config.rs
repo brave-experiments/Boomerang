@@ -290,6 +290,7 @@ impl<P: PedersenConfig> Clone for Generators<P> {
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
 /// and the associated randomness. Any serialised proofs should solely use `comm` in their transcripts /
 /// serialisations.
+#[derive(Debug)]
 pub struct PedersenComm<P: PedersenConfig> {
     /// comm: the point which acts as the commitment.
     pub comm: sw::Affine<P>,

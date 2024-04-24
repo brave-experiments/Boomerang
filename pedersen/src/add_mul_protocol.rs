@@ -14,7 +14,7 @@ use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 
 use crate::{
-    pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::MulTranscript,
+    pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::AddMulTranscript,
 };
 
 /// AddMulProofTranscriptable. This trait provides a notion of `Transcriptable`, which implies
@@ -29,6 +29,8 @@ pub trait AddMulProofTranscriptable {
     /// * `c1` - the c1 commitment that is being added to the transcript.
     /// * `c2` - the c2 commitment that is being added to the transcript.
     /// * `c3` - the c3 commitment that is being added to the transcript.
+    /// * `c4` - the c3 commitment that is being added to the transcript.
+    /// * `c5` - the c3 commitment that is being added to the transcript.
     fn add_to_transcript(
         &self,
         transcript: &mut Transcript,
@@ -295,13 +297,12 @@ impl<P: PedersenConfig> AddMulProof<P> {
         let b8 = <P as CurveConfig>::ScalarField::rand(rng);
         let b9 = <P as CurveConfig>::ScalarField::rand(rng);
 
-        // This is Line 1 of Figure 5 of https://eprint.iacr.org/2017/1132.pdf.
         let t1 = (P::GENERATOR.mul(b1) + P::GENERATOR2.mul(b2)).into_affine();
         let t2 = (P::GENERATOR.mul(b3) + P::GENERATOR2.mul(b4)).into_affine();
         let t3 = (P::GENERATOR.mul(b5) + P::GENERATOR2.mul(b6)).into_affine();
         let t4 = (c1.comm.mul(b3) + P::GENERATOR2.mul(b7)).into_affine();
         let t5 = (P::GENERATOR.mul(b8)).into_affine();
-        let t6 = (P::GENERATOR.mul(b9)).into_affine();
+        let t6 = (P::GENERATOR2.mul(b9)).into_affine();
 
         // Add the values to the transcript.
         Self::make_transcript(
@@ -387,17 +388,15 @@ impl<P: PedersenConfig> AddMulProof<P> {
         c5: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
-        let (z1, z2, z3, z4, z5, z6, z7, z8, z9) = (
-            inter.b1 + (*chal * (x)),
-            inter.b2 + (*chal * c1.r),
-            inter.b3 + (*chal * y),
-            inter.b4 + (*chal * c2.r),
-            inter.b5 + (*chal * z),
-            inter.b6 + (*chal * c3.r),
-            inter.b7 + *chal * (c4.r - (c1.r * (y))),
-            inter.b8 + *chal * ((*x * y) + z),
-            inter.b9 + *chal * (c4.r + c3.r),
-        );
+        let z1 = inter.b1 + (*chal * (x));
+        let z2 = inter.b2 + (*chal * c1.r);
+        let z3 = inter.b3 + (*chal * y);
+        let z4 = inter.b4 + (*chal * c2.r);
+        let z5 = inter.b5 + (*chal * z);
+        let z6 = inter.b6 + (*chal * c3.r);
+        let z7 = inter.b7 + *chal * (c4.r - (c1.r * (y)));
+        let z8 = inter.b8 + *chal * ((*x * y) + z);
+        let z9 = inter.b9 + *chal * (c5.r);
 
         Self {
             t1: inter.t1,
@@ -405,7 +404,7 @@ impl<P: PedersenConfig> AddMulProof<P> {
             t3: inter.t3,
             t4: inter.t4,
             t5: inter.t5,
-            t6: inter.t5,
+            t6: inter.t6,
             z1,
             z2,
             z3,

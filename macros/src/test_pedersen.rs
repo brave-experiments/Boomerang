@@ -577,6 +577,76 @@ macro_rules! __test_pedersen {
         }
 
         #[test]
+        fn test_pedersen_add_mul() {
+            // Test that the add-mul proof goes through.
+            let label = b"PedersenAddMul";
+
+            let a = SF::rand(&mut OsRng);
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let w = a * b;
+            let t = w + c;
+
+            let c1: PC = PC::new(a, &mut OsRng);
+            let c2: PC = PC::new(b, &mut OsRng);
+            let c3: PC = PC::new(c, &mut OsRng);
+            let c4: PC = PC::new(w, &mut OsRng);
+            let c5: PC = c4 + c3;
+
+            let mut transcript = Transcript::new(label);
+            let proof = AMP::create(
+                &mut transcript,
+                &mut OsRng,
+                &a,
+                &b,
+                &c,
+                &c1,
+                &c2,
+                &c3,
+                &c4,
+                &c5,
+            );
+            assert!(proof.t1.is_on_curve());
+            assert!(proof.t2.is_on_curve());
+            assert!(proof.t3.is_on_curve());
+            assert!(proof.t4.is_on_curve());
+            assert!(proof.t5.is_on_curve());
+
+            // Now check that the proof verifies.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(
+                &mut transcript_v,
+                &c1.comm,
+                &c2.comm,
+                &c3.comm,
+                &c4.comm,
+                &c5.comm
+            ));
+
+            // And now check it would fail on a different c5 value.
+
+            let mut d = SF::rand(&mut OsRng);
+
+            loop {
+                if d != t {
+                    break;
+                }
+                d = SF::rand(&mut OsRng);
+            }
+
+            let c5: PC = PC::new(d, &mut OsRng);
+            let mut transcript_f = Transcript::new(label);
+            assert!(!proof.verify(
+                &mut transcript_f,
+                &c1.comm,
+                &c2.comm,
+                &c3.comm,
+                &c4.comm,
+                &c5.comm
+            ));
+        }
+
+        #[test]
         fn test_pedersen_non_zero() {
             // Test that the non-zero proof goes through.
             let label = b"PedersenNonZero";
@@ -1446,6 +1516,7 @@ macro_rules! test_pedersen {
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{
+                add_mul_protocol::AddMulProof as AMP,
                 ec_collective::CDLSCollective,
                 ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
                 ecdsa_protocol::ECDSASigProof,
