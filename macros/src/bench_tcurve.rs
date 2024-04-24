@@ -304,6 +304,98 @@ macro_rules! bench_tcurve_mul_verifier_time {
 }
 
 #[macro_export]
+macro_rules! bench_tcurve_add_mul_prover_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            type SF = <$config as CurveConfig>::ScalarField;
+            type PC = PedersenComm<$config>;
+
+            let label = b"PedersenMul";
+            let a = SF::rand(&mut OsRng);
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let w = a * b;
+            let t = w + c;
+
+            let c1: PC = PC::new(a, &mut OsRng);
+            let c2: PC = PC::new(b, &mut OsRng);
+            let c3: PC = PC::new(z, &mut OsRng);
+            let c4: PC = PC::new(w, &mut OsRng);
+            let c5: PC = c4 + c3;
+
+            c.bench_function(concat!($curve_name, " add-mul proof prover time"), |bf| {
+                bf.iter(|| {
+                    let mut transcript = Transcript::new(label);
+                    AMP::create(
+                        &mut transcript,
+                        &mut OsRng,
+                        &a,
+                        &b,
+                        &c,
+                        &c1,
+                        &c2,
+                        &c3,
+                        &c4,
+                        &c5,
+                    );
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tcurve_add_mul_verifier_time {
+    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            type SF = <$config as CurveConfig>::ScalarField;
+            type PC = PedersenComm<$config>;
+
+            let label = b"PedersenMul";
+            let a = SF::rand(&mut OsRng);
+            let b = SF::rand(&mut OsRng);
+            let c = SF::rand(&mut OsRng);
+            let w = a * b;
+            let t = w + c;
+
+            let c1: PC = PC::new(a, &mut OsRng);
+            let c2: PC = PC::new(b, &mut OsRng);
+            let c3: PC = PC::new(z, &mut OsRng);
+            let c4: PC = PC::new(w, &mut OsRng);
+            let c5: PC = c4 + c3;
+
+            let mut transcript = Transcript::new(label);
+            let proof = AMP::create(
+                &mut transcript,
+                &mut OsRng,
+                &a,
+                &b,
+                &c,
+                &c1,
+                &c2,
+                &c3,
+                &c4,
+                &c5,
+            );
+
+            c.bench_function(concat!($curve_name, " add-mul proof verifier time"), |b| {
+                b.iter(|| {
+                    let mut transcript_v = Transcript::new(label);
+                    proof.verify(
+                        &mut transcript_v,
+                        &c1.comm,
+                        &c2.comm,
+                        &c3.comm,
+                        &c4.comm,
+                        &c5.comm,
+                    );
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! bench_tcurve_non_zero_prover_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
@@ -1415,6 +1507,7 @@ macro_rules! bench_tcurve_import_everything {
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
         use merlin::Transcript;
         use pedersen::{
+            add_mul_protocol::AddMulProof as AMP,
             ec_collective::CDLSCollective,
             ec_point_add_protocol::{ECPointAddIntermediate as EPAI, ECPointAddProof as EPAP},
             ecdsa_protocol::ECDSASigProof,

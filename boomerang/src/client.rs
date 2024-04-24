@@ -15,8 +15,9 @@ use crate::server::{CollectionS, IssuanceS, ServerKeyPair};
 use acl::{sign::SigChall, sign::SigProof, sign::SigSign, sign::Signature};
 use merlin::Transcript;
 use pedersen::{
-    issuance_protocol::IssuanceProofMulti, opening_protocol::OpeningProofMulti,
-    pedersen_config::Generators, pedersen_config::PedersenComm,
+    add_mul_protocol::AddMulProof, issuance_protocol::IssuanceProofMulti,
+    opening_protocol::OpeningProofMulti, pedersen_config::Generators,
+    pedersen_config::PedersenComm,
 };
 
 use ark_std::{ops::Mul, UniformRand, Zero};
@@ -220,6 +221,8 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub pi_1: OpeningProofMulti<B>,
     /// pi_2: the proof value of the previous commitment.
     pub pi_2: OpeningProofMulti<B>,
+    /// pi_3: the proof of the tag.
+    pub pi_3: AddMulProof<B>,
     /// tag: the tag value.
     pub tag: <B as CurveConfig>::ScalarField,
     /// c: the commit value.
@@ -260,8 +263,6 @@ impl<B: BoomerangConfig> CollectionC<B> {
         s_m: CollectionS<B>,
         s_key_pair: ServerKeyPair<B>,
     ) -> CollectionC<B> {
-        let tag = state.c_key_pair.x * state.token_state[0].id + s_m.m1.r2;
-
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
 
@@ -291,7 +292,27 @@ impl<B: BoomerangConfig> CollectionC<B> {
             state.token_state[0].gens.clone(),
         );
 
-        // TODO: add proof of tag
+        let t_tag = state.c_key_pair.x * state.token_state[0].id;
+        let tag = t_tag + s_m.m1.r2;
+
+        let a: PedersenComm<B> = PedersenComm::new(state.c_key_pair.x, rng);
+        let b: PedersenComm<B> = PedersenComm::new(state.token_state[0].id, rng);
+        let c: PedersenComm<B> = PedersenComm::new(s_m.m1.r2, rng);
+        let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
+        let e: PedersenComm<B> = d + c;
+
+        let proof_3 = AddMulProof::create(
+            &mut transcript,
+            rng,
+            &state.c_key_pair.x,
+            &state.token_state[0].id,
+            &s_m.m1.r2,
+            &a,
+            &b,
+            &c,
+            &d,
+            &e,
+        );
         // TODO: add membership proof
 
         let sig_proof = SigProof::prove(
@@ -307,6 +328,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
             comm: c1,
             pi_1: proof_1,
             pi_2: proof_2,
+            pi_3: proof_3,
             tag,
             c: c1,
             id: state.token_state[0].id,

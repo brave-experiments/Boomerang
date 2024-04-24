@@ -48,6 +48,7 @@ pub trait AddMulProofTranscriptable {
 /// Note that the documentation for this struct uses the notation that `t = (x * y) + z`.
 /// Moreover, the challenge is `c` and the random values are `b1, ..., b9`.
 /// We also have that X = xg + r_x h and Y = yg + r_y h.
+#[derive(Clone)]
 pub struct AddMulProof<P: PedersenConfig> {
     /// t1: a random point produced by the prover during setup.
     pub t1: sw::Affine<P>,
