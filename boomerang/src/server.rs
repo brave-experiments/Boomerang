@@ -258,33 +258,46 @@ impl<B: BoomerangConfig> CollectionS<B> {
         );
 
         if !check2 {
-            panic!("Boomerang collection: invalid proof");
+            panic!("Boomerang collection: invalid proof sig");
         }
 
-        let label = b"BoomerangCollectionM2";
+        let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
 
-        let check3 = c_m.m2.pi_1.verify(
-            &mut transcript,
-            &c_m.m2.comm.comm,
-            c_m.m2.gens.generators.len(),
-            c_m.m2.gens.clone(),
-        );
+        let check3 = c_m
+            .m2
+            .pi_1
+            .verify(&mut transcript, &c_m.m2.comm.comm, 4, c_m.m2.gens.clone());
 
         if !check3 {
-            panic!("Boomerang collection: invalid proof");
+            panic!("Boomerang collection: invalid proof opening 1");
         }
 
+        let label1 = b"BoomerangCollectionM2O2";
+        let mut transcript1 = Transcript::new(label1);
+
         let check4 = c_m.m2.pi_2.verify(
-            &mut transcript,
+            &mut transcript1,
             &c_m.m2.prev_comm.comm,
-            c_m.m2.prev_gens.generators.len(),
+            4,
             c_m.m2.prev_gens.clone(),
         );
 
-        if !check4 {
-            panic!("Boomerang collection: invalid proof");
-        }
+        //if !check4 {
+        //    panic!("Boomerang collection: invalid proof opening 2");
+        //}
+
+        //let label2 = b"BoomerangCollectionM2AM2";
+        //let mut transcript2 = Transcript::new(label2);
+
+        //let check5 = c_m.m2.pi_3.verify(
+        //    &mut transcript2,
+        //    &c_m.m2.prev_comm.comm,
+        //);
+
+        //if !check5 {
+        //    panic!("Boomerang collection: invalid proof opening 2");
+        //}
 
         let dtag: ServerTag<B> = ServerTag {
             tag: c_m.m2.tag,

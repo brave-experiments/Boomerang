@@ -288,13 +288,17 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
 
-        let label = b"BoomerangCollectionM2";
+        let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
 
         let proof_1 =
             OpeningProofMulti::create(&mut transcript, rng, vals.clone(), &c1, gens.clone());
+
+        let label1 = b"BoomerangCollectionM2O2";
+        let mut transcript1 = Transcript::new(label1);
+
         let proof_2 = OpeningProofMulti::create(
-            &mut transcript,
+            &mut transcript1,
             rng,
             prev_vals.clone(),
             &state.comm_state[0],
