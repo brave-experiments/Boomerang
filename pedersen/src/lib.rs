@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+pub mod add_mul_protocol;
 pub mod collective;
 pub mod ec_collective;
 pub mod ec_point_add_protocol;
