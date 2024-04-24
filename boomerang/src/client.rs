@@ -217,6 +217,12 @@ impl<B: BoomerangConfig> IssuanceC<B> {
 pub struct CollectionM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
+    /// gens: the generators of the commitment value.
+    pub gens: Generators<B>,
+    /// prev_comm: the commitment value.
+    pub prev_comm: PedersenComm<B>,
+    /// prev_gens: the generators of the commitment value.
+    pub prev_gens: Generators<B>,
     /// pi_1: the proof value of the generated commitment.
     pub pi_1: OpeningProofMulti<B>,
     /// pi_2: the proof value of the previous commitment.
@@ -225,12 +231,10 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub pi_3: AddMulProof<B>,
     /// tag: the tag value.
     pub tag: <B as CurveConfig>::ScalarField,
-    /// c: the commit value.
-    pub c: PedersenComm<B>,
     /// id: the serial number value.
     pub id: <B as CurveConfig>::ScalarField,
     /// sig: the signature
-    pub sig: Signature<B>,
+    pub sig: SigSign<B>,
     /// s_proof: the proof of the commitments under the signature
     pub s_proof: SigProof<B>,
 }
@@ -277,7 +281,6 @@ impl<B: BoomerangConfig> CollectionC<B> {
         ];
 
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
-        //let c1_tag: PedersenComm<B> = PedersenComm::new(tag, rng);
 
         let label = b"BoomerangCollectionM2";
         let mut transcript = Transcript::new(label);
@@ -326,13 +329,15 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let m2 = CollectionM2 {
             comm: c1,
+            gens: gens,
+            prev_comm: state.comm_state[0],
+            prev_gens: state.token_state[0].gens.clone(),
             pi_1: proof_1,
             pi_2: proof_2,
             pi_3: proof_3,
             tag,
-            c: c1,
             id: state.token_state[0].id,
-            sig: state.sig_state[0].sigma.clone(),
+            sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
         };
 

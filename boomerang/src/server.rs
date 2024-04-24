@@ -8,10 +8,12 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::client::IssuanceC;
+use crate::client::{CollectionC, IssuanceC};
 use crate::config::BoomerangConfig;
 
-use acl::{config::KeyPair, verify::SigComm, verify::SigResp};
+use acl::{
+    config::KeyPair, verify::SigComm, verify::SigResp, verify::SigVerifProof, verify::SigVerify,
+};
 use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
@@ -23,6 +25,15 @@ use ark_std::{UniformRand, Zero};
 pub struct ServerKeyPair<B: BoomerangConfig> {
     /// Public key
     pub s_key_pair: KeyPair<B>,
+}
+
+/// Server tag.
+///
+#[derive(Clone)]
+struct ServerTag<B: BoomerangConfig> {
+    tag: <B as CurveConfig>::ScalarField,
+    id_0: <B as CurveConfig>::ScalarField,
+    r2: <B as CurveConfig>::ScalarField,
 }
 
 impl<B: BoomerangConfig> ServerKeyPair<B> {
@@ -99,7 +110,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         );
 
         if !check {
-            panic!("Boomerang: invalid proof");
+            panic!("Boomerang issuance: invalid proof");
         }
 
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -157,8 +168,16 @@ pub struct CollectionM1<B: BoomerangConfig> {
 /// the collection protocol.
 #[derive(Clone)]
 pub struct CollectionM3<B: BoomerangConfig> {
-    /// s: the signature response value.
-    pub s: SigResp<B>,
+    /// comm: the commitment value.
+    pub comm: PedersenComm<B>,
+    /// sig_commit: the first signature value.
+    pub sig_commit: SigComm<B>,
+    /// Serial Number
+    pub id_1: <B as CurveConfig>::ScalarField,
+    /// Public key
+    pub verifying_key: sw::Affine<B>,
+    /// Tag public key
+    pub tag_key: sw::Affine<B>,
 }
 
 /// CollectionM3. This struct acts as a container for the fourth message of
@@ -193,6 +212,90 @@ impl<B: BoomerangConfig> CollectionS<B> {
         Self {
             m1,
             m3: None,
+            m5: None,
+        }
+    }
+
+    pub fn generate_collection_m3<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        c_m: CollectionC<B>,
+        s_m: CollectionS<B>,
+        key_pair: ServerKeyPair<B>,
+        v: <B as CurveConfig>::ScalarField,
+    ) -> CollectionS<B> {
+        let check = SigVerify::verify(
+            key_pair.s_key_pair.verifying_key,
+            key_pair.s_key_pair.tag_key,
+            c_m.m2.sig.clone(),
+            "message",
+        );
+
+        if !check {
+            panic!("Boomerang collection: invalid signature");
+        }
+
+        let check2 = SigVerifProof::verify(
+            c_m.m2.s_proof,
+            key_pair.s_key_pair.tag_key,
+            c_m.m2.sig.clone(),
+        );
+
+        if !check2 {
+            panic!("Boomerang collection: invalid proof");
+        }
+
+        let label = b"BoomerangCollectionM2";
+        let mut transcript = Transcript::new(label);
+
+        let check3 = c_m.m2.pi_1.verify(
+            &mut transcript,
+            &c_m.m2.comm.comm,
+            c_m.m2.gens.generators.len(),
+            c_m.m2.gens.clone(),
+        );
+
+        if !check3 {
+            panic!("Boomerang collection: invalid proof");
+        }
+
+        let check4 = c_m.m2.pi_2.verify(
+            &mut transcript,
+            &c_m.m2.prev_comm.comm,
+            c_m.m2.prev_gens.generators.len(),
+            c_m.m2.prev_gens.clone(),
+        );
+
+        if !check4 {
+            panic!("Boomerang collection: invalid proof");
+        }
+
+        let dtag: ServerTag<B> = ServerTag {
+            tag: c_m.m2.tag,
+            id_0: c_m.m2.id,
+            r2: s_m.m1.r2,
+        };
+
+        let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
+        let v2 = <B as CurveConfig>::ScalarField::zero();
+        let v3 = <B as CurveConfig>::ScalarField::zero();
+        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v, v2, v3];
+
+        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
+        let c = c1 + c_m.m2.comm;
+
+        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
+
+        let m3 = CollectionM3 {
+            id_1,
+            comm: c,
+            sig_commit: sig_comm,
+            verifying_key: key_pair.s_key_pair.verifying_key,
+            tag_key: key_pair.s_key_pair.tag_key,
+        };
+
+        Self {
+            m1: s_m.m1,
+            m3: Some(m3),
             m5: None,
         }
     }
