@@ -307,7 +307,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
             tag: c_m.m2.tag,
             id_0: c_m.m2.id,
             r2: s_m.m1.r2,
-        };
+        }; // TODO: this needs to be stored by the server and check regularly
 
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
         let v2 = <B as CurveConfig>::ScalarField::zero();
@@ -321,7 +321,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
 
         let m3 = CollectionM3 {
             id_1,
-            comm: c,
+            comm: c1,
             sig_commit: sig_comm,
             verifying_key: key_pair.s_key_pair.verifying_key,
             tag_key: key_pair.s_key_pair.tag_key,

@@ -368,9 +368,9 @@ impl<B: BoomerangConfig> CollectionC<B> {
     }
 
     pub fn generate_collection_m4<T: RngCore + CryptoRng>(
+        rng: &mut T,
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
-        rng: &mut T,
     ) -> CollectionC<B> {
         let m3 = s_m.m3.clone().unwrap();
 

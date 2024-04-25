@@ -259,6 +259,106 @@ macro_rules! __test_boomerang {
                 skp.clone(),
                 v,
             );
+
+            assert!(collection_m3.m3.unwrap().comm.comm.is_on_curve());
+        }
+
+        #[test]
+        fn test_boomerang_collection_round_m4() {
+            // Test the first boomerang collection scheme.
+            let ckp = CBKP::generate(&mut OsRng);
+            assert!(ckp.public_key.is_on_curve());
+
+            let skp = SBKP::generate(&mut OsRng);
+            assert!(skp.s_key_pair.verifying_key.is_on_curve());
+            assert!(skp.s_key_pair.tag_key.is_on_curve());
+
+            let issuance_m1 = IBCM::generate_issuance_m1(ckp.clone(), &mut OsRng);
+            assert!(issuance_m1.m1.u_pk.is_on_curve());
+
+            let issuance_m2 =
+                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+            assert!(issuance_m2.m2.verifying_key.is_on_curve());
+            assert!(issuance_m2.m2.tag_key.is_on_curve());
+
+            let issuance_m3 =
+                IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
+
+            let issuance_m4 =
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+
+            let issuance_state = IBCM::populate_state(
+                issuance_m3.clone(),
+                issuance_m4.clone(),
+                skp.clone(),
+                ckp.clone(),
+            );
+
+            assert!(issuance_state.sig_state[0].sigma.zeta.is_on_curve());
+            assert!(issuance_state.sig_state[0].sigma.zeta1.is_on_curve());
+
+            let sig = &issuance_state.sig_state[0];
+
+            let check = ACLSV::verify(
+                skp.s_key_pair.verifying_key,
+                skp.s_key_pair.tag_key,
+                sig.clone(),
+                "message",
+            );
+            assert!(check == true);
+
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let collection_m2 = CBCM::generate_collection_m2(
+                &mut OsRng,
+                issuance_state,
+                collection_m1.clone(),
+                skp.clone(),
+            );
+
+            assert!(collection_m2.m2.comm.comm.is_on_curve());
+
+            let v = SF::one();
+            let collection_m3 = CBSM::generate_collection_m3(
+                &mut OsRng,
+                collection_m2.clone(),
+                collection_m1.clone(),
+                skp.clone(),
+                v,
+            );
+
+            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+
+            let collection_m4 = CBCM::generate_collection_m4(
+                &mut OsRng,
+                collection_m2.clone(),
+                collection_m3.clone(),
+            );
+
+            let collection_m5 = CBSM::generate_collection_m5(
+                collection_m4.clone(),
+                collection_m3.clone(),
+                skp.clone(),
+            );
+
+            let collection_state = CBCM::populate_state(
+                collection_m4.clone(),
+                collection_m5.clone(),
+                skp.clone(),
+                ckp.clone(),
+            );
+
+            assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
+            assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
+
+            let sig_n = &collection_state.sig_state[0];
+
+            let check = ACLSV::verify(
+                skp.s_key_pair.verifying_key,
+                skp.s_key_pair.tag_key,
+                sig_n.clone(),
+                "message",
+            );
+            assert!(check == true);
         }
     };
 }
