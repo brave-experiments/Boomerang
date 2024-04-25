@@ -183,13 +183,7 @@ pub struct CollectionM3<B: BoomerangConfig> {
     pub tag_key: sw::Affine<B>,
 }
 
-impl<B: BoomerangConfig> Clone for CollectionM3<B>
-where
-    PedersenComm<B>: Clone,
-    SigComm<B>: Clone,
-    <B as CurveConfig>::ScalarField: Clone,
-    sw::Affine<B>: Clone,
-{
+impl<B: BoomerangConfig> Clone for CollectionM3<B> {
     fn clone(&self) -> Self {
         CollectionM3 {
             comm: self.comm,
