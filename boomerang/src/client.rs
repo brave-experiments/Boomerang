@@ -12,7 +12,7 @@ use rand::{CryptoRng, RngCore};
 use crate::config::{BoomerangConfig, State};
 use crate::server::{CollectionS, IssuanceS, ServerKeyPair};
 
-use acl::{sign::SigChall, sign::SigProof, sign::SigSign, sign::Signature};
+use acl::{sign::SigChall, sign::SigProof, sign::SigSign};
 use merlin::Transcript;
 use pedersen::{
     add_mul_protocol::AddMulProof, issuance_protocol::IssuanceProofMulti,
@@ -345,7 +345,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let m2 = CollectionM2 {
             comm: c1,
-            gens: gens,
+            gens,
             prev_comm: state.comm_state[0],
             prev_gens: state.token_state[0].gens.clone(),
             pi_1: proof_1,

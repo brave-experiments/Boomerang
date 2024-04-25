@@ -30,9 +30,13 @@ pub struct ServerKeyPair<B: BoomerangConfig> {
 /// Server tag.
 ///
 #[derive(Clone)]
+#[allow(unused_variables)]
 struct ServerTag<B: BoomerangConfig> {
+    #[allow(dead_code)]
     tag: <B as CurveConfig>::ScalarField,
+    #[allow(dead_code)]
     id_0: <B as CurveConfig>::ScalarField,
+    #[allow(dead_code)]
     r2: <B as CurveConfig>::ScalarField,
 }
 
@@ -188,11 +192,11 @@ where
 {
     fn clone(&self) -> Self {
         CollectionM3 {
-            comm: self.comm.clone(),
-            sig_commit: self.sig_commit.clone(),
-            id_1: self.id_1.clone(),
-            verifying_key: self.verifying_key.clone(),
-            tag_key: self.tag_key.clone(),
+            comm: self.comm,
+            sig_commit: self.sig_commit,
+            id_1: self.id_1,
+            verifying_key: self.verifying_key,
+            tag_key: self.tag_key,
         }
     }
 }
@@ -303,6 +307,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
             panic!("Boomerang collection: invalid proof of tag");
         }
 
+        #[allow(unused_variables)]
         let dtag: ServerTag<B> = ServerTag {
             tag: c_m.m2.tag,
             id_0: c_m.m2.id,

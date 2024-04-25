@@ -172,14 +172,14 @@ pub struct Signature<A: ACLConfig> {
 impl<A: ACLConfig> Clone for Signature<A> {
     fn clone(&self) -> Self {
         Self {
-            zeta: self.zeta.clone(),
-            zeta1: self.zeta1.clone(),
-            rho: self.rho.clone(),
-            omega: self.omega.clone(),
-            rho1: self.rho1.clone(),
-            rho2: self.rho2.clone(),
-            v: self.v.clone(),
-            omega1: self.omega1.clone(),
+            zeta: self.zeta,
+            zeta1: self.zeta1,
+            rho: self.rho,
+            omega: self.omega,
+            rho1: self.rho1,
+            rho2: self.rho2,
+            v: self.v,
+            omega1: self.omega1,
         }
     }
 }
@@ -195,8 +195,8 @@ pub struct Opening<A: ACLConfig> {
 impl<A: ACLConfig> Clone for Opening<A> {
     fn clone(&self) -> Self {
         Self {
-            gamma: self.gamma.clone(),
-            rand: self.rand.clone(),
+            gamma: self.gamma,
+            rand: self.rand,
         }
     }
 }

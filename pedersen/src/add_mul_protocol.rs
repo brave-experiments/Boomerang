@@ -176,6 +176,7 @@ impl<P: PedersenConfig> AddMulProof<P> {
     /// * `alpha` - the alpha value that is being added to the transcript.
     /// * `beta` - the beta value that is being added to the transcript.
     /// * `delta` - the delta value that is being added to the transcript.
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transcript(
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
@@ -242,6 +243,7 @@ impl<P: PedersenConfig> AddMulProof<P> {
     /// * `c3` - the commitment to `z = x * y`.
     /// * `c4` - the commitment to `w = x * y`.
     /// * `c5` - the commitment to `t = w + z`.
+    #[allow(clippy::too_many_arguments)]
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
@@ -345,6 +347,7 @@ impl<P: PedersenConfig> AddMulProof<P> {
     /// * `c4` - the c3 commitment that is used. This is a commitment to `w = x * y`.
     /// * `c5` - the c3 commitment that is used. This is a commitment to `t = w + z`.
     /// * `chal_buf` - the pre-determined challenge bytes.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_proof(
         x: &<P as CurveConfig>::ScalarField,
         y: &<P as CurveConfig>::ScalarField,
@@ -377,6 +380,7 @@ impl<P: PedersenConfig> AddMulProof<P> {
     /// * `c4` - the c3 commitment that is used. This is a commitment to `w = x * y`.
     /// * `c5` - the c3 commitment that is used. This is a commitment to `t = w + z`.
     /// * `chal` - the challenge.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_proof_with_challenge(
         x: &<P as CurveConfig>::ScalarField,
         y: &<P as CurveConfig>::ScalarField,
