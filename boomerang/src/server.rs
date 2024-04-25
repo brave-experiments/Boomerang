@@ -127,7 +127,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
         let m2 = IssuanceM2 {
             id_1,
-            comm: c,
+            comm: c1,
             sig_commit: sig_comm,
             verifying_key: key_pair.s_key_pair.verifying_key,
             tag_key: key_pair.s_key_pair.tag_key,
@@ -283,21 +283,25 @@ impl<B: BoomerangConfig> CollectionS<B> {
             c_m.m2.prev_gens.clone(),
         );
 
-        //if !check4 {
-        //    panic!("Boomerang collection: invalid proof opening 2");
-        //}
+        if !check4 {
+            panic!("Boomerang collection: invalid proof opening 2");
+        }
 
-        //let label2 = b"BoomerangCollectionM2AM2";
-        //let mut transcript2 = Transcript::new(label2);
+        let label2 = b"BoomerangCollectionM2AM2";
+        let mut transcript2 = Transcript::new(label2);
 
-        //let check5 = c_m.m2.pi_3.verify(
-        //    &mut transcript2,
-        //    &c_m.m2.prev_comm.comm,
-        //);
+        let check5 = c_m.m2.pi_3.verify(
+            &mut transcript2,
+            &c_m.m2.tag_commits[0].comm,
+            &c_m.m2.tag_commits[1].comm,
+            &c_m.m2.tag_commits[2].comm,
+            &c_m.m2.tag_commits[3].comm,
+            &c_m.m2.tag_commits[4].comm,
+        );
 
-        //if !check5 {
-        //    panic!("Boomerang collection: invalid proof opening 2");
-        //}
+        if !check5 {
+            panic!("Boomerang collection: invalid proof of tag");
+        }
 
         let dtag: ServerTag<B> = ServerTag {
             tag: c_m.m2.tag,

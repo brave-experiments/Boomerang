@@ -123,7 +123,6 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
 
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_0, v, key_pair.x, r_0];
-
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
 
         let label = b"BoomerangM1";
@@ -237,6 +236,8 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub sig: SigSign<B>,
     /// s_proof: the proof of the commitments under the signature
     pub s_proof: SigProof<B>,
+    /// tag_commits: the commits for the tag proof
+    pub tag_commits: Vec<PedersenComm<B>>,
     /// r: the random double-spending tag value.
     r: <B as CurveConfig>::ScalarField,
 }
@@ -314,8 +315,11 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
 
+        let label2 = b"BoomerangCollectionM2AM2";
+        let mut transcript2 = Transcript::new(label2);
+
         let proof_3 = AddMulProof::create(
-            &mut transcript,
+            &mut transcript2,
             rng,
             &state.c_key_pair.x,
             &state.token_state[0].id,
@@ -326,6 +330,8 @@ impl<B: BoomerangConfig> CollectionC<B> {
             &d,
             &e,
         );
+
+        let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
         // TODO: add membership proof
 
         let sig_proof = SigProof::prove(
@@ -349,6 +355,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
             id: state.token_state[0].id,
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
+            tag_commits,
             r: r1,
         };
 
