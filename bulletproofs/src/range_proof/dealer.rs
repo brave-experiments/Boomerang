@@ -113,16 +113,16 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingBitCommitments<'a, 'b, G> {
 
         // Commit aggregated A_j, S_j
         // TODO: check
-        let A: G;
-        let S: G;
+        let mut A: G = Default::default();
+        let mut S: G = Default::default();
 
-        for x in bit_commitments {
+        for x in &bit_commitments {
             A = A.add(x.A_j).into();
         }
 
         self.transcript.append_point(b"A", &A);
 
-        for x in bit_commitments {
+        for x in &bit_commitments {
             S = S.add(x.A_j).into();
         }
 
@@ -178,14 +178,14 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingPolyCommitments<'a, 'b, G> {
             return Err(MPCError::WrongNumPolyCommitments);
         }
 
-        let T_1: G;
-        let T_2: G;
+        let mut T_1: G = Default::default();
+        let mut T_2: G = Default::default();
 
-        for x in poly_commitments {
+        for x in &poly_commitments {
             T_1 = T_1.add(x.T_1_j).into();
         }
 
-        for x in poly_commitments {
+        for x in &poly_commitments {
             T_2 = T_2.add(x.T_2_j).into();
         }
 

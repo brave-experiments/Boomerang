@@ -104,7 +104,6 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
         // Compute A = <a_L, G> + <a_R, H> + a_blinding * B_blinding
         let mut A = self.pc_gens.B_blinding.mul(a_blinding);
 
-        use subtle::{Choice, ConditionallySelectable};
         let mut i = 0;
 
         for (G_i, H_i) in bp_share.G(self.n).zip(bp_share.H(self.n)) {

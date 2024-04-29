@@ -521,35 +521,6 @@ impl<G: AffineRepr> RangeProof<G> {
             &mut ark_std::rand::thread_rng(),
         )
     }
-
-    /// Serializes the proof into a byte array of \\(2 \lg n + 9\\)
-    /// 32-byte elements, where \\(n\\) is the number of secret bits.
-    ///
-    /// # Layout
-    ///
-    /// The layout of the range proof encoding is:
-    ///
-    /// * four compressed Ristretto points \\(A,S,T_1,T_2\\),
-    /// * three scalars \\(t_x, \tilde{t}_x, \tilde{e}\\),
-    /// * \\(n\\) pairs of compressed Ristretto points \\(L_0,R_0\dots,L_{n-1},R_{n-1}\\),
-    /// * two scalars \\(a, b\\).
-    pub fn as_bytes(&self) -> Result<Vec<u8>, ProofError> {
-        // 7 elements: points A, S, T1, T2, scalars tx, tx_bl, e_bl.
-        let mut cursor = Cursor::new(Vec::new());
-        self.write(&mut cursor)?;
-        let res = cursor.into_inner();
-        Ok(res)
-    }
-
-    /// Deserializes the proof from a byte slice.
-    ///
-    /// Returns an error if the byte slice cannot be parsed into a `RangeProof`.
-    #[allow(clippy::erasing_op)]
-    pub fn from_bytes(slice: &[u8]) -> Result<RangeProof<G>, ProofError> {
-        let mut cursor = Cursor::new(&slice[..]);
-        let res = RangeProof::read(&mut cursor)?;
-        Ok(res)
-    }
 }
 
 /// Compute
@@ -567,45 +538,6 @@ fn delta<G: AffineRepr>(
     let sum_z = util::sum_of_powers::<G>(z, m);
 
     (*z - *z * z) * &sum_y - *z * z * z * sum_2 * sum_z
-}
-
-impl<G: AffineRepr> ToBytes for RangeProof<G> {
-    fn write<W: Write>(&self, mut writer: W) -> ark_std::io::Result<()> {
-        self.A.write(&mut writer)?;
-        self.S.write(&mut writer)?;
-        self.T_1.write(&mut writer)?;
-        self.T_2.write(&mut writer)?;
-        self.t_x.write(&mut writer)?;
-        self.t_x_blinding.write(&mut writer)?;
-        self.e_blinding.write(&mut writer)?;
-        self.ipp_proof.write(&mut writer)
-    }
-}
-
-impl<G: AffineRepr> FromBytes for RangeProof<G> {
-    fn read<R: Read>(mut reader: R) -> ark_std::io::Result<Self> {
-        let A = G::read(&mut reader)?;
-        let S = G::read(&mut reader)?;
-        let T_1 = G::read(&mut reader)?;
-        let T_2 = G::read(&mut reader)?;
-
-        let t_x = G::ScalarField::read(&mut reader)?;
-        let t_x_blinding = G::ScalarField::read(&mut reader)?;
-        let e_blinding = G::ScalarField::read(&mut reader)?;
-
-        let ipp_proof = InnerProductProof::read(&mut reader)?;
-
-        Ok(Self {
-            A,
-            S,
-            T_1,
-            T_2,
-            t_x,
-            t_x_blinding,
-            e_blinding,
-            ipp_proof,
-        })
-    }
 }
 
 #[cfg(test)]
@@ -669,8 +601,7 @@ mod tests {
             // 0. Create witness data
             let (min, max) = (0u64, ((1u128 << n) - 1) as u64);
             let values: Vec<u64> = (0..m).map(|_| rng.gen_range(min..max)).collect();
-            let blindings: Vec<G::ScalarField> =
-                (0..m).map(|_| G::ScalarField::rand(&mut rng)).collect();
+            let blindings = (0..m).map(|_| G::ScalarField::rand(&mut rng)).collect();
 
             // 1. Create the proof
             let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
@@ -734,8 +665,7 @@ mod tests {
                 // 0. Create witness data
                 let (min, max) = (0u64, ((1u128 << n) - 1) as u64);
                 let values: Vec<u64> = (0..*m_i).map(|_| rng.gen_range(min..max)).collect();
-                let blindings: Vec<G::ScalarField> =
-                    (0..*m_i).map(|_| G::ScalarField::rand(&mut rng)).collect();
+                let blindings = (0..*m_i).map(|_| G::ScalarField::rand(&mut rng)).collect();
 
                 // 1. Create the proof
                 let (proof, value_commitments) = RangeProof::prove_multiple(
