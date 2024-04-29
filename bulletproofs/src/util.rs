@@ -7,6 +7,12 @@ use clear_on_drop::clear::Clear;
 
 use crate::inner_product_proof::inner_product;
 
+/// Represents a degree-1 vector polynomial \\(\mathbf{a} + \mathbf{b} \cdot x\\).
+pub struct VecPoly1<G: AffineRepr>(pub Vec<G::ScalarField>, pub Vec<G::ScalarField>);
+
+/// Represents a degree-2 scalar polynomial \\(a + b \cdot x + c \cdot x^2\\)
+pub struct Poly2<G: AffineRepr>(pub G::ScalarField, pub G::ScalarField, pub G::ScalarField);
+
 /// Represents a degree-3 vector polynomial
 /// \\(\mathbf{a} + \mathbf{b} \cdot x + \mathbf{c} \cdot x^2 + \mathbf{d} \cdot x^3 \\).
 #[cfg(feature = "yoloproofs")]
@@ -57,6 +63,40 @@ pub fn exp_iter<G: AffineRepr>(x: G::ScalarField) -> FrExp<G> {
     FrExp { x, next_exp_x }
 }
 
+impl<G: AffineRepr> VecPoly1<G> {
+    pub fn zero(n: usize) -> Self {
+        VecPoly1(
+            vec![G::ScalarField::zero(); n],
+            vec![G::ScalarField::zero(); n],
+        )
+    }
+
+    pub fn inner_product(&self, rhs: &VecPoly1<G>) -> Poly2<G> {
+        // Uses Karatsuba's method
+        let l = self;
+        let r = rhs;
+
+        let t0 = inner_product(&l.0, &r.0);
+        let t2 = inner_product(&l.1, &r.1);
+
+        let l0_plus_l1 = add_vec::<G>(&l.0, &l.1);
+        let r0_plus_r1 = add_vec::<G>(&r.0, &r.1);
+
+        let t1 = inner_product(&l0_plus_l1, &r0_plus_r1) - t0 - t2;
+
+        Poly2(t0, t1, t2)
+    }
+
+    pub fn eval(&self, x: G::ScalarField) -> Vec<G::ScalarField> {
+        let n = self.0.len();
+        let mut out = vec![G::ScalarField::zero(); n];
+        for i in 0..n {
+            out[i] = self.0[i] + self.1[i] * x;
+        }
+        out
+    }
+}
+
 #[cfg(feature = "yoloproofs")]
 impl<G: AffineRepr> VecPoly3<G> {
     pub fn zero(n: usize) -> Self {
@@ -102,6 +142,12 @@ impl<G: AffineRepr> VecPoly3<G> {
     }
 }
 
+impl<G: AffineRepr> Poly2<G> {
+    pub fn eval(&self, x: G::ScalarField) -> G::ScalarField {
+        self.0 + x * (self.1 + x * self.2)
+    }
+}
+
 #[cfg(feature = "yoloproofs")]
 impl<G: AffineRepr> Poly6<G> {
     pub fn eval(&self, x: G::ScalarField) -> G::ScalarField {
@@ -137,6 +183,71 @@ impl<G: AffineRepr> Drop for Poly6<G> {
         self.t5.clear();
         self.t6.clear();
     }
+}
+
+/// Takes the sum of all the powers of `x`, up to `n`
+/// If `n` is a power of 2, it uses the efficient algorithm with `2*lg n` multiplications and additions.
+/// If `n` is not a power of 2, it uses the slow algorithm with `n` multiplications and additions.
+/// In the Bulletproofs case, all calls to `sum_of_powers` should have `n` as a power of 2.
+pub fn sum_of_powers<G: AffineRepr>(x: &G::ScalarField, n: usize) -> G::ScalarField {
+    if !n.is_power_of_two() {
+        return sum_of_powers_slow::<G>(x, n);
+    }
+    if n == 0 || n == 1 {
+        return G::ScalarField::from(n as u64);
+    }
+    let mut m = n;
+    let mut result = G::ScalarField::one() + x;
+    let mut factor = *x;
+    while m > 2 {
+        factor = factor * factor;
+        result = result + factor * result;
+        m = m / 2;
+    }
+    result
+}
+
+// takes the sum of all of the powers of x, up to n
+fn sum_of_powers_slow<G: AffineRepr>(x: &G::ScalarField, n: usize) -> G::ScalarField {
+    exp_iter::<G>(*x).take(n).sum()
+}
+
+/// Raises `x` to the power `n` using binary exponentiation,
+/// with (1 to 2)*lg(n) scalar multiplications.
+/// TODO: a consttime version of this would be awfully similar to a Montgomery ladder.
+pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::ScalarField {
+    let mut result = G::ScalarField::one();
+    let mut aux = *x; // x, x^2, x^4, x^8, ...
+    while n > 0 {
+        let bit = n & 1;
+        if bit == 1 {
+            result = result * aux;
+        }
+        n = n >> 1;
+        aux = aux * aux; // FIXME: one unnecessary mult at the last step here!
+    }
+    result
+}
+
+/// Raises `x` to the power `n`.
+fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::ScalarField {
+    let mut result = G::ScalarField::one();
+    for _ in 0..n {
+        result = result * x;
+    }
+    result
+}
+
+pub fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
+    if a.len() != b.len() {
+        // throw some error
+        //println!("lengths of vectors don't match for vector addition");
+    }
+    let mut out = vec![G::ScalarField::zero(); b.len()];
+    for i in 0..a.len() {
+        out[i] = a[i] + b[i];
+    }
+    out
 }
 
 #[cfg(test)]
