@@ -616,7 +616,10 @@ mod tests {
             .unwrap();
 
             let mut cursor = Cursor::new(Vec::new());
-            proof.write(&mut cursor).unwrap();
+            proof.A.write(&mut cursor).unwrap();
+            proof.S.write(&mut cursor).unwrap();
+            proof.T_1.write(&mut cursor).unwrap();
+            proof.T_2.write(&mut cursor).unwrap();
 
             // 2. Return serialized proof and value commitments
             (cursor.into_inner(), value_commitments)
@@ -680,7 +683,10 @@ mod tests {
 
                 // 2. Return serialized proof and value commitments
                 let mut buff = Cursor::new(Vec::new());
-                proof.write(&mut buff).unwrap();
+                proof.A.write(&mut cursor).unwrap();
+                proof.S.write(&mut cursor).unwrap();
+                proof.T_1.write(&mut cursor).unwrap();
+                proof.T_2.write(&mut cursor).unwrap();
                 (buff.into_inner(), value_commitments)
             };
             proofs_bytes.push(proof_bytes);
