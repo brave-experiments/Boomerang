@@ -1,0 +1,116 @@
+[package]
+name = "ark-bulletproofs"
+version = "4.1.1"
+authors = ["Cathie Yun <cathieyun@gmail.com>",
+           "Henry de Valence <hdevalence@hdevalence.ca>",
+           "Oleg Andreev <oleganza@gmail.com>"]
+readme = "README.md"
+license = "MIT"
+categories = ["cryptography"]
+keywords = ["cryptography", "crypto", "zero-knowledge", "bulletproofs"]
+description = "A pure-Rust implementation of Bulletproofs using secq256k1"
+edition = "2021"
+
+[dependencies]
+sha3 = { version = "0.10", default-features = false }
+digest = { version = "0.10", default-features = false }
+rand_core = { version = "0.6", default-features = false, features = ["alloc"] }
+rand = { version = "0.8", optional = true }
+byteorder = { version = "1", default-features = false }
+serde = { version = "1", default-features = false, features = ["alloc"] }
+serde_derive = { version = "1", default-features = false }
+merlin = { version = "3", default-features = false }
+clear_on_drop = { version = "0.2", features = ["no_cc"] }
+rand_chacha = "0.3"
+
+[dependencies.ark-ec]
+version = '0.4.0'
+default-features = false
+
+[dependencies.ark-ff]
+version = '0.4.0'
+default-features = false
+features = ['asm']
+
+[dependencies.ark-std]
+version = '0.4.0'
+default-features = false
+
+[dependencies.ark-serialize]
+version = '0.4.0'
+default-features = false
+features = ["derive"]
+
+[dependencies.ark-secp256k1]
+version =  '0.4.0'
+default-features = false
+
+[dependencies.ark-secq256k1]
+version =  '0.4.0'
+default-features = false
+
+[dependencies.ark-ed25519]
+version =  '0.4.0'
+default-features = false
+
+[dev-dependencies]
+criterion = "0.3"
+rand_chacha = "0.3"
+
+[dev-dependencies.ark-algebra-test-templates]
+version = '0.4.0'
+default-features = false
+features = ["std"]
+
+[dev-dependencies.ark-curve25519]
+version =  '0.4.0'
+default-features = false
+features = ["std"]
+
+[features]
+default = ["std", "yoloproofs"]
+yoloproofs = []
+std = ["rand"]
+parallel = ["ark-ec/parallel", "ark-ff/parallel", "ark-std/parallel"]
+
+[[test]]
+name = "r1cs_secq256k1"
+required-features = ["yoloproofs"]
+
+[[bench]]
+name = "generators"
+harness = false
+
+[[bench]]
+name = "r1cs_secq256k1"
+harness = false
+required-features = ["yoloproofs"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+incremental = true
+panic = 'abort'
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = "thin"
+incremental = true
+debug-assertions = false
+
+[profile.dev]
+opt-level = 3
+lto = "thin"
+incremental = true
+debug-assertions = true
+debug = true
+panic = 'abort'
+
+[profile.test]
+opt-level = 3
+lto = "thin"
+incremental = true
+debug-assertions = true
+debug = true
