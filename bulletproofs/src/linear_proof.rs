@@ -118,7 +118,8 @@ impl<G: AffineRepr> LinearProof<G> {
             transcript.append_point(b"R", &R.into());
 
             //let x_j = transcript.challenge_scalar::<G>(b"x_j");
-            let x_j: G::ScalarField = <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
+            let x_j: G::ScalarField =
+                <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
             let x_j_inv = x_j.inverse().unwrap();
 
             for i in 0..n {
@@ -142,7 +143,8 @@ impl<G: AffineRepr> LinearProof<G> {
         transcript.append_point(b"S", &S);
 
         //let x_star = transcript.challenge_scalar::<G>(b"x_star");
-        let x_star: G::ScalarField = <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_star");
+        let x_star: G::ScalarField =
+            <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_star");
         let a_star = s_star + x_star * a[0];
         let r_star = t_star + x_star * r;
 
@@ -192,7 +194,8 @@ impl<G: AffineRepr> LinearProof<G> {
         let (x_vec, x_inv_vec, b_0) = self.verification_scalars(n, transcript, b_vec)?;
         transcript.append_point(b"S", &self.S);
         //let x_star = transcript.challenge_scalar::<G>(b"x_star");
-        let x_star: G::ScalarField = <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_star");
+        let x_star: G::ScalarField =
+            <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_star");
 
         // L_R_factors = sum_{j=0}^{l-1} (x_j * L_j + x_j^{-1} * R_j)
         //
@@ -253,7 +256,8 @@ impl<G: AffineRepr> LinearProof<G> {
             transcript.validate_and_append_point(b"L", L)?;
             transcript.validate_and_append_point(b"R", R)?;
             //let x_j = transcript.challenge_scalar::<G>(b"x_j");
-            let x_j: G::ScalarField = <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
+            let x_j: G::ScalarField =
+                <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
             challenges.push(x_j);
             n_mut = n_mut / 2;
             let (b_L, b_R) = b.split_at_mut(n_mut);
