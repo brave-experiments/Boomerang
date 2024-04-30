@@ -696,4 +696,39 @@ mod tests {
     fn create_and_verify_n_32_m_1() {
         singleparty_create_and_verify_helper(32, 1);
     }
+
+    #[test]
+    fn create_and_verify_n_32_m_2() {
+        singleparty_create_and_verify_helper(32, 2);
+    }
+
+    #[test]
+    fn create_and_verify_n_32_m_4() {
+        singleparty_create_and_verify_helper(32, 4);
+    }
+
+    #[test]
+    fn create_and_verify_n_32_m_8() {
+        singleparty_create_and_verify_helper(32, 8);
+    }
+
+    #[test]
+    fn create_and_verify_n_64_m_1() {
+        singleparty_create_and_verify_helper(64, 1);
+    }
+
+    #[test]
+    fn create_and_verify_n_64_m_2() {
+        singleparty_create_and_verify_helper(64, 2);
+    }
+
+    #[test]
+    fn create_and_verify_n_64_m_4() {
+        singleparty_create_and_verify_helper(64, 4);
+    }
+
+    #[test]
+    fn create_and_verify_n_64_m_8() {
+        singleparty_create_and_verify_helper(64, 8);
+    }
 }
