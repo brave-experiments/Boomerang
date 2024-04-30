@@ -64,3 +64,6 @@ flycheck_*.el
 
 # undo tree
 *.~undo-tree~
+
+# Mac os files
+*.DS_Store
