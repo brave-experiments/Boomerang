@@ -56,6 +56,7 @@ default-features = false
 [dev-dependencies]
 criterion = "0.3"
 rand_chacha = "0.3"
+bincode = "1"
 
 [dev-dependencies.ark-algebra-test-templates]
 version = '0.4.0'

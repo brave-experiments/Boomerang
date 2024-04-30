@@ -2,6 +2,7 @@
 
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::{Field, PrimeField, UniformRand};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{
     io::Cursor,
     io::{Read, Write},
@@ -584,5 +585,66 @@ mod tests {
         }
 
         assert_eq!(power_g, delta::<Affine>(n, 1, &y, &z),);
+    }
+
+    /// Given a bitsize `n`, test the following:
+    ///
+    /// 1. Generate `m` random values and create a proof they are all in range;
+    /// 2. Serialize to wire format;
+    /// 3. Deserialize from wire format;
+    /// 4. Verify the proof.
+    fn singleparty_create_and_verify_helper(n: usize, m: usize) {
+        // Split the test into two scopes, so that it's explicit what
+        // data is shared between the prover and the verifier.
+
+        // Use bincode for serialization
+
+        // Both prover and verifier have access to the generators and the proof
+        let max_bitsize = 64;
+        let max_parties = 8;
+        let pc_gens: PedersenGens<Affine> = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(max_bitsize, max_parties);
+
+        // Prover's scope
+        let (proof_bytes, value_commitments) = {
+            let mut rng = rand::thread_rng();
+
+            // 0. Create witness data
+            let (min, max) = (0u64, ((1u128 << n) - 1) as u64);
+            let values: Vec<u64> = (0..m).map(|_| rng.gen_range(min..max)).collect();
+            let blindings: Vec<Fr> = (0..m).map(|_| Fr::rand(&mut rng)).collect();
+
+            // 1. Create the proof
+            let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+            let (proof, value_commitments) = RangeProof::prove_multiple(
+                &bp_gens,
+                &pc_gens,
+                &mut transcript,
+                &values,
+                &blindings,
+                n,
+            )
+            .unwrap();
+
+            //let mut tmp = Vec::new();
+            //proof.serialize_compressed(&mut tmp).unwrap();
+
+            // 2. Return serialized proof and value commitments
+            (proof, value_commitments)
+        };
+
+        // Verifier's scope
+        {
+            // 3. Deserialize
+            //let proof: RangeProof<Affine> =
+            //    RangeProof::deserialize_compressed(&proof_bytes).unwrap();
+
+            // 4. Verify with the same customization label as above
+            let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+
+            assert!(proof_bytes
+                .verify_multiple(&bp_gens, &pc_gens, &mut transcript, &value_commitments, n)
+                .is_ok());
+        }
     }
 }
