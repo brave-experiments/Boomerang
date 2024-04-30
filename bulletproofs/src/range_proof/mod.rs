@@ -731,4 +731,118 @@ mod tests {
     fn create_and_verify_n_64_m_8() {
         singleparty_create_and_verify_helper(64, 8);
     }
+
+    #[test]
+    fn detect_dishonest_party_during_aggregation() {
+        use self::dealer::*;
+        use self::party::*;
+
+        use crate::errors::MPCError;
+
+        // Simulate four parties, two of which will be dishonest and use a 64-bit value.
+        let m = 4;
+        let n = 32;
+
+        let pc_gens: PedersenGens<Affine> = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(n, m);
+
+        let mut rng = rand::thread_rng();
+        let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+
+        // Parties 0, 2 are honest and use a 32-bit value
+        let v0 = rng.gen::<u32>() as u64;
+        let v0_blinding = Fr::rand(&mut rng);
+        let party0 = Party::new(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
+
+        let v2 = rng.gen::<u32>() as u64;
+        let v2_blinding = Fr::rand(&mut rng);
+        let party2 = Party::new(&bp_gens, &pc_gens, v2, v2_blinding, n).unwrap();
+
+        // Parties 1, 3 are dishonest and use a 64-bit value
+        let v1 = rng.gen::<u64>();
+        let v1_blinding = Fr::rand(&mut rng);
+        let party1 = Party::new(&bp_gens, &pc_gens, v1, v1_blinding, n).unwrap();
+
+        let v3 = rng.gen::<u64>();
+        let v3_blinding = Fr::rand(&mut rng);
+        let party3 = Party::new(&bp_gens, &pc_gens, v3, v3_blinding, n).unwrap();
+
+        let dealer = Dealer::new(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
+
+        let (party0, bit_com0) = party0.assign_position(0).unwrap();
+        let (party1, bit_com1) = party1.assign_position(1).unwrap();
+        let (party2, bit_com2) = party2.assign_position(2).unwrap();
+        let (party3, bit_com3) = party3.assign_position(3).unwrap();
+
+        let (dealer, bit_challenge) = dealer
+            .receive_bit_commitments(vec![bit_com0, bit_com1, bit_com2, bit_com3])
+            .unwrap();
+
+        let (party0, poly_com0) = party0.apply_challenge(&bit_challenge);
+        let (party1, poly_com1) = party1.apply_challenge(&bit_challenge);
+        let (party2, poly_com2) = party2.apply_challenge(&bit_challenge);
+        let (party3, poly_com3) = party3.apply_challenge(&bit_challenge);
+
+        let (dealer, poly_challenge) = dealer
+            .receive_poly_commitments(vec![poly_com0, poly_com1, poly_com2, poly_com3])
+            .unwrap();
+
+        let share0 = party0.apply_challenge(&poly_challenge).unwrap();
+        let share1 = party1.apply_challenge(&poly_challenge).unwrap();
+        let share2 = party2.apply_challenge(&poly_challenge).unwrap();
+        let share3 = party3.apply_challenge(&poly_challenge).unwrap();
+
+        match dealer.receive_shares(&[share0, share1, share2, share3]) {
+            Err(MPCError::MalformedProofShares { bad_shares }) => {
+                assert_eq!(bad_shares, vec![1, 3]);
+            }
+            Err(_) => {
+                panic!("Got wrong error type from malformed shares");
+            }
+            Ok(_) => {
+                panic!("The proof was malformed, but it was not detected");
+            }
+        }
+    }
+
+    #[test]
+    fn detect_dishonest_dealer_during_aggregation() {
+        use self::dealer::*;
+        use self::party::*;
+        use crate::errors::MPCError;
+
+        // Simulate one party
+        let m = 1;
+        let n = 32;
+
+        let pc_gens: PedersenGens<Affine> = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(n, m);
+
+        let mut rng = rand::thread_rng();
+        let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+
+        let v0 = rng.gen::<u32>() as u64;
+        let v0_blinding = Fr::rand(&mut rng);
+        let party0 = Party::new(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
+
+        let dealer = Dealer::new(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
+
+        // Now do the protocol flow as normal....
+
+        let (party0, bit_com0) = party0.assign_position(0).unwrap();
+
+        let (dealer, bit_challenge) = dealer.receive_bit_commitments(vec![bit_com0]).unwrap();
+
+        let (party0, poly_com0) = party0.apply_challenge(&bit_challenge);
+
+        let (_dealer, mut poly_challenge) =
+            dealer.receive_poly_commitments(vec![poly_com0]).unwrap();
+
+        // But now simulate a malicious dealer choosing x = 0
+        poly_challenge.x = Fr::zero();
+
+        let maybe_share0 = party0.apply_challenge(&poly_challenge);
+
+        assert!(maybe_share0.unwrap_err() == MPCError::MaliciousDealer);
+    }
 }
