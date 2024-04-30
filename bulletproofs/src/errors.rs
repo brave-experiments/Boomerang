@@ -23,6 +23,10 @@ pub enum ProofError {
     /// This error occurs when attempting to create an aggregated
     /// proof with non-power-of-two aggregation size.
     InvalidAggregation,
+    /// This error occurs when attempting to create a proof
+    /// with mismatched vector argument lengths, or when
+    /// the lengths are not a power of two.
+    InvalidInputLength,
     /// This error occurs when there are insufficient generators for the proof.
     InvalidGeneratorsLength,
     /// This error results from an internal error during proving.
@@ -56,6 +60,9 @@ impl fmt::Debug for ProofError {
             }
             ProofError::SerializationError(e) => {
                 write!(f, "Serialization error: {}", e)
+            }
+            ProofError::InvalidInputLength => {
+                write!(f, "Input vectors must all the the same length.")
             }
         }
     }
