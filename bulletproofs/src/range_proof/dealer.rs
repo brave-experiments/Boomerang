@@ -8,6 +8,7 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_std::{
     iter,
+    ops::{Add, AddAssign, Neg, Sub},
     rand::{CryptoRng, RngCore},
     vec::Vec,
     One, Zero,
@@ -113,19 +114,17 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingBitCommitments<'a, 'b, G> {
 
         // Commit aggregated A_j, S_j
         // TODO: check
-        let mut A: G = Default::default();
-        let mut S: G = Default::default();
+        let A: G = bit_commitments
+            .iter()
+            .map(|vc| vc.A_j)
+            .fold(G::zero(), |acc, x| (acc + x).into());
 
-        for x in &bit_commitments {
-            A = A.add(x.A_j).into();
-        }
+        let S: G = bit_commitments
+            .iter()
+            .map(|vc| vc.S_j)
+            .fold(G::zero(), |acc, x| (acc + x).into());
 
         self.transcript.append_point(b"A", &A);
-
-        for x in &bit_commitments {
-            S = S.add(x.A_j).into();
-        }
-
         self.transcript.append_point(b"S", &S);
 
         let y = <Transcript as TranscriptProtocol<G>>::challenge_scalar(self.transcript, b"y");

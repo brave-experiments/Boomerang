@@ -16,7 +16,7 @@ use ark_ff::{batch_inversion, Field, One, PrimeField, Zero};
 use ark_std::UniformRand;
 use ark_std::{
     iter,
-    ops::{Add, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Neg, Sub},
     rand::{CryptoRng, RngCore},
     vec::Vec,
 };
@@ -112,9 +112,9 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             let v_i: bool = (self.v >> i) & 1 == 1;
 
             if v_i {
-                A.add(G_i.clone());
+                A.add_assign(G_i.clone());
             } else {
-                A.add((H_i.into_group().neg()).into_affine());
+                A.add_assign(H_i.into_group().neg());
             }
             i += 1;
         }

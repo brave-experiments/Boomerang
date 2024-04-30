@@ -600,7 +600,7 @@ mod tests {
         // Use bincode for serialization
 
         // Both prover and verifier have access to the generators and the proof
-        let max_bitsize = 64;
+        let max_bitsize = 128;
         let max_parties = 8;
         let pc_gens: PedersenGens<Affine> = PedersenGens::default();
         let bp_gens = BulletproofGens::new(max_bitsize, max_parties);
@@ -646,5 +646,54 @@ mod tests {
                 .verify_multiple(&bp_gens, &pc_gens, &mut transcript, &value_commitments, n)
                 .is_ok());
         }
+    }
+
+    #[test]
+    fn create_simple() {
+        let max_bitsize = 128;
+        let max_parties = 1;
+        let pc_gens: PedersenGens<Affine> = PedersenGens::default();
+        let bp_gens = BulletproofGens::new(max_bitsize, max_parties);
+
+        // Prover's scope
+        let (proof_bytes, value_commitments) = {
+            let mut rng = rand::thread_rng();
+
+            // 0. Create witness data
+            let (min, max) = (0u64, ((1u128 << 64) - 1) as u64);
+            let value: u64 = rng.gen_range(min..max);
+            let blinding: Fr = Fr::rand(&mut rng);
+
+            // 1. Create the proof
+            let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+            let (proof, value_commitments) =
+                RangeProof::prove_single(&bp_gens, &pc_gens, &mut transcript, value, &blinding, 64)
+                    .unwrap();
+
+            //let mut tmp = Vec::new();
+            //proof.serialize_compressed(&mut tmp).unwrap();
+
+            // 2. Return serialized proof and value commitments
+            (proof, value_commitments)
+        };
+
+        // Verifier's scope
+        {
+            // 3. Deserialize
+            //let proof: RangeProof<Affine> =
+            //    RangeProof::deserialize_compressed(&proof_bytes).unwrap();
+
+            // 4. Verify with the same customization label as above
+            let mut transcript = Transcript::new(b"AggregatedRangeProofTest");
+
+            assert!(proof_bytes
+                .verify_single(&bp_gens, &pc_gens, &mut transcript, &value_commitments, 64)
+                .is_ok());
+        }
+    }
+
+    #[test]
+    fn create_and_verify_n_32_m_1() {
+        singleparty_create_and_verify_helper(32, 1);
     }
 }
