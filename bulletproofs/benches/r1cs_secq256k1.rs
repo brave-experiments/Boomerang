@@ -1,11 +1,7 @@
 #![allow(non_snake_case)]
-#![allow(deprecated)]
-
-#[macro_use]
-extern crate criterion;
-
 use ark_std::UniformRand;
-use criterion::Criterion;
+use criterion::BenchmarkId;
+use criterion::{criterion_group, criterion_main, Criterion};
 
 // Code below copied from ../tests/r1cs.rs
 //
@@ -15,10 +11,6 @@ use criterion::Criterion;
 // should not be edited here.  In the future it would be good if
 // someone wants to figure a way to use #[path] attributes or
 // something to avoid the duplication.
-
-extern crate ark_bulletproofs;
-extern crate merlin;
-extern crate rand;
 
 use ark_bulletproofs::r1cs::*;
 use ark_bulletproofs::{BulletproofGens, PedersenGens};
@@ -158,9 +150,9 @@ fn bench_kshuffle_prove(c: &mut Criterion) {
     let pc_gens = PedersenGens::default();
     let bp_gens = BulletproofGens::new(2 * MAX_SHUFFLE_SIZE, 1);
 
-    c.bench_function_over_inputs(
-        "k-shuffle proof creation",
-        move |b, k| {
+    let mut group = c.benchmark_group("k-shuffle proof creation");
+    for size in (1..=LG_MAX_SHUFFLE_SIZE).map(|i| 1 << i) {
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, k| {
             // Generate inputs and outputs to kshuffle
             let mut rng = rand::thread_rng();
             let (min, max) = (0u64, u64::MAX);
@@ -181,12 +173,9 @@ fn bench_kshuffle_prove(c: &mut Criterion) {
                     &output,
                 )
                 .unwrap();
-            })
-        },
-        (1..=LG_MAX_SHUFFLE_SIZE)
-            .map(|i| 1 << i)
-            .collect::<Vec<_>>(),
-    );
+            });
+        });
+    }
 }
 
 criterion_group! {
@@ -203,9 +192,9 @@ fn bench_kshuffle_verify(c: &mut Criterion) {
     let pc_gens = PedersenGens::default();
     let bp_gens = BulletproofGens::new(2 * MAX_SHUFFLE_SIZE, 1);
 
-    c.bench_function_over_inputs(
-        "k-shuffle proof verification",
-        move |b, k| {
+    let mut group = c.benchmark_group("k-shuffle proof verification");
+    for size in (1..=LG_MAX_SHUFFLE_SIZE).map(|i| 1 << i) {
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, k| {
             // Generate the proof in its own scope to prevent reuse of
             // prover variables by the verifier
             let (proof, input_commitments, output_commitments) = {
@@ -242,11 +231,8 @@ fn bench_kshuffle_verify(c: &mut Criterion) {
                     )
                     .unwrap();
             })
-        },
-        (1..=LG_MAX_SHUFFLE_SIZE)
-            .map(|i| 1 << i)
-            .collect::<Vec<_>>(),
-    );
+        });
+    }
 }
 
 criterion_group! {
