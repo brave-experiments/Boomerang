@@ -106,8 +106,8 @@ impl<G: AffineRepr> ProofShare<G> {
         // Precompute some variables
         let zz = *z * z;
         let minus_z = z.neg();
-        let z_j = z.pow(&[j as u64]); // z^j
-        let y_jn = y.pow(&[(j * n) as u64]); // y^(j*n)
+        let z_j = z.pow([j as u64]); // z^j
+        let y_jn = y.pow([(j * n) as u64]); // y^(j*n)
         let y_jn_inv = y_jn.inverse().unwrap(); // y^(-j*n)
         let y_inv = y.inverse().unwrap(); // y^(-1)
 
@@ -144,7 +144,7 @@ impl<G: AffineRepr> ProofShare<G> {
             return Err(());
         }
 
-        let sum_of_powers_y = util::sum_of_powers::<G>(&y, n);
+        let sum_of_powers_y = util::sum_of_powers::<G>(y, n);
         let sum_of_powers_2 = util::sum_of_powers::<G>(&G::ScalarField::from(2u64), n);
         let delta = (*z - zz) * sum_of_powers_y * y_jn - *z * zz * sum_of_powers_2 * z_j;
         let t_check = G::Group::msm(
@@ -158,7 +158,7 @@ impl<G: AffineRepr> ProofShare<G> {
             &iter::once(zz * z_j)
                 .chain(iter::once(*x))
                 .chain(iter::once(*x * x))
-                .chain(iter::once(delta - &self.t_x))
+                .chain(iter::once(delta - self.t_x))
                 .chain(iter::once(self.t_x_blinding.neg()))
                 .collect::<Vec<G::ScalarField>>(), //TODO: check
         );

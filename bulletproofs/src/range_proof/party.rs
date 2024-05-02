@@ -112,7 +112,7 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             let v_i: bool = (self.v >> i) & 1 == 1;
 
             if v_i {
-                A.add_assign(G_i.clone());
+                A.add_assign(G_i);
             } else {
                 A.add_assign(H_i.into_group().neg());
             }
@@ -305,7 +305,7 @@ impl<G: AffineRepr> PartyAwaitingPolyChallenge<G> {
 
         let t_x = self.t_poly.eval(pc.x);
         let t_x_blinding = t_blinding_poly.eval(pc.x);
-        let e_blinding = self.a_blinding + self.s_blinding * &pc.x;
+        let e_blinding = self.a_blinding + self.s_blinding * pc.x;
         let l_vec = self.l_poly.eval(pc.x);
         let r_vec = self.r_poly.eval(pc.x);
 

@@ -80,8 +80,8 @@ impl<G: AffineRepr> InnerProductProof<G> {
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let bases = G_R
                 .iter()
@@ -168,8 +168,8 @@ impl<G: AffineRepr> InnerProductProof<G> {
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let bases = G_R
                 .iter()

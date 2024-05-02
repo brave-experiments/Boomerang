@@ -74,7 +74,7 @@ impl<G: AffineRepr> LinearProof<G> {
         transcript.append_point(b"C", C);
         for b_i in &b_vec {
             //transcript.append_scalar::<C>(b"b_i", b_i);
-            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", &b_i);
+            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", b_i);
         }
         for G_i in &G_vec {
             transcript.append_point(b"G_i", G_i);
@@ -99,8 +99,8 @@ impl<G: AffineRepr> LinearProof<G> {
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let s_j = G::ScalarField::rand(rng);
             let t_j = G::ScalarField::rand(rng);
@@ -183,7 +183,7 @@ impl<G: AffineRepr> LinearProof<G> {
         transcript.append_point(b"C", C);
         for b_i in &b_vec {
             //transcript.append_scalar::<G>(b"b_i", b_i);
-            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", &b_i);
+            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", b_i);
         }
         for G_i in G {
             transcript.append_point(b"G_i", G_i);
@@ -207,7 +207,7 @@ impl<G: AffineRepr> LinearProof<G> {
         // This is an optimized way to compute the base case G (G_0 in the paper):
         // G_0 = sum_{i=0}^{2^{l-1}} (x<i> * G_i)
         let s = self.subset_product(n, x_vec);
-        let G_0 = G::Group::msm(&G, &s).unwrap();
+        let G_0 = G::Group::msm(G, &s).unwrap();
 
         // This matches the verification equation:
         // S == r_star * B + a_star * b_0 * F

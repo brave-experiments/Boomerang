@@ -313,10 +313,10 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
         );
 
         Ok(RangeProof {
-            A: self.A.clone(),
-            S: self.S.clone(),
-            T_1: self.T_1.clone(),
-            T_2: self.T_2.clone(),
+            A: self.A,
+            S: self.S,
+            T_1: self.T_1,
+            T_2: self.T_2,
             t_x,
             t_x_blinding,
             e_blinding,
@@ -369,8 +369,8 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
             let mut bad_shares = Vec::new();
             for j in 0..self.m {
                 match proof_shares[j].audit_share(
-                    &self.bp_gens,
-                    &self.pc_gens,
+                    self.bp_gens,
+                    self.pc_gens,
                     j,
                     &self.bit_commitments[j],
                     &self.bit_challenge,
