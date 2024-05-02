@@ -586,7 +586,7 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
                 .chain(T_points.iter())
                 .chain(proof.ipp_proof.L_vec.iter())
                 .chain(proof.ipp_proof.R_vec.iter())
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &scalars,
         )

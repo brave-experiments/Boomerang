@@ -517,12 +517,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
                 .chain(gens.H(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&i_blinding1)
                 .chain(self.secrets.a_L.iter())
                 .chain(self.secrets.a_R.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -532,11 +532,11 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         let A_O1 = G::Group::msm(
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&o_blinding1)
                 .chain(self.secrets.a_O.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -547,12 +547,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
                 .chain(gens.H(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&s_blinding1)
                 .chain(s_L1.iter())
                 .chain(s_R1.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -608,12 +608,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
                         .chain(gens.H(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&i_blinding2)
                         .chain(self.secrets.a_L.iter().skip(n1))
                         .chain(self.secrets.a_R.iter().skip(n1))
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()
@@ -622,11 +622,11 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                 G::Group::msm(
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&o_blinding2)
                         .chain(self.secrets.a_O.iter().skip(n1))
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()
@@ -636,12 +636,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
                         .chain(gens.H(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&s_blinding2)
                         .chain(s_L2.iter())
                         .chain(s_R2.iter())
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()

@@ -87,7 +87,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_L.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_L
                 .iter()
@@ -107,7 +107,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_R.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_R
                 .iter()
@@ -175,13 +175,13 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_L.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_L
                 .iter()
                 .chain(b_R.iter())
                 .chain(iter::once(&c_L))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>();
 
             let L = G::Group::msm(&bases, &scalars).unwrap();
@@ -190,13 +190,13 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_R.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_R
                 .iter()
                 .chain(b_L.iter())
                 .chain(iter::once(&c_R))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>();
 
             let R = G::Group::msm(&bases, &scalars).unwrap();
@@ -362,7 +362,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
             .chain(H.iter())
             .chain(Ls.iter())
             .chain(Rs.iter())
-            .map(|f| f.clone())
+            .cloned()
             .collect::<Vec<G>>();
 
         let scalars = iter::once(self.a * self.b)
@@ -467,7 +467,7 @@ mod tests {
             .iter()
             .chain(H.iter())
             .chain(iter::once(&Q))
-            .map(|f| f.clone())
+            .cloned()
             .collect::<Vec<G>>();
         let scalars = a_prime
             .chain(b_prime)

@@ -254,7 +254,7 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
         let mut bad_shares = Vec::<usize>::new(); // no allocations until we append
         for (j, share) in proof_shares.iter().enumerate() {
             share
-                .check_size(self.n, &self.bp_gens, j)
+                .check_size(self.n, self.bp_gens, j)
                 .unwrap_or_else(|_| {
                     bad_shares.push(j);
                 });

@@ -132,14 +132,13 @@ impl<G: AffineRepr> ProofShare<G> {
                 .chain(iter::once(&pc_gens.B_blinding))
                 .chain(bp_gens.share(j).G(n))
                 .chain(bp_gens.share(j).H(n))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(G::ScalarField::one())
                 .chain(iter::once(*x))
                 .chain(iter::once(self.e_blinding.neg()))
                 .chain(g)
                 .chain(h)
-                .map(|f| f) // TODO: check
                 .collect::<Vec<G::ScalarField>>(), //TODO: check
         );
         if !P_check.unwrap().is_zero() {
@@ -155,14 +154,13 @@ impl<G: AffineRepr> ProofShare<G> {
                 .chain(iter::once(&poly_commitment.T_2_j))
                 .chain(iter::once(&pc_gens.B))
                 .chain(iter::once(&pc_gens.B_blinding))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(zz * z_j)
                 .chain(iter::once(*x))
                 .chain(iter::once(*x * x))
                 .chain(iter::once(delta - &self.t_x))
                 .chain(iter::once(self.t_x_blinding.neg()))
-                .map(|f| f)
                 .collect::<Vec<G::ScalarField>>(), //TODO: check
         );
 

@@ -128,12 +128,12 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(bp_share.G(self.n))
                 .chain(bp_share.H(self.n))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&s_blinding)
                 .chain(s_L.iter())
                 .chain(s_R.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(), // TODO: check
         );
 
