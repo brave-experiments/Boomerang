@@ -419,7 +419,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.len() == 0 {
+        if self.deferred_constraints.is_empty() {
             <Transcript as TranscriptProtocol<G>>::r1cs_1phase_domain_sep(
                 self.transcript.borrow_mut(),
             );

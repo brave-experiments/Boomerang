@@ -260,7 +260,7 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
                 });
         }
 
-        if bad_shares.len() > 0 {
+        if !bad_shares.is_empty() {
             return Err(MPCError::MalformedProofShares { bad_shares });
         }
 
