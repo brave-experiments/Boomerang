@@ -8,10 +8,9 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_std::{
     iter,
-    ops::{Add, AddAssign, Neg, Sub},
     rand::{CryptoRng, RngCore},
     vec::Vec,
-    One, Zero,
+    One,
 };
 
 use merlin::Transcript;

@@ -4,12 +4,11 @@
 //! For more explanation of how the `dealer`, `party`, and `messages` modules orchestrate the protocol execution, see
 //! [the API for the aggregated multiparty computation protocol](../aggregation/index.html#api-for-the-aggregated-multiparty-computation-protocol).
 
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_ec::{AffineRepr, VariableBaseMSM};
 use ark_ff::Field;
 use ark_std::{
     iter,
-    ops::{Add, Mul, Neg, Sub},
-    rand::{CryptoRng, RngCore},
+    ops::Neg,
     vec::Vec,
     One, Zero,
 };

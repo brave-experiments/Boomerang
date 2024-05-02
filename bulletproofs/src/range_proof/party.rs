@@ -12,11 +12,11 @@
 
 use crate::util::Poly2;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{batch_inversion, Field, One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use ark_std::UniformRand;
 use ark_std::{
     iter,
-    ops::{Add, AddAssign, Neg, Sub},
+    ops::{AddAssign, Neg},
     rand::{CryptoRng, RngCore},
     vec::Vec,
 };

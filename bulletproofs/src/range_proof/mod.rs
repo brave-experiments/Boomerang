@@ -1,13 +1,11 @@
 #![allow(non_snake_case)]
 
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{Field, PrimeField, UniformRand};
+use ark_ec::{AffineRepr, VariableBaseMSM};
+use ark_ff::{Field, UniformRand};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{
-    io::Cursor,
-    io::{Read, Write},
     iter,
-    ops::{AddAssign, Neg, Sub},
+    ops::{AddAssign, Neg},
     rand::{CryptoRng, RngCore},
     vec,
     vec::Vec,
@@ -546,16 +544,10 @@ mod tests {
     use super::*;
 
     use crate::generators::PedersenGens;
-    use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-    use ark_ff::{Field, PrimeField, UniformRand};
+    use ark_ff::UniformRand;
     use ark_secq256k1::{Affine, Fr};
     use ark_std::{
-        io::Cursor,
-        io::{Read, Write},
-        iter,
-        ops::{AddAssign, Neg, Sub},
         rand::Rng,
-        rand::{CryptoRng, RngCore},
         vec,
         vec::Vec,
         One, Zero,
