@@ -431,7 +431,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             // Note: the wrapper could've used &mut instead of ownership,
             // but specifying lifetimes for boxed closures is not going to be nice,
             // so we move the self into wrapper and then move it back out afterwards.
-            let mut callbacks = mem::replace(&mut self.deferred_constraints, Vec::new());
+            let mut callbacks = mem::take(&mut self.deferred_constraints);
             let mut wrapped_self = RandomizingProver { prover: self };
             for callback in callbacks.drain(..) {
                 callback(&mut wrapped_self)?;
