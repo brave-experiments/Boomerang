@@ -8,10 +8,9 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_std::{
     iter,
-    ops::{Add, AddAssign, Neg, Sub},
     rand::{CryptoRng, RngCore},
     vec::Vec,
-    One, Zero,
+    One,
 };
 
 use merlin::Transcript;
@@ -254,13 +253,13 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
         let mut bad_shares = Vec::<usize>::new(); // no allocations until we append
         for (j, share) in proof_shares.iter().enumerate() {
             share
-                .check_size(self.n, &self.bp_gens, j)
+                .check_size(self.n, self.bp_gens, j)
                 .unwrap_or_else(|_| {
                     bad_shares.push(j);
                 });
         }
 
-        if bad_shares.len() > 0 {
+        if !bad_shares.is_empty() {
             return Err(MPCError::MalformedProofShares { bad_shares });
         }
 
@@ -314,10 +313,10 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
         );
 
         Ok(RangeProof {
-            A: self.A.clone(),
-            S: self.S.clone(),
-            T_1: self.T_1.clone(),
-            T_2: self.T_2.clone(),
+            A: self.A,
+            S: self.S,
+            T_1: self.T_1,
+            T_2: self.T_2,
             t_x,
             t_x_blinding,
             e_blinding,
@@ -370,8 +369,8 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
             let mut bad_shares = Vec::new();
             for j in 0..self.m {
                 match proof_shares[j].audit_share(
-                    &self.bp_gens,
-                    &self.pc_gens,
+                    self.bp_gens,
+                    self.pc_gens,
                     j,
                     &self.bit_commitments[j],
                     &self.bit_challenge,

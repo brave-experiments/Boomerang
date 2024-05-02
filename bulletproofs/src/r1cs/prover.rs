@@ -419,7 +419,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.len() == 0 {
+        if self.deferred_constraints.is_empty() {
             <Transcript as TranscriptProtocol<G>>::r1cs_1phase_domain_sep(
                 self.transcript.borrow_mut(),
             );
@@ -431,7 +431,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             // Note: the wrapper could've used &mut instead of ownership,
             // but specifying lifetimes for boxed closures is not going to be nice,
             // so we move the self into wrapper and then move it back out afterwards.
-            let mut callbacks = mem::replace(&mut self.deferred_constraints, Vec::new());
+            let mut callbacks = mem::take(&mut self.deferred_constraints);
             let mut wrapped_self = RandomizingProver { prover: self };
             for callback in callbacks.drain(..) {
                 callback(&mut wrapped_self)?;
@@ -517,12 +517,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
                 .chain(gens.H(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&i_blinding1)
                 .chain(self.secrets.a_L.iter())
                 .chain(self.secrets.a_R.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -532,11 +532,11 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         let A_O1 = G::Group::msm(
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&o_blinding1)
                 .chain(self.secrets.a_O.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -547,12 +547,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(gens.G(n1))
                 .chain(gens.H(n1))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&s_blinding1)
                 .chain(s_L1.iter())
                 .chain(s_R1.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(),
         )
         .unwrap()
@@ -608,12 +608,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
                         .chain(gens.H(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&i_blinding2)
                         .chain(self.secrets.a_L.iter().skip(n1))
                         .chain(self.secrets.a_R.iter().skip(n1))
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()
@@ -622,11 +622,11 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                 G::Group::msm(
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&o_blinding2)
                         .chain(self.secrets.a_O.iter().skip(n1))
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()
@@ -636,12 +636,12 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
                     &iter::once(&self.pc_gens.B_blinding)
                         .chain(gens.G(n).skip(n1))
                         .chain(gens.H(n).skip(n1))
-                        .map(|f| f.clone())
+                        .cloned()
                         .collect::<Vec<G>>(),
                     &iter::once(&s_blinding2)
                         .chain(s_L2.iter())
                         .chain(s_R2.iter())
-                        .map(|f| *f)
+                        .copied()
                         .collect::<Vec<G::ScalarField>>(),
                 )
                 .unwrap()
@@ -697,7 +697,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             // r_poly.3 = y^n * s_R
             r_poly.3[i] = exp_y * sr;
 
-            exp_y = exp_y * y; // y^i -> y^(i+1)
+            exp_y *= y; // y^i -> y^(i+1)
         }
 
         let t_poly = util::VecPoly3::special_inner_product(&l_poly, &r_poly);
@@ -752,7 +752,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         // XXX this should refer to the notes to explain why this is correct
         for i in n..padded_n {
             r_vec[i] = -exp_y;
-            exp_y = exp_y * y; // y^i -> y^(i+1)
+            exp_y *= y; // y^i -> y^(i+1)
         }
 
         let i_blinding = i_blinding1 + u * i_blinding2;

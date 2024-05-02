@@ -12,11 +12,11 @@
 
 use crate::util::Poly2;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{batch_inversion, Field, One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use ark_std::UniformRand;
 use ark_std::{
     iter,
-    ops::{Add, AddAssign, Neg, Sub},
+    ops::{AddAssign, Neg},
     rand::{CryptoRng, RngCore},
     vec::Vec,
 };
@@ -112,7 +112,7 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             let v_i: bool = (self.v >> i) & 1 == 1;
 
             if v_i {
-                A.add_assign(G_i.clone());
+                A.add_assign(G_i);
             } else {
                 A.add_assign(H_i.into_group().neg());
             }
@@ -128,12 +128,12 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             &iter::once(&self.pc_gens.B_blinding)
                 .chain(bp_share.G(self.n))
                 .chain(bp_share.H(self.n))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(&s_blinding)
                 .chain(s_L.iter())
                 .chain(s_R.iter())
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>(), // TODO: check
         );
 
@@ -305,7 +305,7 @@ impl<G: AffineRepr> PartyAwaitingPolyChallenge<G> {
 
         let t_x = self.t_poly.eval(pc.x);
         let t_x_blinding = t_blinding_poly.eval(pc.x);
-        let e_blinding = self.a_blinding + self.s_blinding * &pc.x;
+        let e_blinding = self.a_blinding + self.s_blinding * pc.x;
         let l_vec = self.l_poly.eval(pc.x);
         let r_vec = self.r_poly.eval(pc.x);
 

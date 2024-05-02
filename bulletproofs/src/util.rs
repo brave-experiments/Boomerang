@@ -202,7 +202,7 @@ pub fn sum_of_powers<G: AffineRepr>(x: &G::ScalarField, n: usize) -> G::ScalarFi
     while m > 2 {
         factor = factor * factor;
         result = result + factor * result;
-        m = m / 2;
+        m /= 2;
     }
     result
 }
@@ -221,9 +221,9 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
     while n > 0 {
         let bit = n & 1;
         if bit == 1 {
-            result = result * aux;
+            result *= aux;
         }
-        n = n >> 1;
+        n >>= 1;
         aux = aux * aux; // FIXME: one unnecessary mult at the last step here!
     }
     result
@@ -233,7 +233,7 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
 fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::ScalarField {
     let mut result = G::ScalarField::one();
     for _ in 0..n {
-        result = result * x;
+        result *= x;
     }
     result
 }

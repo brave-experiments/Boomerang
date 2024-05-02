@@ -1,13 +1,11 @@
 #![allow(non_snake_case)]
 
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-use ark_ff::{Field, PrimeField, UniformRand};
+use ark_ec::{AffineRepr, VariableBaseMSM};
+use ark_ff::{Field, UniformRand};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{
-    io::Cursor,
-    io::{Read, Write},
     iter,
-    ops::{AddAssign, Neg, Sub},
+    ops::{AddAssign, Neg},
     rand::{CryptoRng, RngCore},
     vec,
     vec::Vec,
@@ -93,7 +91,7 @@ impl<G: AffineRepr> RangeProof<G> {
             n,
             rng,
         )?;
-        Ok((p, Vs[0].clone()))
+        Ok((p, Vs[0]))
     }
 
     /// Create a rangeproof for a given pair of value `v` and
@@ -212,7 +210,7 @@ impl<G: AffineRepr> RangeProof<G> {
         n: usize,
         rng: &mut T,
     ) -> Result<(), ProofError> {
-        self.verify_multiple_with_rng(bp_gens, pc_gens, transcript, &[(*V).clone()], n, rng)
+        self.verify_multiple_with_rng(bp_gens, pc_gens, transcript, &[*V], n, rng)
     }
 
     /// Verifies a rangeproof for a given value commitment \\(V\\).
@@ -253,21 +251,21 @@ impl<G: AffineRepr> RangeProof<G> {
         let scalars = self
             .compute_verification_scalars_with_rng(bp_gens, transcript, value_commitments, n, rng)?
             .iter()
-            .map(|f| *f)
+            .copied()
             .collect::<Vec<G::ScalarField>>();
 
         let mega_check = G::Group::msm(
-            &iter::once(self.A.clone())
-                .chain(iter::once(self.S.clone()))
-                .chain(iter::once(self.T_1.clone()))
-                .chain(iter::once(self.T_2.clone()))
-                .chain(self.ipp_proof.L_vec.iter().map(|L| L.clone()))
-                .chain(self.ipp_proof.R_vec.iter().map(|R| R.clone()))
-                .chain(value_commitments.iter().map(|V| V.clone()))
-                .chain(iter::once(pc_gens.B_blinding.clone()))
-                .chain(iter::once(pc_gens.B.clone()))
-                .chain(bp_gens.G(n, m).map(|&x| x))
-                .chain(bp_gens.H(n, m).map(|&x| x))
+            &iter::once(self.A)
+                .chain(iter::once(self.S))
+                .chain(iter::once(self.T_1))
+                .chain(iter::once(self.T_2))
+                .chain(self.ipp_proof.L_vec.iter().cloned())
+                .chain(self.ipp_proof.R_vec.iter().cloned())
+                .chain(value_commitments.iter().cloned())
+                .chain(iter::once(pc_gens.B_blinding))
+                .chain(iter::once(pc_gens.B))
+                .chain(bp_gens.G(n, m).copied())
+                .chain(bp_gens.H(n, m).copied())
                 .collect::<Vec<G>>(),
             &scalars,
         );
@@ -318,7 +316,7 @@ impl<G: AffineRepr> RangeProof<G> {
             <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"y");
         let z: G::ScalarField =
             <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"z");
-        let zz = z * &z;
+        let zz = z * z;
         let minus_z = z.neg();
 
         transcript.validate_and_append_point(b"T_1", &self.T_1)?;
@@ -347,15 +345,15 @@ impl<G: AffineRepr> RangeProof<G> {
         let (mut x_sq, mut x_inv_sq, s) = self.ipp_proof.verification_scalars(n * m, transcript)?;
         let s_inv = s.iter().rev();
 
-        let a: G::ScalarField = self.ipp_proof.a.clone();
-        let b: G::ScalarField = self.ipp_proof.b.clone();
+        let a: G::ScalarField = self.ipp_proof.a;
+        let b: G::ScalarField = self.ipp_proof.b;
 
         // Construct concat_z_and_2, an iterator of the values of
         // z^0 * \vec(2)^n || z^1 * \vec(2)^n || ... || z^(m-1) * \vec(2)^n
         let powers_of_2: Vec<G::ScalarField> = util::exp_iter::<G>(G::ScalarField::from(2u64))
             .take(n)
             .collect();
-        let concat_z_and_2: Vec<G::ScalarField> = util::exp_iter::<G>(z.clone())
+        let concat_z_and_2: Vec<G::ScalarField> = util::exp_iter::<G>(z)
             .take(m)
             .flat_map(|exp_z| powers_of_2.iter().map(move |exp_2| *exp_2 * exp_z))
             .collect();
@@ -369,22 +367,22 @@ impl<G: AffineRepr> RangeProof<G> {
 
         let mut value_commitment_scalars: Vec<G::ScalarField> = util::exp_iter::<G>(z.clone())
             .take(m)
-            .map(|z_exp| c * &zz * &z_exp)
+            .map(|z_exp| c * zz * z_exp)
             .collect();
 
         let tmp: G::ScalarField = delta::<G>(n, m, &y, &z);
-        let basepoint_scalar: G::ScalarField = w * (self.t_x - a * b) + c * (tmp - &self.t_x);
+        let basepoint_scalar: G::ScalarField = w * (self.t_x - a * b) + c * (tmp - self.t_x);
 
         let mut scalars = vec![
             G::ScalarField::one(), // A
             x,                     // S
-            c * &x,                // T_1
-            c * &x * &x,
+            c * x,                 // T_1
+            c * x * x,
         ]; //T_2
         scalars.append(&mut x_sq); // L_vec TODO avoid append, better chaining iterators
         scalars.append(&mut x_inv_sq); // R_vec
         scalars.append(&mut value_commitment_scalars); //Value com
-        scalars.push(self.e_blinding.neg() - &(c * &self.t_x_blinding)); // B_blinding
+        scalars.push(self.e_blinding.neg() - c * self.t_x_blinding); // B_blinding
         scalars.push(basepoint_scalar); // B
         scalars.append(&mut g); // G_vec
         scalars.append(&mut h); // H_vec
@@ -433,32 +431,32 @@ impl<G: AffineRepr> RangeProof<G> {
         }
         let grouped_scalars = Self::group_scalars(all_scaled_scalars.as_slice(), n, max_m)
             .iter()
-            .map(|f| *f)
+            .copied()
             .collect::<Vec<G::ScalarField>>();
 
         let mut elems = vec![];
         for (proof, value_commitments) in proofs.iter().zip(value_commitments) {
-            elems.push(proof.A.clone());
-            elems.push(proof.S.clone());
-            elems.push(proof.T_1.clone());
-            elems.push(proof.T_2.clone());
+            elems.push(proof.A);
+            elems.push(proof.S);
+            elems.push(proof.T_1);
+            elems.push(proof.T_2);
             for L in proof.ipp_proof.L_vec.iter() {
-                elems.push(L.clone());
+                elems.push(*L);
             }
             for R in proof.ipp_proof.R_vec.iter() {
-                elems.push(R.clone());
+                elems.push(*R);
             }
             for V in value_commitments.iter() {
-                elems.push(V.clone())
+                elems.push(*V)
             }
         }
-        elems.push(pc_gens.B_blinding.clone());
-        elems.push(pc_gens.B.clone());
+        elems.push(pc_gens.B_blinding);
+        elems.push(pc_gens.B);
         for G in bp_gens.G(n, max_m) {
-            elems.push((*G).clone());
+            elems.push(*G);
         }
         for H in bp_gens.H(n, max_m) {
-            elems.push((*H).clone());
+            elems.push(*H);
         }
         let mega_check = G::Group::msm(&elems, &grouped_scalars);
         if !mega_check.unwrap().is_zero() {
@@ -484,7 +482,7 @@ impl<G: AffineRepr> RangeProof<G> {
                                                               // A,S,T1,T2 (4 elements) and L_vec, R_vec (lgN elemens each) + V (m_i elements)
             let k_i = 4usize + 2usize * lgN + *m_i; // number of elements unique to this instance
             for j in 0..k_i {
-                agg_scalars.push((*instance_scalars.get(j as usize).unwrap()).clone());
+                agg_scalars.push(*instance_scalars.get(j).unwrap());
             }
             b_blind_scalars.add_assign(&instance_scalars[k_i]);
             b_scalars.add_assign(&instance_scalars[k_i + 1]);
@@ -538,7 +536,7 @@ fn delta<G: AffineRepr>(
     let sum_2 = util::sum_of_powers::<G>(&G::ScalarField::from(2u64), n);
     let sum_z = util::sum_of_powers::<G>(z, m);
 
-    (*z - *z * z) * &sum_y - *z * z * z * sum_2 * sum_z
+    (*z - *z * z) * sum_y - *z * z * z * sum_2 * sum_z
 }
 
 #[cfg(test)]
@@ -546,20 +544,9 @@ mod tests {
     use super::*;
 
     use crate::generators::PedersenGens;
-    use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
-    use ark_ff::{Field, PrimeField, UniformRand};
+    use ark_ff::UniformRand;
     use ark_secq256k1::{Affine, Fr};
-    use ark_std::{
-        io::Cursor,
-        io::{Read, Write},
-        iter,
-        ops::{AddAssign, Neg, Sub},
-        rand::Rng,
-        rand::{CryptoRng, RngCore},
-        vec,
-        vec::Vec,
-        One, Zero,
-    };
+    use ark_std::{rand::Rng, vec, vec::Vec, One, Zero};
 
     #[test]
     fn test_delta() {

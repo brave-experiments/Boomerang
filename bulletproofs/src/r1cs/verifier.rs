@@ -354,7 +354,7 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
         // Clear the pending multiplier (if any) because it was committed into A_L/A_R/S.
         self.pending_multiplier = None;
 
-        if self.deferred_constraints.len() == 0 {
+        if self.deferred_constraints.is_empty() {
             <Transcript as TranscriptProtocol<G>>::r1cs_1phase_domain_sep(
                 self.transcript.borrow_mut(),
             );
@@ -366,7 +366,7 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
             // Note: the wrapper could've used &mut instead of ownership,
             // but specifying lifetimes for boxed closures is not going to be nice,
             // so we move the self into wrapper and then move it back out afterwards.
-            let mut callbacks = mem::replace(&mut self.deferred_constraints, Vec::new());
+            let mut callbacks = mem::take(&mut self.deferred_constraints);
             let mut wrapped_self = RandomizingVerifier { verifier: self };
             for callback in callbacks.drain(..) {
                 callback(&mut wrapped_self)?;
@@ -586,7 +586,7 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
                 .chain(T_points.iter())
                 .chain(proof.ipp_proof.L_vec.iter())
                 .chain(proof.ipp_proof.R_vec.iter())
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &scalars,
         )
@@ -647,7 +647,7 @@ where
         .zip(verification_scalars.iter())
     {
         let alpha = G::ScalarField::rand(prng);
-        let scaled_scalars: Vec<G::ScalarField> = scalars.into_iter().map(|s| alpha * s).collect();
+        let scaled_scalars: Vec<G::ScalarField> = scalars.iter().map(|s| alpha * s).collect();
         let padded_n = verifier.num_vars.next_power_of_two();
         all_scalars[0] += scaled_scalars[0]; // B
         all_scalars[1] += scaled_scalars[1]; // B_blinding
@@ -663,7 +663,7 @@ where
             all_scalars[2 + max_n_padded + i] += *s;
         }
 
-        for s in (&scaled_scalars[2 + 2 * padded_n..]).iter() {
+        for s in &scaled_scalars[2 + 2 * padded_n..] {
             all_scalars.push(*s);
         }
         all_elems.push(proof.A_I1);

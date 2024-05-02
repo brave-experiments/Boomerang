@@ -74,7 +74,7 @@ impl<G: AffineRepr> LinearProof<G> {
         transcript.append_point(b"C", C);
         for b_i in &b_vec {
             //transcript.append_scalar::<C>(b"b_i", b_i);
-            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", &b_i);
+            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", b_i);
         }
         for G_i in &G_vec {
             transcript.append_point(b"G_i", G_i);
@@ -94,13 +94,13 @@ impl<G: AffineRepr> LinearProof<G> {
         let mut R_vec = Vec::with_capacity(lg_n);
 
         while n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let s_j = G::ScalarField::rand(rng);
             let t_j = G::ScalarField::rand(rng);
@@ -124,16 +124,16 @@ impl<G: AffineRepr> LinearProof<G> {
 
             for i in 0..n {
                 // a_L = a_L + x_j^{-1} * a_R
-                a_L[i] = a_L[i] + x_j_inv * a_R[i];
+                a_L[i] += x_j_inv * a_R[i];
                 // b_L = b_L + x_j * b_R
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
                 // G_L = G_L + x_j * G_R
                 G_L[i] = (G_L[i] + G_R[i] * x_j).into();
             }
             a = a_L;
             b = b_L;
             G = G_L;
-            r = r + x_j * s_j + x_j_inv * t_j;
+            r += x_j * s_j + x_j_inv * t_j;
         }
 
         let s_star = G::ScalarField::rand(rng);
@@ -183,7 +183,7 @@ impl<G: AffineRepr> LinearProof<G> {
         transcript.append_point(b"C", C);
         for b_i in &b_vec {
             //transcript.append_scalar::<G>(b"b_i", b_i);
-            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", &b_i);
+            <Transcript as TranscriptProtocol<G>>::append_scalar(transcript, b"b_i", b_i);
         }
         for G_i in G {
             transcript.append_point(b"G_i", G_i);
@@ -207,7 +207,7 @@ impl<G: AffineRepr> LinearProof<G> {
         // This is an optimized way to compute the base case G (G_0 in the paper):
         // G_0 = sum_{i=0}^{2^{l-1}} (x<i> * G_i)
         let s = self.subset_product(n, x_vec);
-        let G_0 = G::Group::msm(&G, &s).unwrap();
+        let G_0 = G::Group::msm(G, &s).unwrap();
 
         // This matches the verification equation:
         // S == r_star * B + a_star * b_0 * F
@@ -259,10 +259,10 @@ impl<G: AffineRepr> LinearProof<G> {
             let x_j: G::ScalarField =
                 <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
             challenges.push(x_j);
-            n_mut = n_mut / 2;
+            n_mut /= 2;
             let (b_L, b_R) = b.split_at_mut(n_mut);
             for i in 0..n_mut {
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
             }
             b = b_L;
         }

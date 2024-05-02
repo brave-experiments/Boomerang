@@ -74,28 +74,28 @@ impl<G: AffineRepr> InnerProductProof<G> {
         // If it's the first iteration, unroll the Hprime = H*y_inv scalar mults
         // into multiscalar muls, for performance.
         if n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let bases = G_R
                 .iter()
                 .chain(H_L.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_L
                 .iter()
-                .zip(G_factors[n..2 * n].into_iter())
+                .zip(G_factors[n..2 * n].iter())
                 .map(|(a_L_i, g)| *a_L_i * g)
                 .chain(
                     b_R.iter()
-                        .zip(H_factors[0..n].into_iter())
+                        .zip(H_factors[0..n].iter())
                         .map(|(b_R_i, h)| *b_R_i * h),
                 )
                 .chain(iter::once(c_L))
@@ -107,15 +107,15 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_R.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_R
                 .iter()
-                .zip(G_factors[0..n].into_iter())
+                .zip(G_factors[0..n].iter())
                 .map(|(a_R_i, g)| *a_R_i * g)
                 .chain(
                     b_L.iter()
-                        .zip(H_factors[n..2 * n].into_iter())
+                        .zip(H_factors[n..2 * n].iter())
                         .map(|(b_L_i, h)| *b_L_i * h),
                 )
                 .chain(iter::once(c_R))
@@ -162,26 +162,26 @@ impl<G: AffineRepr> InnerProductProof<G> {
         }
 
         while n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
             let (H_L, H_R) = H.split_at_mut(n);
 
-            let c_L = inner_product(&a_L, &b_R);
-            let c_R = inner_product(&a_R, &b_L);
+            let c_L = inner_product(a_L, b_R);
+            let c_R = inner_product(a_R, b_L);
 
             let bases = G_R
                 .iter()
                 .chain(H_L.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_L
                 .iter()
                 .chain(b_R.iter())
                 .chain(iter::once(&c_L))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>();
 
             let L = G::Group::msm(&bases, &scalars).unwrap();
@@ -190,13 +190,13 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .iter()
                 .chain(H_R.iter())
                 .chain(iter::once(Q))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G>>();
             let scalars = a_R
                 .iter()
                 .chain(b_L.iter())
                 .chain(iter::once(&c_R))
-                .map(|f| *f)
+                .copied()
                 .collect::<Vec<G::ScalarField>>();
 
             let R = G::Group::msm(&bases, &scalars).unwrap();
@@ -362,7 +362,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
             .chain(H.iter())
             .chain(Ls.iter())
             .chain(Rs.iter())
-            .map(|f| f.clone())
+            .cloned()
             .collect::<Vec<G>>();
 
         let scalars = iter::once(self.a * self.b)
@@ -467,7 +467,7 @@ mod tests {
             .iter()
             .chain(H.iter())
             .chain(iter::once(&Q))
-            .map(|f| f.clone())
+            .cloned()
             .collect::<Vec<G>>();
         let scalars = a_prime
             .chain(b_prime)

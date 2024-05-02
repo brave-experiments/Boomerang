@@ -82,11 +82,6 @@ impl<G: AffineRepr> R1CSProof<G> {
     /// Returns an error if the byte slice cannot be parsed into a `R1CSProof`.
     pub fn from_bytes(slice: &[u8]) -> Result<R1CSProof<G>, R1CSError> {
         let mut cursor = Cursor::new(slice);
-        let proof = R1CSProof::<G>::deserialize_compressed(&mut cursor);
-        if proof.is_ok() {
-            Ok(proof.unwrap())
-        } else {
-            Err(R1CSError::FormatError)
-        }
+        R1CSProof::<G>::deserialize_compressed(&mut cursor).or(Err(R1CSError::FormatError))
     }
 }

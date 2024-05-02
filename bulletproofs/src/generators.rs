@@ -186,7 +186,7 @@ impl<G: AffineRepr> BulletproofGens<G> {
     /// slice of vectors G and H for the j-th range proof.
     pub fn share(&self, j: usize) -> BulletproofGensShare<'_, G> {
         BulletproofGensShare {
-            gens: &self,
+            gens: self,
             share: j,
         }
     }

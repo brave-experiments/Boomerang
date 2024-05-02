@@ -4,15 +4,9 @@
 //! For more explanation of how the `dealer`, `party`, and `messages` modules orchestrate the protocol execution, see
 //! [the API for the aggregated multiparty computation protocol](../aggregation/index.html#api-for-the-aggregated-multiparty-computation-protocol).
 
-use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
+use ark_ec::{AffineRepr, VariableBaseMSM};
 use ark_ff::Field;
-use ark_std::{
-    iter,
-    ops::{Add, Mul, Neg, Sub},
-    rand::{CryptoRng, RngCore},
-    vec::Vec,
-    One, Zero,
-};
+use ark_std::{iter, ops::Neg, vec::Vec, One, Zero};
 
 use crate::generators::{BulletproofGens, PedersenGens};
 
@@ -107,8 +101,8 @@ impl<G: AffineRepr> ProofShare<G> {
         // Precompute some variables
         let zz = *z * z;
         let minus_z = z.neg();
-        let z_j = z.pow(&[j as u64]); // z^j
-        let y_jn = y.pow(&[(j * n) as u64]); // y^(j*n)
+        let z_j = z.pow([j as u64]); // z^j
+        let y_jn = y.pow([(j * n) as u64]); // y^(j*n)
         let y_jn_inv = y_jn.inverse().unwrap(); // y^(-j*n)
         let y_inv = y.inverse().unwrap(); // y^(-1)
 
@@ -132,21 +126,20 @@ impl<G: AffineRepr> ProofShare<G> {
                 .chain(iter::once(&pc_gens.B_blinding))
                 .chain(bp_gens.share(j).G(n))
                 .chain(bp_gens.share(j).H(n))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(G::ScalarField::one())
                 .chain(iter::once(*x))
                 .chain(iter::once(self.e_blinding.neg()))
                 .chain(g)
                 .chain(h)
-                .map(|f| f) // TODO: check
                 .collect::<Vec<G::ScalarField>>(), //TODO: check
         );
         if !P_check.unwrap().is_zero() {
             return Err(());
         }
 
-        let sum_of_powers_y = util::sum_of_powers::<G>(&y, n);
+        let sum_of_powers_y = util::sum_of_powers::<G>(y, n);
         let sum_of_powers_2 = util::sum_of_powers::<G>(&G::ScalarField::from(2u64), n);
         let delta = (*z - zz) * sum_of_powers_y * y_jn - *z * zz * sum_of_powers_2 * z_j;
         let t_check = G::Group::msm(
@@ -155,14 +148,13 @@ impl<G: AffineRepr> ProofShare<G> {
                 .chain(iter::once(&poly_commitment.T_2_j))
                 .chain(iter::once(&pc_gens.B))
                 .chain(iter::once(&pc_gens.B_blinding))
-                .map(|f| f.clone())
+                .cloned()
                 .collect::<Vec<G>>(),
             &iter::once(zz * z_j)
                 .chain(iter::once(*x))
                 .chain(iter::once(*x * x))
-                .chain(iter::once(delta - &self.t_x))
+                .chain(iter::once(delta - self.t_x))
                 .chain(iter::once(self.t_x_blinding.neg()))
-                .map(|f| f)
                 .collect::<Vec<G::ScalarField>>(), //TODO: check
         );
 
