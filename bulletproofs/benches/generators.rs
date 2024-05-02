@@ -14,10 +14,9 @@ fn pc_gens(c: &mut Criterion) {
 fn bp_gens(c: &mut Criterion) {
     let mut group = c.benchmark_group("BulletproofGens::new");
     for size in (0..10).map(|i| 2 << i) {
-        group.bench_with_input(BenchmarkId::from_parameter(size), &size,
-          |b, &size| {
-              b.iter(|| BulletproofGens::<Affine>::new(size, 1))
-          });
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, &size| {
+            b.iter(|| BulletproofGens::<Affine>::new(size, 1))
+        });
     }
 }
 

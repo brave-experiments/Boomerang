@@ -152,8 +152,7 @@ fn bench_kshuffle_prove(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("k-shuffle proof creation");
     for size in (1..=LG_MAX_SHUFFLE_SIZE).map(|i| 1 << i) {
-        group.bench_with_input(BenchmarkId::from_parameter(size), &size,
-        |b, k| {
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, k| {
             // Generate inputs and outputs to kshuffle
             let mut rng = rand::thread_rng();
             let (min, max) = (0u64, u64::MAX);
@@ -195,8 +194,7 @@ fn bench_kshuffle_verify(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("k-shuffle proof verification");
     for size in (1..=LG_MAX_SHUFFLE_SIZE).map(|i| 1 << i) {
-        group.bench_with_input(BenchmarkId::from_parameter(size), &size,
-        |b, k| {
+        group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, k| {
             // Generate the proof in its own scope to prevent reuse of
             // prover variables by the verifier
             let (proof, input_commitments, output_commitments) = {
