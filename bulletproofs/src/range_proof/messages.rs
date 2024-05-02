@@ -6,12 +6,7 @@
 
 use ark_ec::{AffineRepr, VariableBaseMSM};
 use ark_ff::Field;
-use ark_std::{
-    iter,
-    ops::Neg,
-    vec::Vec,
-    One, Zero,
-};
+use ark_std::{iter, ops::Neg, vec::Vec, One, Zero};
 
 use crate::generators::{BulletproofGens, PedersenGens};
 

@@ -546,12 +546,7 @@ mod tests {
     use crate::generators::PedersenGens;
     use ark_ff::UniformRand;
     use ark_secq256k1::{Affine, Fr};
-    use ark_std::{
-        rand::Rng,
-        vec,
-        vec::Vec,
-        One, Zero,
-    };
+    use ark_std::{rand::Rng, vec, vec::Vec, One, Zero};
 
     #[test]
     fn test_delta() {

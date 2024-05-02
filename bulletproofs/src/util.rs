@@ -223,7 +223,7 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
         if bit == 1 {
             result *= aux;
         }
-        n >>=  1;
+        n >>= 1;
         aux = aux * aux; // FIXME: one unnecessary mult at the last step here!
     }
     result
