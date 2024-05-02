@@ -697,7 +697,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             // r_poly.3 = y^n * s_R
             r_poly.3[i] = exp_y * sr;
 
-            exp_y = exp_y * y; // y^i -> y^(i+1)
+            exp_y *= y; // y^i -> y^(i+1)
         }
 
         let t_poly = util::VecPoly3::special_inner_product(&l_poly, &r_poly);
@@ -752,7 +752,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         // XXX this should refer to the notes to explain why this is correct
         for i in n..padded_n {
             r_vec[i] = -exp_y;
-            exp_y = exp_y * y; // y^i -> y^(i+1)
+            exp_y *= y; // y^i -> y^(i+1)
         }
 
         let i_blinding = i_blinding1 + u * i_blinding2;

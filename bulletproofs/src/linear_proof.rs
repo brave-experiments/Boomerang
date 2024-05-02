@@ -94,7 +94,7 @@ impl<G: AffineRepr> LinearProof<G> {
         let mut R_vec = Vec::with_capacity(lg_n);
 
         while n != 1 {
-            n = n / 2;
+            n /= 2;
             let (a_L, a_R) = a.split_at_mut(n);
             let (b_L, b_R) = b.split_at_mut(n);
             let (G_L, G_R) = G.split_at_mut(n);
@@ -124,16 +124,16 @@ impl<G: AffineRepr> LinearProof<G> {
 
             for i in 0..n {
                 // a_L = a_L + x_j^{-1} * a_R
-                a_L[i] = a_L[i] + x_j_inv * a_R[i];
+                a_L[i] += x_j_inv * a_R[i];
                 // b_L = b_L + x_j * b_R
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
                 // G_L = G_L + x_j * G_R
                 G_L[i] = (G_L[i] + G_R[i] * x_j).into();
             }
             a = a_L;
             b = b_L;
             G = G_L;
-            r = r + x_j * s_j + x_j_inv * t_j;
+            r += x_j * s_j + x_j_inv * t_j;
         }
 
         let s_star = G::ScalarField::rand(rng);
@@ -259,10 +259,10 @@ impl<G: AffineRepr> LinearProof<G> {
             let x_j: G::ScalarField =
                 <Transcript as TranscriptProtocol<G>>::challenge_scalar(transcript, b"x_j");
             challenges.push(x_j);
-            n_mut = n_mut / 2;
+            n_mut /= 2;
             let (b_L, b_R) = b.split_at_mut(n_mut);
             for i in 0..n_mut {
-                b_L[i] = b_L[i] + x_j * b_R[i];
+                b_L[i] += x_j * b_R[i];
             }
             b = b_L;
         }
