@@ -647,7 +647,7 @@ where
         .zip(verification_scalars.iter())
     {
         let alpha = G::ScalarField::rand(prng);
-        let scaled_scalars: Vec<G::ScalarField> = scalars.into_iter().map(|s| alpha * s).collect();
+        let scaled_scalars: Vec<G::ScalarField> = scalars.iter().map(|s| alpha * s).collect();
         let padded_n = verifier.num_vars.next_power_of_two();
         all_scalars[0] += scaled_scalars[0]; // B
         all_scalars[1] += scaled_scalars[1]; // B_blinding
@@ -663,7 +663,7 @@ where
             all_scalars[2 + max_n_padded + i] += *s;
         }
 
-        for s in (&scaled_scalars[2 + 2 * padded_n..]).iter() {
+        for s in &scaled_scalars[2 + 2 * padded_n..] {
             all_scalars.push(*s);
         }
         all_elems.push(proof.A_I1);

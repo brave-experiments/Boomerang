@@ -91,11 +91,11 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .collect::<Vec<G>>();
             let scalars = a_L
                 .iter()
-                .zip(G_factors[n..2 * n].into_iter())
+                .zip(G_factors[n..2 * n].iter())
                 .map(|(a_L_i, g)| *a_L_i * g)
                 .chain(
                     b_R.iter()
-                        .zip(H_factors[0..n].into_iter())
+                        .zip(H_factors[0..n].iter())
                         .map(|(b_R_i, h)| *b_R_i * h),
                 )
                 .chain(iter::once(c_L))
@@ -111,11 +111,11 @@ impl<G: AffineRepr> InnerProductProof<G> {
                 .collect::<Vec<G>>();
             let scalars = a_R
                 .iter()
-                .zip(G_factors[0..n].into_iter())
+                .zip(G_factors[0..n].iter())
                 .map(|(a_R_i, g)| *a_R_i * g)
                 .chain(
                     b_L.iter()
-                        .zip(H_factors[n..2 * n].into_iter())
+                        .zip(H_factors[n..2 * n].iter())
                         .map(|(b_L_i, h)| *b_L_i * h),
                 )
                 .chain(iter::once(c_R))
