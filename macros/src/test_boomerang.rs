@@ -9,6 +9,8 @@ macro_rules! __test_boomerang {
         type IBSM = IssuanceS<$boomerangconfig>;
         type CBCM = CollectionC<$boomerangconfig>;
         type CBSM = CollectionS<$boomerangconfig>;
+        type SVBCM = SpendVerifyC<$boomerangconfig>;
+        type SVBSM = SpendVerifyS<$boomerangconfig>;
         type ACLKP = KeyPair<$aclconfig>;
         type ACLSC = SigComm<$aclconfig>;
         type ACLCH = SigChall<$aclconfig>;
@@ -332,7 +334,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 collection_m2.clone(),
                 collection_m3.clone(),
-            );
+            );  
 
             let collection_m5 = CBSM::generate_collection_m5(
                 collection_m4.clone(),
@@ -351,6 +353,82 @@ macro_rules! __test_boomerang {
             assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
 
             let sig_n = &collection_state.sig_state[0];
+
+            let check = ACLSV::verify(
+                skp.s_key_pair.verifying_key,
+                skp.s_key_pair.tag_key,
+                sig_n.clone(),
+                "message",
+            );
+            assert!(check == true);
+        }
+
+        #[test]
+        fn test_boomerang_collection_full() {
+            // TODO // TODO test boomerang collection full
+        }
+
+        #[test]
+        fn test_boomerang_spend_verify_full() {
+            // generate user keys
+            let ckp = CBKP::generate(&mut OsRng);
+            assert!(ckp.public_key.is_on_curve());
+
+            // generate server keys
+            let skp = SBKP::generate(&mut OsRng);
+            assert!(skp.s_key_pair.verifying_key.is_on_curve());
+            assert!(skp.s_key_pair.tag_key.is_on_curve());
+
+            // Generate r2 random double-spending tag value
+            let spendverify_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
+
+            // does some stuff - TODO FIX ME
+            let spendverify_m2 = SVBCM::generate_spendverify_m2(
+                &mut OsRng,
+                // state? -> collection state?
+                spendverify_m1.clone(),
+                skp.clone(),
+            );
+            // TODO some asserts
+
+            // does some server stuff - TODO implement
+            let v = SF::one();
+            let spendverify_m3 = SVBSM::generate_spendverify_m3(
+                &mut OsRng,
+                spendverify_m2.clone(),
+                spendverify_m1.clone(),
+                skp.clone(),
+                v,
+            );
+            // TODO some asserts
+
+            // verify reward proof - client side
+            // create signature challenge
+            let spendverify_m4 = SVBCM::generate_spendverify_m4(
+                &mut OsRng,
+                spendverify_m2.clone(),
+                spendverify_m3.clone(),
+            );
+
+            // respond to signature challenge
+            let spendverify_m5 = SVBSM::generate_spendverify_m5(
+                spendverify_m4.clone(),
+                spendverify_m3.clone(),
+                skp.clone(),
+            );
+
+            // populate state
+            let spendverify_state = SVBCM::populate_state(
+                spendverify_m4.clone(),
+                spendverify_m5.clone(),
+                skp.clone(),
+                ckp.clone(),
+            );
+
+            assert!(spendverify_state.sig_state[0].sigma.zeta.is_on_curve());
+            assert!(spendverify_state.sig_state[0].sigma.zeta1.is_on_curve());
+
+            let sig_n = &spendverify_state.sig_state[0];
 
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
@@ -383,8 +461,11 @@ macro_rules! test_boomerang {
             use ark_std::One;
             use ark_std::UniformRand;
             use boomerang::{
-                client::CollectionC, client::IssuanceC, client::UKeyPair, config::BoomerangConfig,
-                server::CollectionS, server::IssuanceS, server::ServerKeyPair,
+                client::CollectionC, client::IssuanceC, client::SpendVerifyC,
+                client::UKeyPair, 
+                config::BoomerangConfig,
+                server::CollectionS, server::IssuanceS, server::SpendVerifyS,
+                server::ServerKeyPair,
             };
             use core::ops::Mul;
             use merlin::Transcript;
