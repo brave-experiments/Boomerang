@@ -495,7 +495,6 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         s_m: SpendVerifyS<B>,
         s_key_pair: ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
-
         // tag = TODO
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
         let tag = t_tag + s_m.m1.r2;
@@ -518,19 +517,13 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         // pedersen commitment
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
 
-
-        // pi_open 
+        // pi_open tk0
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
         // TODO check parameters
-        let proof_1 = OpeningProofMulti::create(
-            &mut transcript_p1, 
-            rng, 
-            vals.clone(), 
-            &c1, 
-            gens.clone()
-        );
+        let proof_1 =
+            OpeningProofMulti::create(&mut transcript_p1, rng, vals.clone(), &c1, gens.clone());
 
-        // pi_open 
+        // pi_open tk0'
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
         // TODO check parameters
         let proof_2 = OpeningProofMulti::create(
@@ -541,7 +534,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             state.token_state[0].gens.clone(),
         );
 
-        // pi_open 
+        // pi_open tag
         let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
         // TODO check parameters
         let proof_3 = OpeningProofMulti::create(
@@ -560,7 +553,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
 
         // TODO: add membership proof
-        let mut transcriptp_4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
+        let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
         //let proof_4 = todo!();
 
         // pi sub
@@ -579,7 +572,8 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             &e,
         );
 
-        // where does that proof come from?
+        // create signature proof
+        // P = BSA.ShowGen()
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
@@ -590,21 +584,22 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         );
 
         // construct message 2
+        // m2 = (C0, tag, tk0.ID, )
         let m2 = SpendVerifyM2 {
             // C0'
-            tag: tag,
-            id: state.token_state[0].id,
-            pi_1: proof_1,
-            pi_2: proof_2,
-            pi_3: proof_3,
+            tag: tag,                    // tag
+            id: state.token_state[0].id, // tk0.ID
+            pi_1: proof_1,               // \pi_open(tk0) ??
+            pi_2: proof_2,               // \pi_open(tk0') ??
+            pi_3: proof_3,               // \pi_open(tag) ???
             //pi_4: membership proof from curvetrees
-            pi_5: proof_5,
-            sig: state.sig_state[0].clone(),
-            s_proof: sig_proof,
-            comm: c1,   // what's this?
-            gens: gens, // what's this?
-            prev_comm: state.comm_state[0], // whats this
-            prev_gens: state.token_state[0].gens.clone(),   // whats this
+            pi_5: proof_5,                                // pi_sub(tk0'.v)  ???
+            sig: state.sig_state[0].clone(),              // \sigma_0
+            s_proof: sig_proof,                           // P
+            comm: c1,                                     // what's this?
+            gens: gens,                                   // what's this?
+            prev_comm: state.comm_state[0],               // whats this
+            prev_gens: state.token_state[0].gens.clone(), // whats this
             r: r1,
         };
 
@@ -616,15 +611,26 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         }
     }
 
-    // TODO implement rewards proof verification
     pub fn generate_spendverify_m4<T: RngCore + CryptoRng>(
         rng: &mut T,
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
+        policy_vector: Vec<u64>,
     ) -> SpendVerifyC<B> {
-        // TODO verify rewards proof
-
         let m3 = s_m.m3.clone().unwrap();
+
+        // verify rewards proof
+        let reward_proof = m3.pi_reward;
+        let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
+            .clone()
+            .into_iter()
+            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .collect();
+        let check = reward_proof.verify(policy_vector_scalar);
+
+        if !check {
+            panic!("Boomerang verification: reward proof verification failed")
+        }
 
         // substract commitments
         let c = m3.comm - c_m.m2.comm;

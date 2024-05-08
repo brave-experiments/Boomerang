@@ -19,6 +19,8 @@ use pedersen::pedersen_config::PedersenComm;
 
 use ark_std::{UniformRand, Zero};
 
+use rewards_proof::{RewardsGenerators, RewardsProof};
+
 /// Server keypair.
 ///
 #[derive(Clone)]
@@ -375,6 +377,8 @@ pub struct SpendVerifyM3<B: BoomerangConfig> {
     pub verifying_key: sw::Affine<B>,
     /// Tag public key
     pub tag_key: sw::Affine<B>,
+    /// Rewards proof
+    pub pi_reward: RewardsProof<B>,
 }
 
 impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
@@ -426,15 +430,16 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
     }
 
-    // TODO FIX ME
     pub fn generate_spendverify_m3<T: RngCore + CryptoRng>(
         rng: &mut T,
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
         key_pair: ServerKeyPair<B>,
         v: <B as CurveConfig>::ScalarField,
+        policy_vector: Vec<u64>,
     ) -> SpendVerifyS<B> {
-        /*let check = SigVerify::verify(
+        // verify signature
+        let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
             c_m.m2.sig.clone(),
@@ -442,9 +447,10 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         );
 
         if !check {
-            panic!("Boomerang collection: invalid signature");
+            panic!("Boomerang spend/verify: invalid signature");
         }
 
+        // verify signature proof
         let check2 = SigVerifProof::verify(
             c_m.m2.s_proof,
             key_pair.s_key_pair.tag_key,
@@ -452,51 +458,74 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         );
 
         if !check2 {
-            panic!("Boomerang collection: invalid proof sig");
+            panic!("Boomerang spend/verify: invalid proof sig");
         }
 
-        let label = b"BoomerangCollectionM2O1";
-        let mut transcript = Transcript::new(label);
-
-        let check3 = c_m
-            .m2
-            .pi_1
-            .verify(&mut transcript, &c_m.m2.comm.comm, 4, c_m.m2.gens.clone());
+        // verify opening proof \pi_open(tk0)
+        let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
+        let check3 = c_m.m2.pi_1.verify(
+            &mut transcript_p1,
+            &c_m.m2.comm.comm,
+            4,
+            c_m.m2.gens.clone(),
+        );
 
         if !check3 {
-            panic!("Boomerang collection: invalid proof opening 1");
+            panic!("Boomerang spend/verify: invalid proof opening 1");
         }
 
-        let label1 = b"BoomerangCollectionM2O2";
-        let mut transcript1 = Transcript::new(label1);
-
+        // verify opening proof \pi_open(tk0')
+        let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
         let check4 = c_m.m2.pi_2.verify(
-            &mut transcript1,
+            &mut transcript_p2,
             &c_m.m2.prev_comm.comm,
             4,
             c_m.m2.prev_gens.clone(),
         );
 
         if !check4 {
-            panic!("Boomerang collection: invalid proof opening 2");
+            panic!("Boomerang spend/verify: invalid proof opening 2");
         }
 
-        let label2 = b"BoomerangCollectionM2AM2";
-        let mut transcript2 = Transcript::new(label2);
+        // verify opening proof \pi_open(tag)
+        let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
+        let check4 = c_m.m2.pi_2.verify(
+            &mut transcript_p3,
+            &c_m.m2.prev_comm.comm,
+            4,
+            c_m.m2.prev_gens.clone(),
+        );
 
-        let check5 = c_m.m2.pi_3.verify(
+        if !check4 {
+            panic!("Boomerang spend/verify: invalid proof opening 3");
+        }
+
+        // TODO membership proof verification \pi_member
+        let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
+        let check5 = true;
+
+        if !check5 {
+            panic!("Boomerang spend/verify: invalid membership proof");
+        }
+
+        // verify sub proof
+        let mut transcript_p5 = Transcript::new(b"BoomerangSpendVerifyM2O5");
+        // TODO FIX ME
+        /*let check5 = c_m.m2.pi_3.verify(
             &mut transcript2,
             &c_m.m2.tag_commits[0].comm,
             &c_m.m2.tag_commits[1].comm,
             &c_m.m2.tag_commits[2].comm,
             &c_m.m2.tag_commits[3].comm,
             &c_m.m2.tag_commits[4].comm,
-        );
+        );*/
+        let check5 = true;
 
         if !check5 {
-            panic!("Boomerang collection: invalid proof of tag");
+            panic!("Boomerang collection: invalid proof of sub proof");
         }
 
+        // server tag
         #[allow(unused_variables)]
         let dtag: ServerTag<B> = ServerTag {
             tag: c_m.m2.tag,
@@ -504,30 +533,73 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             r2: s_m.m1.r2,
         }; // TODO: this needs to be stored by the server and check regularly
 
-        let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
-        let v2 = <B as CurveConfig>::ScalarField::zero();
-        let v3 = <B as CurveConfig>::ScalarField::zero();
-        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v, v2, v3];
+        // ID0''
+        let id0dashdash = <B as CurveConfig>::ScalarField::rand(rng);
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
-        let c = c1 + c_m.m2.comm;
+        // Create Pedersen commitment
+        // C0'' = PC.Comm(ID0'', v, 0, 0)
+        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![
+            id0dashdash,
+            v,
+            <B as CurveConfig>::ScalarField::zero(),
+            <B as CurveConfig>::ScalarField::zero(),
+        ];
+        let c0dashdash =
+            PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
 
-        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
+        // C0 = C0' - C0''
+        let c0 = c_m.m2.comm - c0dashdash;
 
-        let m3 = CollectionM3 {
-            id_1,
-            comm: c1,
+        // create signature commitment
+        // R = BSA.comm(sk_IC, C0)
+        // sig_comm = R
+        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c0.comm);
+
+        // Compute reward state
+        // TODO where do I get the state from as server?
+        let state: Vec<u64> = (0..64).map(|_| 5).collect();
+        let reward: u64 = state
+            .iter()
+            .zip(policy_vector.iter())
+            .map(|(x, y)| x.checked_mul(*y))
+            .flatten()
+            .sum();
+
+        let state_scalar: Vec<<B as CurveConfig>::ScalarField> = state
+            .clone()
+            .into_iter()
+            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .collect();
+        let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
+            .clone()
+            .into_iter()
+            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .collect();
+
+        // Generate \pi_reward
+        let reward_generators = RewardsGenerators::create();
+        let reward_proof = RewardsProof::create(
+            reward_generators,
+            reward,
+            state_scalar,
+            policy_vector_scalar,
+        );
+
+        // construct message 3
+        let m3 = SpendVerifyM3 {
+            comm: c0dashdash,
             sig_commit: sig_comm,
+            id_1: id0dashdash,
             verifying_key: key_pair.s_key_pair.verifying_key,
             tag_key: key_pair.s_key_pair.tag_key,
+            pi_reward: reward_proof,
         };
 
         Self {
             m1: s_m.m1,
             m3: Some(m3),
             m5: None,
-        }*/
-        todo!()
+        }
     }
 
     pub fn generate_spendverify_m5(
