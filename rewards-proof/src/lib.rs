@@ -57,11 +57,11 @@ impl<C: SWCurveConfig> RewardsProof<C> {
                 incentive_catalog_size,
             );
         Self {
-            range_proof: range_proof,
-            linear_proof: linear_proof,
-            range_comm: range_comm,
-            linear_comm: linear_comm,
-            rewards_gens: rewards_gens,
+            range_proof,
+            linear_proof,
+            range_comm,
+            linear_comm,
+            rewards_gens,
         }
     }
 

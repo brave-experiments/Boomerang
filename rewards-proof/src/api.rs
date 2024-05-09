@@ -46,16 +46,16 @@ where
 
     // Generate range proof
     let (range_proof, range_proof_commitments) = range_proof::<C>(
-        &pedersen_gens.first().unwrap(),
-        &bulletproof_gens.first().unwrap(),
+        pedersen_gens.first().unwrap(),
+        bulletproof_gens.first().unwrap(),
         value,
         limit_range_proof,
     );
 
     // Generate linear proof
     let (linear_proof, linear_proof_commitments) = linear_proof::<C>(
-        &pedersen_gens.last().unwrap(),
-        &bulletproof_gens.last().unwrap(),
+        pedersen_gens.last().unwrap(),
+        bulletproof_gens.last().unwrap(),
         private_value.clone(),
         public_value.clone(),
         incentive_catalog_size as usize,
@@ -82,8 +82,8 @@ where
 
 /// Verifies the rewards proofs
 pub fn rewards_proof_verification<C>(
-    pedersen_gens: &Vec<PedersenGens<C>>,
-    bulletproof_gens: &Vec<BulletproofGens<C>>,
+    pedersen_gens: &[PedersenGens<C>],
+    bulletproof_gens: &[BulletproofGens<C>],
     range_proof: Vec<u8>,
     range_proof_commitments: Vec<u8>,
     linear_proof: Vec<u8>,
@@ -102,8 +102,8 @@ where
 
     // Verify range proof
     if !range_verify(
-        &pedersen_gens.first().unwrap(),
-        &bulletproof_gens.first().unwrap(),
+        pedersen_gens.first().unwrap(),
+        bulletproof_gens.first().unwrap(),
         r_proof,
         r_proof_commitments,
         limit_range_proof,
@@ -121,13 +121,13 @@ where
         return false;
     }
 
-    return true;
+    true
 }
 
 /// Verifies the rewards proofs
 pub fn rewards_proof_verification_multiple<C>(
-    pedersen_gens: &Vec<PedersenGens<C>>,
-    bulletproof_gens: &Vec<BulletproofGens<C>>,
+    pedersen_gens: &[PedersenGens<C>],
+    bulletproof_gens: &[BulletproofGens<C>],
     range_proof: Vec<Vec<u8>>,
     range_proof_commitments: Vec<Vec<u8>>,
     linear_proof: Vec<Vec<u8>>,
@@ -141,19 +141,19 @@ where
     for i in 0..number_of_proofs {
         // verify individual range proofs
         let result = rewards_proof_verification::<C>(
-            &pedersen_gens,
-            &bulletproof_gens,
+            pedersen_gens,
+            bulletproof_gens,
             range_proof[i].clone(),
             range_proof_commitments[i].clone(),
             linear_proof[i].clone(),
             public_value.clone(),
             linear_proof_commitments[i].clone(),
         );
-        if result == false {
+        if !result {
             panic!("Verifying {}'th rewards proof failed!", i);
         }
     }
-    return true;
+    true
 }
 
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
@@ -194,8 +194,8 @@ where
 
     let mut prover_transcript = Transcript::new(b"rangeproof");
     let (proof, commitments) = RangeProof::prove_single(
-        &bp_gen,
-        &ps_gen,
+        bp_gen,
+        ps_gen,
         &mut prover_transcript,
         value,
         &blinding,
@@ -223,8 +223,8 @@ where
     let mut verifier_transcript = Transcript::new(b"rangeproof");
     proof
         .verify_single(
-            &bp_gen,
-            &ps_gen,
+            bp_gen,
+            ps_gen,
             &mut verifier_transcript,
             &commitments.commitment,
             n,
@@ -284,10 +284,10 @@ where
     )
     .expect("Error creating linear proof");
     let linear_commitments: LinearProofCommitments<C> = LinearProofCommitments::<C> {
-        g: g,
-        f: f,
-        b: b,
-        c: c,
+        g,
+        f,
+        b,
+        c,
     };
 
     (proof, linear_commitments)
