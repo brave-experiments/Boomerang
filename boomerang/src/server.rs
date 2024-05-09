@@ -557,23 +557,22 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         // Compute reward state
         // TODO where do I get the state from as server?
-        let state: Vec<u64> = (0..64).map(|_| 5).collect();
+        let state = vec![5u64; 64];
         let reward: u64 = state
             .iter()
             .zip(policy_vector.iter())
-            .map(|(x, y)| x.checked_mul(*y))
-            .flatten()
+            .flat_map(|(x, y)| x.checked_mul(*y))
             .sum();
 
         let state_scalar: Vec<<B as CurveConfig>::ScalarField> = state
             .clone()
             .into_iter()
-            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .map(<B as CurveConfig>::ScalarField::from)
             .collect();
         let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
             .clone()
             .into_iter()
-            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .map(<B as CurveConfig>::ScalarField::from)
             .collect();
 
         // Generate \pi_reward

@@ -587,7 +587,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         // m2 = (C0, tag, tk0.ID, )
         let m2 = SpendVerifyM2 {
             // C0'
-            tag: tag,                    // tag
+            tag,                         // tag
             id: state.token_state[0].id, // tk0.ID
             pi_1: proof_1,               // \pi_open(tk0) ??
             pi_2: proof_2,               // \pi_open(tk0') ??
@@ -597,7 +597,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             sig: state.sig_state[0].clone(),              // \sigma_0
             s_proof: sig_proof,                           // P
             comm: c1,                                     // what's this?
-            gens: gens,                                   // what's this?
+            gens,                                         // what's this?
             prev_comm: state.comm_state[0],               // whats this
             prev_gens: state.token_state[0].gens.clone(), // whats this
             r: r1,
@@ -624,7 +624,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
             .clone()
             .into_iter()
-            .map(|u64_value| <B as CurveConfig>::ScalarField::from(u64_value))
+            .map(<B as CurveConfig>::ScalarField::from)
             .collect();
         let check = reward_proof.verify(policy_vector_scalar);
 
