@@ -55,7 +55,7 @@ impl<A: ACLConfig> KeyPair<A> {
         for i in 0..=u8::max_value() {
             let mut sha = Sha3_256::new();
             Digest::update(&mut sha, bytes);
-            Digest::update(&mut sha, &[i]);
+            Digest::update(&mut sha, [i]);
             let hash = sha.finalize();
             let res = sw::Affine::<A>::from_random_bytes(hash.as_slice());
             if let Some(point) = res {
