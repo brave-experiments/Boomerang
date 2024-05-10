@@ -358,15 +358,21 @@ impl<B: BoomerangConfig> CollectionS<B> {
 /// Spending/Verification protocol
 /// SpendVerifyM1. This struct acts as a container for the first message of
 /// the spendverify protocol.
-#[derive(Clone)]
 pub struct SpendVerifyM1<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     pub r2: <B as CurveConfig>::ScalarField,
 }
 
+impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
+    fn clone(&self) -> Self {
+        Self {
+            r2: self.r2,
+        }
+    }
+}
+
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
-#[derive(Clone)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -382,16 +388,35 @@ pub struct SpendVerifyM3<B: BoomerangConfig> {
     pub pi_reward: RewardsProof<B>,
 }
 
+impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
+    fn clone(&self) -> Self {
+        Self {
+            comm: self.comm.clone(),
+            sig_commit: self.sig_commit.clone(),
+            id_1: self.id_1,
+            verifying_key: self.verifying_key,
+            tag_key: self.tag_key,
+            pi_reward: self.pi_reward.clone(),
+        }
+    }
+}
+
 /// SpendVerifyM5. This struct acts as a container for the fifth message of
 /// the spendverify protocol.
-#[derive(Clone)]
 pub struct SpendVerifyM5<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
+impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
+    fn clone(&self) -> Self {
+        Self {
+            s: self.s,
+        }
+    }
+}
+
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
-#[derive(Clone)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: SpendVerifyM1<B>,
@@ -399,6 +424,17 @@ pub struct SpendVerifyS<B: BoomerangConfig> {
     pub m3: Option<SpendVerifyM3<B>>,
     /// m5: the fifth message value.
     pub m5: Option<SpendVerifyM5<B>>,
+}
+
+impl<B: BoomerangConfig> Clone for SpendVerifyS<B> {
+    fn clone(&self) -> Self {
+        Self {
+            m1: self.m1.clone(),
+            m3: self.m3.clone(),
+            m5: self.m5.clone(),
+        }
+    }
+
 }
 
 impl<B: BoomerangConfig> SpendVerifyS<B> {

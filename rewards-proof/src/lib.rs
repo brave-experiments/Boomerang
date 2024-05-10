@@ -3,12 +3,20 @@ use ark_ec::{models::short_weierstrass::SWCurveConfig, short_weierstrass::Affine
 
 pub mod api;
 
-#[derive(Clone)]
 pub struct RewardsGenerators<C: SWCurveConfig> {
     /// PedersenGenerators
     pub pedersen_gens: Vec<PedersenGens<Affine<C>>>,
     /// Bulletproof Generators
     pub bulletproof_gens: Vec<BulletproofGens<Affine<C>>>,
+}
+
+impl<C: SWCurveConfig> Clone for RewardsGenerators<C> {
+    fn clone(&self) -> Self {
+        Self {
+            pedersen_gens: self.pedersen_gens.clone(),
+            bulletproof_gens: self.bulletproof_gens.clone(),
+        }
+    }
 }
 
 impl<C: SWCurveConfig> RewardsGenerators<C> {
@@ -24,7 +32,6 @@ impl<C: SWCurveConfig> RewardsGenerators<C> {
     }
 }
 
-#[derive(Clone)]
 pub struct RewardsProof<C: SWCurveConfig> {
     /// the range proof
     pub range_proof: Vec<u8>,
@@ -36,6 +43,18 @@ pub struct RewardsProof<C: SWCurveConfig> {
     pub linear_comm: Vec<u8>,
     /// the rewards generators
     pub rewards_gens: RewardsGenerators<C>,
+}
+
+impl<C: SWCurveConfig> Clone for RewardsProof<C> {
+    fn clone(&self) -> Self {
+        Self {
+            range_proof: self.range_proof.clone(),
+            linear_proof: self.linear_proof.clone(),
+            range_comm: self.range_comm.clone(),
+            linear_comm: self.linear_comm.clone(),
+            rewards_gens: self.rewards_gens.clone(),
+        }
+    }
 }
 
 impl<C: SWCurveConfig> RewardsProof<C> {
