@@ -582,7 +582,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             // pi5
             sig: state.sig_state[0].clone(), // \sigma_0
             s_proof: sig_proof,              // P
-            tag_commits: tag_commits,        // commits for the tag proof
+            tag_commits,                     // commits for the tag proof
             comm: c1,
             gens,
             prev_comm: state.comm_state[0],
