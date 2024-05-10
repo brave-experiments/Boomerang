@@ -477,7 +477,6 @@ macro_rules! __test_boomerang {
             // Generate r2 random double-spending tag value
             let spendverify_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
 
-            // does m2 - TODO
             let spendverify_m2 = SVBCM::generate_spendverify_m2(
                 &mut OsRng,
                 collection_state,

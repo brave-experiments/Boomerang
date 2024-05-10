@@ -193,15 +193,9 @@ where
     let blinding = C::ScalarField::rand(&mut rng);
 
     let mut prover_transcript = Transcript::new(b"rangeproof");
-    let (proof, commitments) = RangeProof::prove_single(
-        bp_gen,
-        ps_gen,
-        &mut prover_transcript,
-        value,
-        &blinding,
-        n,
-    )
-    .expect("Error when creating rangeproof");
+    let (proof, commitments) =
+        RangeProof::prove_single(bp_gen, ps_gen, &mut prover_transcript, value, &blinding, n)
+            .expect("Error when creating rangeproof");
     let proof_commitments: RangeProofCommitments<C> = RangeProofCommitments::<C> {
         commitment: commitments,
     };
@@ -283,12 +277,7 @@ where
         &b,
     )
     .expect("Error creating linear proof");
-    let linear_commitments: LinearProofCommitments<C> = LinearProofCommitments::<C> {
-        g,
-        f,
-        b,
-        c,
-    };
+    let linear_commitments: LinearProofCommitments<C> = LinearProofCommitments::<C> { g, f, b, c };
 
     (proof, linear_commitments)
 }

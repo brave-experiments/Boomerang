@@ -366,6 +366,7 @@ pub struct SpendVerifyM1<B: BoomerangConfig> {
 
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
+#[derive(Clone)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -379,19 +380,6 @@ pub struct SpendVerifyM3<B: BoomerangConfig> {
     pub tag_key: sw::Affine<B>,
     /// Rewards proof
     pub pi_reward: RewardsProof<B>,
-}
-
-impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
-    fn clone(&self) -> Self {
-        /*CollectionM3 {
-            comm: self.comm,
-            sig_commit: self.sig_commit,
-            id_1: self.id_1,
-            verifying_key: self.verifying_key,
-            tag_key: self.tag_key,
-        }*/
-        todo!()
-    }
 }
 
 /// SpendVerifyM5. This struct acts as a container for the fifth message of
@@ -487,42 +475,27 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             panic!("Boomerang spend/verify: invalid proof opening 2");
         }
 
-        // verify opening proof \pi_open(tag)
+        // verify tag proof
         let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
-        let check4 = c_m.m2.pi_2.verify(
+        let check5 = c_m.m2.pi_3.verify(
             &mut transcript_p3,
-            &c_m.m2.prev_comm.comm,
-            4,
-            c_m.m2.prev_gens.clone(),
-        );
-
-        if !check4 {
-            panic!("Boomerang spend/verify: invalid proof opening 3");
-        }
-
-        // TODO membership proof verification \pi_member
-        let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
-        let check5 = true;
-
-        if !check5 {
-            panic!("Boomerang spend/verify: invalid membership proof");
-        }
-
-        // verify sub proof
-        let mut transcript_p5 = Transcript::new(b"BoomerangSpendVerifyM2O5");
-        // TODO FIX ME
-        /*let check5 = c_m.m2.pi_3.verify(
-            &mut transcript2,
             &c_m.m2.tag_commits[0].comm,
             &c_m.m2.tag_commits[1].comm,
             &c_m.m2.tag_commits[2].comm,
             &c_m.m2.tag_commits[3].comm,
             &c_m.m2.tag_commits[4].comm,
-        );*/
-        let check5 = true;
+        );
 
         if !check5 {
-            panic!("Boomerang collection: invalid proof of sub proof");
+            panic!("Boomerang spend/verify: invalid proof of tag");
+        }
+
+        // TODO membership proof verification \pi_member
+        //let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
+        let check6 = true;
+
+        if !check6 {
+            panic!("Boomerang spend/verify: invalid membership proof");
         }
 
         // server tag

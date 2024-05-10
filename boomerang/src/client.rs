@@ -429,7 +429,6 @@ impl<B: BoomerangConfig> CollectionC<B> {
 /// the spendverify protocol.
 #[derive(Clone)]
 pub struct SpendVerifyM2<B: BoomerangConfig> {
-    // C0' TODO
     /// tag: the tag value.
     pub tag: <B as CurveConfig>::ScalarField,
     /// id: the serial number value. -> tk0.ID
@@ -440,16 +439,17 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     /// pi_2: the proof value of the tk0'
     pub pi_2: OpeningProofMulti<B>,
     /// pi_3: the proof value of the tag
-    pub pi_3: OpeningProofMulti<B>,
+    pub pi_3: AddMulProof<B>,
     /// pi_4: the proof of membership -> TODO curvetrees
     //pub pi_4: AddMulProof<B>,
-    /// pi_5: the proof of substract -> TODO negative add?
-    pub pi_5: AddMulProof<B>,
+    /// pi_5: \pi sub???
 
     /// sig: the signature
     pub sig: SigSign<B>,
     /// s_proof: the proof of the commitments under the signature
     pub s_proof: SigProof<B>,
+    /// tag_commits: the commits for the tag proof
+    pub tag_commits: Vec<PedersenComm<B>>,
 
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -495,7 +495,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         s_m: SpendVerifyS<B>,
         s_key_pair: ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
-        // tag = TODO
+        // tag = (sk_u * tk0.r1) + r2
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
         let tag = t_tag + s_m.m1.r2;
 
@@ -503,10 +503,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
 
-        // TODO what are those?
+        // tk0 = (ID_0', tk0.v, sku, r1)
         let vals: Vec<<B as CurveConfig>::ScalarField> =
             vec![id1, state.token_state[0].v, state.c_key_pair.x, r1];
 
+        // tk? = (ID, tk?.v, sku, r?)
         let prev_vals: Vec<<B as CurveConfig>::ScalarField> = vec![
             state.token_state[0].id,
             state.token_state[0].v,
@@ -517,28 +518,15 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         // pedersen commitment
         let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
 
-        // pi_open tk0
+        // pi_open tk0 (token)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        // TODO check parameters
         let proof_1 =
             OpeningProofMulti::create(&mut transcript_p1, rng, vals.clone(), &c1, gens.clone());
 
-        // pi_open tk0'
+        // pi_open tk? (previous token?)
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
-        // TODO check parameters
         let proof_2 = OpeningProofMulti::create(
             &mut transcript_p2,
-            rng,
-            prev_vals.clone(),
-            &state.comm_state[0],
-            state.token_state[0].gens.clone(),
-        );
-
-        // pi_open tag
-        let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
-        // TODO check parameters
-        let proof_3 = OpeningProofMulti::create(
-            &mut transcript_p3,
             rng,
             prev_vals.clone(),
             &state.comm_state[0],
@@ -550,17 +538,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let c: PedersenComm<B> = PedersenComm::new(s_m.m1.r2, rng);
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
-        let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
 
-        // TODO: add membership proof
-        let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
-        //let proof_4 = todo!();
-
-        // pi sub
-        let mut transcript_p5 = Transcript::new(b"BoomerangSpendVerifyM2O5");
-        // TODO replace with sub proof
-        let proof_5 = AddMulProof::create(
-            &mut transcript_p5,
+        // pi tag?
+        let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
+        let proof_3 = AddMulProof::create(
+            &mut transcript_p3,
             rng,
             &state.c_key_pair.x,
             &state.token_state[0].id,
@@ -571,6 +553,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             &d,
             &e,
         );
+        let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
+
+        // TODO: add membership proof
+        //let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
+        //let proof_4 = todo!();
 
         // create signature proof
         // P = BSA.ShowGen()
@@ -586,20 +573,20 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         // construct message 2
         // m2 = (C0, tag, tk0.ID, )
         let m2 = SpendVerifyM2 {
-            // C0'
             tag,                         // tag
             id: state.token_state[0].id, // tk0.ID
             pi_1: proof_1,               // \pi_open(tk0) ??
             pi_2: proof_2,               // \pi_open(tk0') ??
             pi_3: proof_3,               // \pi_open(tag) ???
-            //pi_4: membership proof from curvetrees
-            pi_5: proof_5,                                // pi_sub(tk0'.v)  ???
-            sig: state.sig_state[0].clone(),              // \sigma_0
-            s_proof: sig_proof,                           // P
-            comm: c1,                                     // what's this?
-            gens,                                         // what's this?
-            prev_comm: state.comm_state[0],               // whats this
-            prev_gens: state.token_state[0].gens.clone(), // whats this
+            // pi_4: membership proof from curvetrees
+            // pi5
+            sig: state.sig_state[0].clone(), // \sigma_0
+            s_proof: sig_proof,              // P
+            tag_commits: tag_commits,        // commits for the tag proof
+            comm: c1,
+            gens,
+            prev_comm: state.comm_state[0],
+            prev_gens: state.token_state[0].gens.clone(),
             r: r1,
         };
 
