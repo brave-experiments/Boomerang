@@ -288,7 +288,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
             Self::make_transcript(&mut transcript_v, &pi.t1, &pi.t2);
 
             let mut buf3 = [0u8; 64];
-            let _ = &transcript_v.challenge_bytes(b"challzk", &mut buf3);
+            let _ = &transcript_v.challenge_bytes(b"challzk3", &mut buf3);
 
             let ch3: <A as CurveConfig>::ScalarField =
                 <A as CurveConfig>::ScalarField::deserialize_compressed(&buf3[..]).unwrap();
