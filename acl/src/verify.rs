@@ -244,7 +244,12 @@ impl<A: ACLConfig> SigVerifProof<A> {
         transcript.append_message(b"c1", &compressed_bytes[..]);
     }
 
-    pub fn verify(proof: &SigProof<A>, tag_key: sw::Affine<A>, sig_m: &SigSign<A>) -> bool {
+    pub fn verify(
+        proof: &SigProof<A>,
+        tag_key: sw::Affine<A>,
+        sig_m: &SigSign<A>,
+        gens: &Vec<sw::Affine<A>>,
+    ) -> bool {
         // Equality proof of zeta = b_gamma
         let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
         let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();
@@ -262,9 +267,40 @@ impl<A: ACLConfig> SigVerifProof<A> {
         let lhs1 = proof.pi1.t1 + (sig_m.sigma.zeta.mul(ch));
         let lhs2 = proof.pi1.t2 + (proof.b_gamma.mul(ch));
 
-        let c = rhs1 == lhs1 && rhs2 == lhs2;
+        if (rhs1 == lhs1 && rhs2 == lhs2) == false {
+            // Only continue if above proof verifies to true, otherwise we can
+            // return early
+            return false;
+        }
 
-        // Equality proofs of zeta = h_vec -> TODO
+        // Equality proofs of zeta = h_vec
+        for ((pi, h), gen) in proof
+            .pi3
+            .iter()
+            .zip(proof.h_vec.iter())
+            .zip(gens.iter().take(proof.pi3.len()))
+        {
+            let rhs4 = (tag_key.mul(pi.a1)).into_affine();
+            let rhs5 = (gen.mul(pi.a1)).into_affine();
+
+            let label3 = b"Chall ACLZK3";
+            let mut transcript_v = Transcript::new(label3);
+            Self::make_transcript(&mut transcript_v, &pi.t1, &pi.t2);
+
+            let mut buf3 = [0u8; 64];
+            let _ = &transcript_v.challenge_bytes(b"challzk", &mut buf3);
+
+            let ch3: <A as CurveConfig>::ScalarField =
+                <A as CurveConfig>::ScalarField::deserialize_compressed(&buf3[..]).unwrap();
+
+            let lhs4 = pi.t1 + (sig_m.sigma.zeta.mul(ch3));
+            let lhs5 = pi.t2 + (h.mul(ch3));
+
+            if (rhs4 == lhs4 && rhs5 == lhs5) == false {
+                // if any of the proof is false, return immediately
+                return false;
+            }
+        }
 
         // For our cases, we will always prove knowledge of all signed committed values,
         // but this is not for all cases.
@@ -283,8 +319,10 @@ impl<A: ACLConfig> SigVerifProof<A> {
         let rhs3 = proof.val.mul(ch2) + proof.pi2.t3;
         let lhs3 = (A::GENERATOR2.mul(proof.pi2.a4) + A::GENERATOR.mul(proof.pi2.a3)).into_affine();
 
-        let c2 = rhs3 == lhs3;
+        if (rhs3 == lhs3) == false {
+            return false;
+        }
 
-        c && c2
+        true
     }
 }
