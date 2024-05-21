@@ -87,7 +87,7 @@ impl<G: AffineRepr> RangeProof<G> {
             pc_gens,
             transcript,
             &[v],
-            &[(*v_blinding).clone()],
+            &[*v_blinding],
             n,
             rng,
         )?;
@@ -365,7 +365,7 @@ impl<G: AffineRepr> RangeProof<G> {
             .map(|((s_i_inv, exp_y_inv), z_and_2)| z + exp_y_inv * (zz * z_and_2 - b * s_i_inv))
             .collect();
 
-        let mut value_commitment_scalars: Vec<G::ScalarField> = util::exp_iter::<G>(z.clone())
+        let mut value_commitment_scalars: Vec<G::ScalarField> = util::exp_iter::<G>(z)
             .take(m)
             .map(|z_exp| c * zz * z_exp)
             .collect();
