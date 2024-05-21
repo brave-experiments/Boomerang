@@ -249,10 +249,7 @@ impl<G: AffineRepr> RangeProof<G> {
         let m = value_commitments.len();
 
         let scalars = self
-            .compute_verification_scalars_with_rng(bp_gens, transcript, value_commitments, n, rng)?
-            .iter()
-            .copied()
-            .collect::<Vec<G::ScalarField>>();
+            .compute_verification_scalars_with_rng(bp_gens, transcript, value_commitments, n, rng)?;
 
         let mega_check = G::Group::msm(
             &iter::once(self.A)
@@ -430,9 +427,7 @@ impl<G: AffineRepr> RangeProof<G> {
             }
         }
         let grouped_scalars = Self::group_scalars(all_scaled_scalars.as_slice(), n, max_m)
-            .iter()
-            .copied()
-            .collect::<Vec<G::ScalarField>>();
+            .to_vec();
 
         let mut elems = vec![];
         for (proof, value_commitments) in proofs.iter().zip(value_commitments) {
