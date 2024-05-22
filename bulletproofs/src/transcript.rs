@@ -88,7 +88,8 @@ impl<G: AffineRepr> TranscriptProtocol<G> for Transcript {
         } else {
             let mut bytes = Vec::new();
             point.serialize_uncompressed(&mut bytes).unwrap();
-            Ok(self.append_message(label, &bytes))
+            self.append_message(label, &bytes);
+            Ok(())
         }
     }
 
