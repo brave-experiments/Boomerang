@@ -5,8 +5,8 @@ authors = ["Ralph Ankele <rankele@brave.com>"]
 edition = "2021"
 
 [dependencies]
-boomerang = { path="../../boomerang" }
-t256 = { path="../../t256" }
+boomerang = { path = "../../boomerang" }
+t256 = { path = "../../t256" }
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1.15", features = ["full"] }
 futures = "0.3"
