@@ -1,5 +1,6 @@
 use boomerang::{
-    client::UKeyPair, client::IssuanceC, client::CollectionC,// client::SpendVerifyC,
+    client::{UKeyPair, IssuanceC},
+    //client::{CollectionC, SpendVerifyC},
     server::IssuanceS,
 };
 use rand::rngs::OsRng;

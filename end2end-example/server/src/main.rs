@@ -1,5 +1,4 @@
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
-use serde::{Deserialize, Serialize};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde_json::json;
 use std::sync::Arc;
