@@ -8,5 +8,7 @@ members = [
   "./macros",
   "./bulletproofs",
   "./rewards-proof"
+  "./end2end-example/client",
+  "./end2end-example/server",
 ]
 resolver = "2"
