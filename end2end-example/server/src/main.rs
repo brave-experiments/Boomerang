@@ -5,7 +5,7 @@ use serde_json::json;
 use std::sync::Arc;
 use boomerang::{client::IssuanceC, server::{IssuanceS, ServerKeyPair}};
 use t256::Config;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 
 async fn boomerang_issuance_m2(data: web::Data<Arc<AppState>>, req_body: String) -> impl Responder {
     println!("Boomerang Issunance M2...");

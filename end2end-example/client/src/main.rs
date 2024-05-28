@@ -2,7 +2,7 @@ use boomerang::{
     client::UKeyPair, client::IssuanceC, client::CollectionC,// client::SpendVerifyC,
     server::IssuanceS,
 };
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use serde_json::json;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use t256::Config;   // use arksecp256r1
