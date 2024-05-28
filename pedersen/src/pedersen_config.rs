@@ -4,7 +4,7 @@ use ark_ec::{
     AffineRepr, CurveGroup,
 };
 
-use ark_serialize::CanonicalDeserialize;
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 use std::ops;
@@ -273,6 +273,7 @@ pub trait PedersenConfig: SWCurveConfig {
 }
 
 /// Generators. This structure holds the generators for a multi-commitment.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Generators<P: PedersenConfig> {
     pub generators: Vec<sw::Affine<P>>,
 }
@@ -290,7 +291,7 @@ impl<P: PedersenConfig> Clone for Generators<P> {
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
 /// and the associated randomness. Any serialised proofs should solely use `comm` in their transcripts /
 /// serialisations.
-#[derive(Debug)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PedersenComm<P: PedersenConfig> {
     /// comm: the point which acts as the commitment.
     pub comm: sw::Affine<P>,

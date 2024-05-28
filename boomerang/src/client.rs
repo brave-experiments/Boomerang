@@ -21,6 +21,7 @@ use pedersen::{
 };
 
 use ark_std::{ops::Mul, UniformRand, Zero};
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 /// The token representation.
 #[derive(Clone)]
@@ -71,7 +72,7 @@ impl<B: BoomerangConfig> UKeyPair<B> {
 /// Issuance Protocol
 /// IssuanceM1. This struct acts as a container for the first message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM1<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -91,14 +92,14 @@ pub struct IssuanceM1<B: BoomerangConfig> {
 
 /// IssuanceM3. This struct acts as a container for the thrid message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM3<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// IssuanceC. This struct represents the issuance protocol for the client.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceC<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: IssuanceM1<B>,

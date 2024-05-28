@@ -18,7 +18,7 @@ use merlin::Transcript;
 pub const CHALLENGE_SIZE: usize = 64;
 
 /// SigChall. This struct acts as a container for the second message (the challenge) of the Signature.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigChall<A: ACLConfig> {
     /// e: the first message value.
     pub e: <A as CurveConfig>::ScalarField,

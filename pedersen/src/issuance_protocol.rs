@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use merlin::Transcript;
 
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 
@@ -23,7 +23,7 @@ use ark_std::Zero;
 /// Note that this is aimed to work with multi-commitments.
 /// Essentially, a new proof object can be created by calling `create`, whereas
 /// an existing proof can be verified by calling `verify`.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceProofMulti<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,

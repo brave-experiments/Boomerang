@@ -18,6 +18,7 @@ use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
 use ark_std::{UniformRand, Zero};
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 use rewards_proof::{RewardsGenerators, RewardsProof};
 
@@ -65,7 +66,7 @@ impl<B: BoomerangConfig> ServerKeyPair<B> {
 /// Issuance protocol
 /// IssuanceM2. This struct acts as a container for the second message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -81,14 +82,14 @@ pub struct IssuanceM2<B: BoomerangConfig> {
 
 /// IssuanceM4. This struct acts as a container for the fourth message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM4<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
 /// IssuanceS. This struct represents the issuance protocol for the server.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceS<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: IssuanceM2<B>,
