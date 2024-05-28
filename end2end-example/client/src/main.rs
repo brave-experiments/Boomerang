@@ -1,16 +1,15 @@
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use boomerang::{
-    client::{UKeyPair, IssuanceC},
+    client::{IssuanceC, UKeyPair},
     //client::{CollectionC, SpendVerifyC},
     server::IssuanceS,
 };
 use rand::rngs::OsRng;
 use serde_json::json;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use t256::Config;   // use arksecp256r1
+use t256::Config; // use arksecp256r1
 
 #[tokio::main]
 async fn main() {
-
     // Generate user keys
     let ckp = UKeyPair::<Config>::generate(&mut OsRng);
 
@@ -19,7 +18,9 @@ async fn main() {
 
     // serialize issuance_m1 as json string
     let mut issuance_m1_bytes = Vec::new();
-    issuance_m1.serialize_compressed(&mut issuance_m1_bytes).unwrap();
+    issuance_m1
+        .serialize_compressed(&mut issuance_m1_bytes)
+        .unwrap();
     let issuance_m1_json = json!(issuance_m1_bytes).to_string();
 
     // send issuance_m1 as json string to server
