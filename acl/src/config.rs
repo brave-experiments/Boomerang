@@ -8,6 +8,7 @@ use ark_std::{ops::Mul, UniformRand};
 use digest::{ExtendableOutputDirty, Update, XofReader};
 use rand::{CryptoRng, RngCore};
 use sha3::Shake256;
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 pub trait ACLConfig: SWCurveConfig {
     /// The curve type that maps to this Config.
@@ -27,6 +28,7 @@ pub trait ACLConfig: SWCurveConfig {
 
 /// ACL keypair.
 ///
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeyPair<A: ACLConfig> {
     /// Public key
     pub verifying_key: sw::Affine<A>,

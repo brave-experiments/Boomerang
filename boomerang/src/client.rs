@@ -20,8 +20,8 @@ use pedersen::{
     pedersen_config::PedersenComm,
 };
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand, Zero};
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 /// The token representation.
 #[derive(Clone)]

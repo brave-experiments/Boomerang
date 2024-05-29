@@ -17,14 +17,14 @@ use acl::{
 use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
-use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
 
 use rewards_proof::{RewardsGenerators, RewardsProof};
 
 /// Server keypair.
 ///
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ServerKeyPair<B: BoomerangConfig> {
     /// Public key
     pub s_key_pair: KeyPair<B>,
