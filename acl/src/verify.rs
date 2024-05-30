@@ -267,7 +267,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         let lhs1 = proof.pi1.t1 + (sig_m.sigma.zeta.mul(ch));
         let lhs2 = proof.pi1.t2 + (proof.b_gamma.mul(ch));
 
-        if (rhs1 == lhs1 && rhs2 == lhs2) == false {
+        if !(rhs1 == lhs1 && rhs2 == lhs2) {
             // Only continue if above proof verifies to true, otherwise we can
             // return early
             return false;
@@ -296,7 +296,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
             let lhs4 = pi.t1 + (sig_m.sigma.zeta.mul(ch3));
             let lhs5 = pi.t2 + (h.mul(ch3));
 
-            if (rhs4 == lhs4 && rhs5 == lhs5) == false {
+            if !(rhs4 == lhs4 && rhs5 == lhs5) {
                 // if any of the proof is false, return immediately
                 return false;
             }
@@ -319,10 +319,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         let rhs3 = proof.val.mul(ch2) + proof.pi2.t3;
         let lhs3 = (A::GENERATOR2.mul(proof.pi2.a4) + A::GENERATOR.mul(proof.pi2.a3)).into_affine();
 
-        if (rhs3 == lhs3) == false {
-            return false;
-        }
-
-        true
+        // Proof succeeds if these final sides also agree.
+        rhs3 == lhs3
     }
 }

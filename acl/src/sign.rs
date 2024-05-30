@@ -481,8 +481,8 @@ impl<A: ACLConfig> SigProof<A> {
 
                 let a1 = r + sig_m.opening.gamma * ch;
 
-                let pi = SigProofD { t1, t2, a1 };
-                pi
+                // Opening proof `pi`
+                SigProofD { t1, t2, a1 }
             })
             .collect();
 
