@@ -80,9 +80,8 @@ async fn main() -> std::io::Result<()> {
     println!("Initializing server...");
 
     // Generate server key pair
-    let skp = ServerKeyPair::<Config>::generate(&mut OsRng);
     let app_state = Arc::new(AppState {
-        skp: skp,
+        skp: ServerKeyPair::<Config>::generate(&mut OsRng),
         issuance_s: Mutex::new(None),
     });
 

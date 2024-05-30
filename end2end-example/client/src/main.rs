@@ -36,9 +36,7 @@ async fn send_message_to_server_and_await_response(
     // deserialize issuance_m2 response from server
     println!("deserialize response");
     let issuance_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
-    let issuance_s = IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap();
-
-    issuance_s
+    IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap()
 }
 
 async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
@@ -52,8 +50,7 @@ async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
 
     // deserialize server keypair
     let server_keypair_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
-    let server_keypair = ServerKeyPair::<Config>::deserialize_compressed(&*server_keypair_bytes).unwrap();
-    server_keypair
+    ServerKeyPair::<Config>::deserialize_compressed(&*server_keypair_bytes).unwrap()
 }
 
 #[tokio::main]
@@ -111,7 +108,7 @@ async fn main() {
             sig.clone(),
             "message"
         );
-        assert!(check == true);
+        assert!(check);
         println!("Signature check passed!");
         issuance_state
     };
