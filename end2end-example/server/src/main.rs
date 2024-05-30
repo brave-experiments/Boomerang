@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use t256::Config;
 
 async fn boomerang_issuance_m4(data: web::Data<Arc<AppState>>, req_body: String) -> impl Responder {
-    println!("Boomerang Issunance M4...");
+    println!("Boomerang Issuance M4...");
     // Deserialize issuance_m1 from client
     let issuance_m3_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
     let issuance_m3 = IssuanceC::<Config>::deserialize_compressed(&*issuance_m3_bytes).unwrap();
@@ -36,7 +36,7 @@ async fn boomerang_issuance_m4(data: web::Data<Arc<AppState>>, req_body: String)
 }
 
 async fn boomerang_issuance_m2(data: web::Data<Arc<AppState>>, req_body: String) -> impl Responder {
-    println!("Boomerang Issunance M2...");
+    println!("Boomerang Issuance M2...");
     // Deserialize issuance_m1 from client
     let issuance_m1_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
     let issuance_m1 = IssuanceC::<Config>::deserialize_compressed(&*issuance_m1_bytes).unwrap();
