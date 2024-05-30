@@ -6,14 +6,14 @@ use boomerang::{
 };
 use rand::rngs::OsRng;
 use serde_json::json;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use t256::Config;
 
-async fn boomerang_issuance_m4(data: web::Data<Arc<AppState>>, req_body: String) -> impl Responder {
+async fn boomerang_issuance_m4(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Issuance M4...");
     // Deserialize issuance_m1 from client
     let issuance_m3_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
-    let issuance_m3 = IssuanceC::<Config>::deserialize_compressed(&*issuance_m3_bytes).unwrap();
+    let issuance_m3 = IssuanceC::<Config>::deserialize_compressed(issuance_m3_bytes.as_slice()).unwrap();
 
     let issuance_s = data.issuance_s.lock().unwrap().clone();
 
@@ -35,7 +35,7 @@ async fn boomerang_issuance_m4(data: web::Data<Arc<AppState>>, req_body: String)
     HttpResponse::Ok().body(issuance_m4_json)
 }
 
-async fn boomerang_issuance_m2(data: web::Data<Arc<AppState>>, req_body: String) -> impl Responder {
+async fn boomerang_issuance_m2(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Issuance M2...");
     // Deserialize issuance_m1 from client
     let issuance_m1_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
@@ -58,9 +58,9 @@ async fn boomerang_issuance_m2(data: web::Data<Arc<AppState>>, req_body: String)
     HttpResponse::Ok().body(issuance_m2_json)
 }
 
-async fn server_keypair(data: web::Data<Arc<AppState>>) -> impl Responder {
+async fn server_keypair(data: web::Data<AppState>) -> impl Responder {
     // Serialize server key pair
-    let mut server_key_bytes: Vec<u8> = Vec::new();
+    let mut server_key_bytes = Vec::new();
     data.skp
         .serialize_compressed(&mut server_key_bytes)
         .unwrap();
@@ -80,7 +80,7 @@ async fn main() -> std::io::Result<()> {
     println!("Initializing server...");
 
     // Generate server key pair
-    let app_state = Arc::new(AppState {
+    let app_state = web::Data::new(AppState {
         skp: ServerKeyPair::<Config>::generate(&mut OsRng),
         issuance_s: Mutex::new(None),
     });
@@ -90,7 +90,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             // share the app state between the routes
-            .app_data(web::Data::new(app_state.clone()))
+            .app_data(app_state.clone())
             // configure routes
             .route(
                 "/boomerang_issuance_m2",
