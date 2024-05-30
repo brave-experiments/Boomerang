@@ -62,11 +62,6 @@ impl<B: BoomerangConfig> UKeyPair<B> {
             x,
         }
     }
-
-    /// User public key
-    pub const fn public_key(&self) -> &sw::Affine<B> {
-        &self.public_key
-    }
 }
 
 /// Issuance Protocol
