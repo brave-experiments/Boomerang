@@ -73,21 +73,21 @@ impl ShuffleProof {
         transcript.append_message(b"dom-sep", b"ShuffleProof");
         transcript.append_u64(b"k", k as u64);
 
-        let mut prover = Prover::new(&pc_gens, transcript);
+        let mut prover = Prover::new(pc_gens, transcript);
 
         let (input_commitments, input_vars): (Vec<_>, Vec<_>) = input
-            .into_iter()
+            .iter()
             .map(|v| prover.commit(*v, Fr::rand(prng)))
             .unzip();
 
         let (output_commitments, output_vars): (Vec<_>, Vec<_>) = output
-            .into_iter()
+            .iter()
             .map(|v| prover.commit(*v, Fr::rand(prng)))
             .unzip();
 
         ShuffleProof::gadget(&mut prover, input_vars, output_vars)?;
 
-        let proof = prover.prove(prng, &bp_gens)?;
+        let proof = prover.prove(prng, bp_gens)?;
 
         Ok((ShuffleProof(proof), input_commitments, output_commitments))
     }
@@ -100,8 +100,8 @@ impl ShuffleProof {
         pc_gens: &'b PedersenGens<Affine>,
         bp_gens: &'b BulletproofGens<Affine>,
         transcript: &'a mut Transcript,
-        input_commitments: &Vec<Affine>,
-        output_commitments: &Vec<Affine>,
+        input_commitments: &[Affine],
+        output_commitments: &[Affine],
     ) -> Result<(), R1CSError> {
         // Apply a domain separator with the shuffle parameters to the transcript
         // XXX should this be part of the gadget?
@@ -123,7 +123,7 @@ impl ShuffleProof {
 
         ShuffleProof::gadget(&mut verifier, input_vars, output_vars)?;
 
-        verifier.verify(&self.0, &pc_gens, &bp_gens)?;
+        verifier.verify(&self.0, pc_gens, bp_gens)?;
         Ok(())
     }
 }
@@ -297,7 +297,7 @@ fn example_gadget_verify(
 
     // 4. Verify the proof
     verifier
-        .verify(&proof, &pc_gens, &bp_gens)
+        .verify(&proof, pc_gens, bp_gens)
         .map_err(|_| R1CSError::VerificationError)
 }
 
@@ -400,13 +400,13 @@ fn range_proof_gadget() {
     let mut rng = thread_rng();
     let m = 3; // number of values to test per `n`
 
-    for n in [2, 10, 32, 63].iter() {
+    for n in [2, 10, 32, 63] {
         let (min, max) = (0u64, ((1u128 << n) - 1) as u64);
         let values: Vec<u64> = (0..m).map(|_| rng.gen_range(min..max)).collect();
         for v in values {
-            assert!(range_proof_helper(v.into(), *n).is_ok());
+            assert!(range_proof_helper(v, n).is_ok());
         }
-        assert!(range_proof_helper((max + 1).into(), *n).is_err());
+        assert!(range_proof_helper(max + 1, n).is_err());
     }
 }
 
