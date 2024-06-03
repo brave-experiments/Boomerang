@@ -34,7 +34,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random points works.
@@ -63,7 +63,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -94,7 +94,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -127,7 +127,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -143,9 +143,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
+            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
         }
@@ -163,7 +163,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -179,13 +179,13 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
+            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4, "message");
             assert!(check == true);
         }
 
@@ -218,9 +218,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
+            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
@@ -230,7 +230,7 @@ macro_rules! __test_acl {
             let proof = ACLSP::prove(
                 &mut OsRng,
                 kp.tag_key,
-                m4.clone(),
+                m4,
                 vals,
                 gens.generators,
                 c1.r,
@@ -271,9 +271,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
+            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
@@ -284,8 +284,8 @@ macro_rules! __test_acl {
                 &mut OsRng,
                 kp.tag_key,
                 m4.clone(),
-                vals.clone(),
-                gens.generators.clone(),
+                vals,
+                gens.generators,
                 c1.r,
             );
 
@@ -294,7 +294,7 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
 
-            let check = ACLSPV::verify(proof, kp.tag_key, m4.clone());
+            let check = ACLSPV::verify(proof, kp.tag_key, m4);
             assert!(check == true);
         }
     };
