@@ -59,11 +59,11 @@ impl ShuffleProof {
     /// Attempt to construct a proof that `output` is a permutation of `input`.
     ///
     /// Returns a tuple `(proof, input_commitments || output_commitments)`.
-    pub fn prove<'a, 'b, R: CryptoRng + RngCore>(
+    pub fn prove<R: CryptoRng + RngCore>(
         prng: &mut R,
-        pc_gens: &'b PedersenGens<Affine>,
-        bp_gens: &'b BulletproofGens<Affine>,
-        transcript: &'a mut Transcript,
+        pc_gens: &PedersenGens<Affine>,
+        bp_gens: &BulletproofGens<Affine>,
+        transcript: &mut Transcript,
         input: &[Fr],
         output: &[Fr],
     ) -> Result<(ShuffleProof, Vec<Affine>, Vec<Affine>), R1CSError> {
@@ -95,11 +95,11 @@ impl ShuffleProof {
 
 impl ShuffleProof {
     /// Attempt to verify a `ShuffleProof`.
-    pub fn verify<'a, 'b>(
+    pub fn verify(
         &self,
-        pc_gens: &'b PedersenGens<Affine>,
-        bp_gens: &'b BulletproofGens<Affine>,
-        transcript: &'a mut Transcript,
+        pc_gens: &PedersenGens<Affine>,
+        bp_gens: &BulletproofGens<Affine>,
+        transcript: &mut Transcript,
         input_commitments: &[Affine],
         output_commitments: &[Affine],
     ) -> Result<(), R1CSError> {
