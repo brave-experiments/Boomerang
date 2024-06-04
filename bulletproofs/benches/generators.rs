@@ -7,7 +7,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 fn pc_gens(c: &mut Criterion) {
     c.bench_function("PedersenGens::new", |b| {
-        b.iter(|| PedersenGens::<Affine>::default())
+        b.iter(PedersenGens::<Affine>::default)
     });
 }
 
