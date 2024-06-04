@@ -1,8 +1,6 @@
-# Boomerang in CDLS (Cuddles): Committed Discrete Logarithms with Soundness
+# Boomerang
 
-<img width="171" alt="logo" src="images/logo.png">
-
-Run either:
+In order to build, run either:
 
 ```
   make build
