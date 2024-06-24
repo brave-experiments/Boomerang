@@ -477,7 +477,7 @@ impl<A: ACLConfig> SigProof<A> {
                 let _ = &transcript_v.challenge_bytes(b"challzk3", &mut buf3);
 
                 let ch: <A as CurveConfig>::ScalarField =
-                    <A as CurveConfig>::ScalarField::deserialize_compressed(&buf[..]).unwrap();
+                    <A as CurveConfig>::ScalarField::deserialize_compressed(&buf3[..]).unwrap();
 
                 let a1 = r + sig_m.opening.gamma * ch;
 
