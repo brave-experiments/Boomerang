@@ -441,8 +441,6 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     /// pi_3: the proof value of the tag
     pub pi_3: AddMulProof<B>,
     /// pi_4: the proof of membership -> TODO curvetrees
-    //pub pi_4: AddMulProof<B>,
-    /// pi_5: \pi sub???
 
     /// sig: the signature
     pub sig: SigSign<B>,
@@ -495,10 +493,6 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         s_m: SpendVerifyS<B>,
         s_key_pair: ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
-        // tag = (sk_u * tk0.r1) + r2
-        let t_tag = state.c_key_pair.x * state.token_state[0].id;
-        let tag = t_tag + s_m.m1.r2;
-
         // Generate r1, ID_0'
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -533,13 +527,17 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             state.token_state[0].gens.clone(),
         );
 
+        // tag = (sk_u * tk0.r1) + r2
+        let t_tag = state.c_key_pair.x * state.token_state[0].id;
+        let tag = t_tag + s_m.m1.r2;
+
         let a: PedersenComm<B> = PedersenComm::new(state.c_key_pair.x, rng);
         let b: PedersenComm<B> = PedersenComm::new(state.token_state[0].id, rng);
         let c: PedersenComm<B> = PedersenComm::new(s_m.m1.r2, rng);
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
 
-        // pi tag?
+        // pi tag
         let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
         let proof_3 = AddMulProof::create(
             &mut transcript_p3,
@@ -575,11 +573,10 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let m2 = SpendVerifyM2 {
             tag,                         // tag
             id: state.token_state[0].id, // tk0.ID
-            pi_1: proof_1,               // \pi_open(tk0) ??
-            pi_2: proof_2,               // \pi_open(tk0') ??
-            pi_3: proof_3,               // \pi_open(tag) ???
+            pi_1: proof_1,               // \pi_open(tk0)
+            pi_2: proof_2,               // \pi_open(tk0')
+            pi_3: proof_3,               // \pi_open(tag)
             // pi_4: membership proof from curvetrees
-            // pi5
             sig: state.sig_state[0].clone(), // \sigma_0
             s_proof: sig_proof,              // P
             tag_commits,                     // commits for the tag proof

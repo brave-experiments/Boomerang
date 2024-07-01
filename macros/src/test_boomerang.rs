@@ -486,14 +486,20 @@ macro_rules! __test_boomerang {
             assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 
             // create policy vector
+            // This policy vector defines how each incentive is rewarded.
+            // For this proof of concept, we just assign a static value for 
+            // each incenitve.
             let policy_vector: Vec<u64> = (0..64)
-                .map(|_| 3) // TODO replace with a random value
+                .map(|_| 5)
                 .collect();
             let policy_vector_scalar: Vec<SF> = policy_vector
                 .clone()
                 .into_iter()
                 .map(|u64_value| SF::from(u64_value))
                 .collect();
+            // This state vector defines the interactions with the incentive 
+            // system. For the proof of concept we simple assign a static value.
+            let state_vector = vec![5u64; 64];
 
             // create reward proof - server side
             let v = SF::one();
@@ -503,6 +509,7 @@ macro_rules! __test_boomerang {
                 spendverify_m1.clone(),
                 skp.clone(),
                 v,
+                state_vector,
                 policy_vector.clone(),
             );
             assert!(spendverify_m3.m3.clone().unwrap().comm.comm.is_on_curve());

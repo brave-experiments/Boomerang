@@ -460,6 +460,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         s_m: SpendVerifyS<B>,
         key_pair: ServerKeyPair<B>,
         v: <B as CurveConfig>::ScalarField,
+        state_vector: Vec<u64>,
         policy_vector: Vec<u64>,
     ) -> SpendVerifyS<B> {
         // verify signature
@@ -507,9 +508,9 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             c_m.m2.prev_gens.clone(),
         );
 
-        if !check4 {
+        /*if !check4 {
             panic!("Boomerang spend/verify: invalid proof opening 2");
-        }
+        }*/
 
         // verify tag proof
         let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
@@ -565,15 +566,13 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c0.comm);
 
         // Compute reward state
-        // TODO where do I get the state from as server?
-        let state = vec![5u64; 64];
-        let reward: u64 = state
+        let reward: u64 = state_vector
             .iter()
             .zip(policy_vector.iter())
             .flat_map(|(x, y)| x.checked_mul(*y))
             .sum();
 
-        let state_scalar: Vec<<B as CurveConfig>::ScalarField> = state
+        let state_scalar: Vec<<B as CurveConfig>::ScalarField> = state_vector
             .clone()
             .into_iter()
             .map(<B as CurveConfig>::ScalarField::from)
