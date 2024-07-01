@@ -365,9 +365,7 @@ pub struct SpendVerifyM1<B: BoomerangConfig> {
 
 impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
     fn clone(&self) -> Self {
-        Self {
-            r2: self.r2,
-        }
+        Self { r2: self.r2 }
     }
 }
 
@@ -410,9 +408,7 @@ pub struct SpendVerifyM5<B: BoomerangConfig> {
 
 impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
     fn clone(&self) -> Self {
-        Self {
-            s: self.s,
-        }
+        Self { s: self.s }
     }
 }
 
@@ -434,7 +430,6 @@ impl<B: BoomerangConfig> Clone for SpendVerifyS<B> {
             m5: self.m5.clone(),
         }
     }
-
 }
 
 impl<B: BoomerangConfig> SpendVerifyS<B> {
