@@ -7,7 +7,7 @@ members = [
   "./boomerang",
   "./macros",
   "./bulletproofs",
-  "./rewards-proof"
+  "./rewards-proof",
   "./end2end-example/client",
   "./end2end-example/server",
 ]
