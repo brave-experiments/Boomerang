@@ -165,7 +165,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
 /// Collection protocol
 /// CollectionM1. This struct acts as a container for the first message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM1<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     pub r2: <B as CurveConfig>::ScalarField,
@@ -173,6 +173,7 @@ pub struct CollectionM1<B: BoomerangConfig> {
 
 /// CollectionM3. This struct acts as a container for the fourth message of
 /// the collection protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -200,14 +201,14 @@ impl<B: BoomerangConfig> Clone for CollectionM3<B> {
 
 /// CollectionM5. This struct acts as a container for the fourth message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM5<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
 /// CollectionS. This struct represents the collection protocol for the server.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: CollectionM1<B>,

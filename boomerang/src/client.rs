@@ -208,7 +208,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
 /// Collection Protocol
 /// CollectionM2. This struct acts as a container for the second message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -240,14 +240,14 @@ pub struct CollectionM2<B: BoomerangConfig> {
 
 /// CollectionM4. This struct acts as a container for the fourth message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM4<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// CollectionC. This struct represents the collection protocol for the client.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionC<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: CollectionM2<B>,

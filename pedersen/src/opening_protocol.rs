@@ -12,7 +12,7 @@ use ark_ec::{
 };
 use merlin::Transcript;
 
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 
@@ -37,7 +37,7 @@ pub struct OpeningProof<P: PedersenConfig> {
 /// Note that this is aimed to work with multi-commitments.
 /// Essentially, a new proof object can be created by calling `create`, whereas
 /// an existing proof can be verified by calling `verify`.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct OpeningProofMulti<P: PedersenConfig> {
     /// alpha. The random value that is used as a challenge.
     pub alpha: sw::Affine<P>,

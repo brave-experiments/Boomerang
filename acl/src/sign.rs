@@ -150,6 +150,7 @@ impl<A: ACLConfig> SigChall<A> {
 }
 
 /// Signature. This struct acts as a container for the signature.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Signature<A: ACLConfig> {
     /// e: the first message value.
     pub zeta: sw::Affine<A>,
@@ -185,6 +186,7 @@ impl<A: ACLConfig> Clone for Signature<A> {
 }
 
 /// Opening. This struct acts as a container for the opening.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Opening<A: ACLConfig> {
     /// gamma: the first message value.
     pub gamma: <A as CurveConfig>::ScalarField,
@@ -202,6 +204,7 @@ impl<A: ACLConfig> Clone for Opening<A> {
 }
 
 /// SigSign. This struct acts as a container for the fourth message (the signature) of the Signature.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigSign<A: ACLConfig> {
     /// sigma: the signature itself.
     pub sigma: Signature<A>,
@@ -324,7 +327,7 @@ pub struct SubVals<A: ACLConfig> {
 }
 
 /// DLogProof. This struct acts as a container for the opening proof.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigProofD<A: ACLConfig> {
     /// t2: the second proof.
     pub t1: sw::Affine<A>,
@@ -335,7 +338,7 @@ pub struct SigProofD<A: ACLConfig> {
 }
 
 /// OpeningProof. This struct acts as a container for the opening proof.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigProofO<A: ACLConfig> {
     /// t2: the second proof.
     pub t3: sw::Affine<A>,
@@ -346,7 +349,7 @@ pub struct SigProofO<A: ACLConfig> {
 }
 
 /// SigProof. This struct acts as a container for the proof of signature.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigProof<A: ACLConfig> {
     /// b_gamma: the first message value.
     pub b_gamma: sw::Affine<A>,
