@@ -360,6 +360,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
 /// Spending/Verification protocol
 /// SpendVerifyM1. This struct acts as a container for the first message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM1<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     pub r2: <B as CurveConfig>::ScalarField,
@@ -373,6 +374,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
 
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -403,6 +405,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
 
 /// SpendVerifyM5. This struct acts as a container for the fifth message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM5<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
@@ -415,6 +418,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
 }
 
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: SpendVerifyM1<B>,
