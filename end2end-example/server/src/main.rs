@@ -47,7 +47,11 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
     let parameters: Vec<Vec<u64>> = serde_json::from_str(&req_body).unwrap();
 
     // Deserialize spending_m2 from client
-    let spending_m2_bytes: Vec<u8> = parameters[2].clone().into_iter().map(|x: u64| x as u8).collect();
+    let spending_m2_bytes: Vec<u8> = parameters[2]
+        .clone()
+        .into_iter()
+        .map(|x: u64| x as u8)
+        .collect();
     let spending_m2 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m2_bytes.as_slice()).unwrap();
 
