@@ -3,8 +3,8 @@ use ark_ec::models::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::One;
 use boomerang::{
-    client::{CollectionC, IssuanceC},
-    server::{CollectionS, IssuanceS, ServerKeyPair},
+    client::{CollectionC, IssuanceC, SpendVerifyC},
+    server::{CollectionS, IssuanceS, ServerKeyPair, SpendVerifyS},
 };
 use rand::rngs::OsRng;
 use serde_json::json;
@@ -12,6 +12,90 @@ use std::sync::Mutex;
 use t256::Config;
 
 type SF = <Config as CurveConfig>::ScalarField;
+
+async fn boomerang_spending_m5(data: web::Data<AppState>, req_body: String) -> impl Responder {
+    println!("Boomerang Spending M5...");
+    // Deserialize spending_m4 from client
+    let spending_m4_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
+    let spending_m4 =
+        SpendVerifyC::<Config>::deserialize_compressed(spending_m4_bytes.as_slice()).unwrap();
+
+    let mut spending_s = data.spending_s.lock().unwrap();
+
+    let spending_m5 = SpendVerifyS::<Config>::generate_spendverify_m5(
+        spending_m4,
+        spending_s.clone().unwrap(),
+        data.skp.clone(),
+    );
+    *spending_s = Some(spending_m5.clone());
+
+    // Serialize spending_m3
+    let mut spending_m5_bytes = Vec::new();
+    spending_m5
+        .serialize_compressed(&mut spending_m5_bytes)
+        .unwrap();
+    let spending_m5_json = json!(spending_m5_bytes).to_string();
+
+    // send response
+    println!("Boomerang Spending M5 - Send response...");
+    HttpResponse::Ok().body(spending_m5_json)
+}
+
+async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> impl Responder {
+    println!("Boomerang Spending M3...");
+
+    let parameters: Vec<Vec<u64>> = serde_json::from_str(&req_body).unwrap();
+
+    // Deserialize spending_m2 from client
+    let spending_m2_bytes: Vec<u8> = parameters[2].clone().into_iter().map(|x: u64| x as u8).collect();
+    let spending_m2 =
+        SpendVerifyC::<Config>::deserialize_compressed(spending_m2_bytes.as_slice()).unwrap();
+
+    let v: SF = SF::one();
+    let state_vector = &parameters[1];
+    let policy_vector = &parameters[0];
+    let mut spending_s = data.spending_s.lock().unwrap();
+
+    let spending_m3 = SpendVerifyS::<Config>::generate_spendverify_m3(
+        &mut OsRng,
+        spending_m2,
+        spending_s.clone().unwrap(),
+        data.skp.clone(),
+        v,
+        state_vector.to_vec(),
+        policy_vector.to_vec(),
+    );
+    *spending_s = Some(spending_m3.clone());
+
+    // Serialize spending_m3
+    let mut spending_m3_bytes = Vec::new();
+    spending_m3
+        .serialize_compressed(&mut spending_m3_bytes)
+        .unwrap();
+    let spending_m3_json = json!(spending_m3_bytes).to_string();
+
+    // send response
+    println!("Boomerang Spending M3 - Send response...");
+    HttpResponse::Ok().body(spending_m3_json)
+}
+
+async fn boomerang_spending_m1(data: web::Data<AppState>) -> impl Responder {
+    println!("Boomerang Spending M1...");
+    let spending_m1 = SpendVerifyS::<Config>::generate_spendverify_m1(&mut OsRng);
+
+    let mut spending_s = data.spending_s.lock().unwrap();
+    *spending_s = Some(spending_m1.clone());
+
+    // Serialize server key pair
+    let mut spending_m1_bytes = Vec::new();
+    spending_m1
+        .serialize_compressed(&mut spending_m1_bytes)
+        .unwrap();
+    let spending_m1_json = json!(spending_m1_bytes).to_string();
+
+    println!("Boomerang Spending M1 - Send response...");
+    HttpResponse::Ok().body(spending_m1_json)
+}
 
 async fn boomerang_collection_m5(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Collection M5...");
@@ -71,6 +155,7 @@ async fn boomerang_collection_m3(data: web::Data<AppState>, req_body: String) ->
 }
 
 async fn boomerang_collection_m1(data: web::Data<AppState>) -> impl Responder {
+    println!("Boomerang Collection M1...");
     let collection_m1 = CollectionS::<Config>::generate_collection_m1(&mut OsRng);
 
     let mut collection_s = data.collection_s.lock().unwrap();
@@ -83,6 +168,7 @@ async fn boomerang_collection_m1(data: web::Data<AppState>) -> impl Responder {
         .unwrap();
     let collection_m1_json = json!(collection_m1_bytes).to_string();
 
+    println!("Boomerang Collection M1 - Send response...");
     HttpResponse::Ok().body(collection_m1_json)
 }
 
@@ -137,6 +223,7 @@ async fn boomerang_issuance_m2(data: web::Data<AppState>, req_body: String) -> i
 }
 
 async fn server_keypair(data: web::Data<AppState>) -> impl Responder {
+    println!("Boomerang Get Server KeyPair...");
     // Serialize server key pair
     let mut server_key_bytes = Vec::new();
     data.skp
@@ -144,6 +231,7 @@ async fn server_keypair(data: web::Data<AppState>) -> impl Responder {
         .unwrap();
     let server_key_json = json!(server_key_bytes).to_string();
 
+    println!("Boomerang Get Server KeyPair - Send response...");
     HttpResponse::Ok().body(server_key_json)
 }
 
@@ -152,6 +240,7 @@ struct AppState {
     skp: ServerKeyPair<Config>,
     issuance_s: Mutex<Option<IssuanceS<Config>>>,
     collection_s: Mutex<Option<CollectionS<Config>>>,
+    spending_s: Mutex<Option<SpendVerifyS<Config>>>,
 }
 
 #[actix_web::main]
@@ -163,6 +252,7 @@ async fn main() -> std::io::Result<()> {
         skp: ServerKeyPair::<Config>::generate(&mut OsRng),
         issuance_s: Mutex::new(None),
         collection_s: Mutex::new(None),
+        spending_s: Mutex::new(None),
     });
 
     println!("Start HTTP server. Wait for requests...");
@@ -192,6 +282,18 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/boomerang_collection_m5",
                 web::post().to(boomerang_collection_m5),
+            )
+            .route(
+                "/boomerang_spending_m1",
+                web::get().to(boomerang_spending_m1),
+            )
+            .route(
+                "/boomerang_spending_m3",
+                web::post().to(boomerang_spending_m3),
+            )
+            .route(
+                "/boomerang_spending_m5",
+                web::post().to(boomerang_spending_m5),
             )
     })
     .bind(("127.0.0.1", 8080))?

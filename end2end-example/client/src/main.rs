@@ -1,12 +1,15 @@
 use acl::verify::SigVerify;
+use ark_ec::models::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use boomerang::{
     client::{CollectionC, IssuanceC, SpendVerifyC, UKeyPair},
-    server::{CollectionS, IssuanceS, ServerKeyPair},
+    server::{CollectionS, IssuanceS, ServerKeyPair, SpendVerifyS},
 };
 use rand::rngs::OsRng;
 use serde_json::json;
 use t256::Config; // use arksecp256r1
+
+type SF = <Config as CurveConfig>::ScalarField;
 
 async fn issuance_send_message_to_server_and_await_response(
     issuance_c: IssuanceC<Config>,
@@ -20,7 +23,6 @@ async fn issuance_send_message_to_server_and_await_response(
     let issuance_c_json = json!(issuance_c_bytes).to_string();
 
     // send issuance_m1 as json string to server
-    println!("Send issuance_m1 to server");
     let client = reqwest::Client::new();
     let response = client
         .post(endpoint)
@@ -33,7 +35,6 @@ async fn issuance_send_message_to_server_and_await_response(
     //println!("Response body:\n{}", response_body.unwrap());
 
     // deserialize issuance_m2 response from server
-    println!("deserialize response");
     let issuance_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
     IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap()
 }
@@ -50,7 +51,6 @@ async fn collection_send_message_to_server_and_await_response(
     let collection_c_json = json!(collection_c_bytes).to_string();
 
     // send collection_m* as json string to server
-    println!("Send collection_m* to server");
     let client = reqwest::Client::new();
     let response = client
         .post(endpoint)
@@ -63,9 +63,46 @@ async fn collection_send_message_to_server_and_await_response(
     //println!("Response body:\n{}", response_body.unwrap());
 
     // deserialize collection_m2 response from server
-    println!("deserialize response");
     let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
     CollectionS::<Config>::deserialize_compressed(&*collection_s_bytes).unwrap()
+}
+
+async fn spending_send_message_to_server_and_await_response(
+    spending_c: SpendVerifyC<Config>,
+    endpoint: String,
+    additional_parameters: Option<Vec<Vec<u64>>>,
+) -> SpendVerifyS<Config> {
+    // serialize spending_m* as json string
+    let mut spending_c_bytes = Vec::new();
+    spending_c
+        .serialize_compressed(&mut spending_c_bytes)
+        .unwrap();
+
+    // if there are additional parameters, then add it to the body
+    let body: String;
+    if let Some(mut params) = additional_parameters {
+        let spending_c_u64 = spending_c_bytes.into_iter().map(u64::from).collect();
+        params.push(spending_c_u64);
+        body = serde_json::to_string(&params).unwrap();
+    } else {
+        body = json!(spending_c_bytes).to_string();
+    }
+
+    // send spending_m* as json string to server
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+    //println!("Response body:\n{}", response_body.unwrap());
+
+    // deserialize spending_m* response from server
+    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    SpendVerifyS::<Config>::deserialize_compressed(&*spending_s_bytes).unwrap()
 }
 
 async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
@@ -96,6 +133,20 @@ async fn get_collection_m1() -> CollectionS<Config> {
     CollectionS::<Config>::deserialize_compressed(&*collection_m1_bytes).unwrap()
 }
 
+async fn get_spending_m1() -> SpendVerifyS<Config> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("http://localhost:8080/boomerang_spending_m1")
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+
+    // deserialize message m1
+    let spending_m1_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    SpendVerifyS::<Config>::deserialize_compressed(&*spending_m1_bytes).unwrap()
+}
+
 #[tokio::main]
 async fn main() {
     // Generate user keys
@@ -104,28 +155,31 @@ async fn main() {
     // Get server key from server
     let skp = get_server_keypair_from_server().await;
 
+    println!("Client: Start issuing protocol...");
     // start issuance protocol
     let issuance_state = {
         // issuance m1
+        println!("Client: Generate M1");
         let issuance_m1 = IssuanceC::<Config>::generate_issuance_m1(ckp.clone(), &mut OsRng);
 
         // send to server get m2
+        println!("Client: Send M1 to server and retrieve M2");
         let issuance_m2 = issuance_send_message_to_server_and_await_response(
             issuance_m1.clone(),
             "http://localhost:8080/boomerang_issuance_m2".to_string(),
         )
         .await;
         // check some properties
-        println!("check some properties");
         assert!(issuance_m2.m2.verifying_key.is_on_curve());
         assert!(issuance_m2.m2.tag_key.is_on_curve());
-        println!("fin");
 
         // issuance m3
+        println!("Client: Generate M3");
         let issuance_m3 =
             IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2, &mut OsRng);
 
         // send to server get m4
+        println!("Client: Send M3 to server and retrieve M4");
         let issuance_m4 = issuance_send_message_to_server_and_await_response(
             issuance_m3.clone(),
             "http://localhost:8080/boomerang_issuance_m4".to_string(),
@@ -138,6 +192,7 @@ async fn main() {
 
         let sig = &issuance_state.sig_state[0];
 
+        println!("Client: Verify Signature");
         let check = SigVerify::<Config>::verify(
             skp.s_key_pair.verifying_key,
             skp.s_key_pair.tag_key,
@@ -145,16 +200,19 @@ async fn main() {
             "message",
         );
         assert!(check);
-        println!("Signature check passed!");
+        println!("Client: Issuance Signature check passed!");
         issuance_state
     };
 
     // start collection protocol
+    println!("Client: Start collection protocol...");
     let collection_state = {
         // collection m1 - request from server
+        println!("Client: Request M1 from server");
         let collection_m1 = get_collection_m1().await;
 
         // collection m2
+        println!("Client: Generate M2");
         let collection_m2 = CollectionC::<Config>::generate_collection_m2(
             &mut OsRng,
             issuance_state,
@@ -164,6 +222,7 @@ async fn main() {
         assert!(collection_m2.m2.comm.comm.is_on_curve());
 
         // send to server get m3
+        println!("Client: Send M2 to server and retrieve M3");
         let collection_m3 = collection_send_message_to_server_and_await_response(
             collection_m2.clone(),
             "http://localhost:8080/boomerang_collection_m3".to_string(),
@@ -171,6 +230,7 @@ async fn main() {
         .await;
 
         // m4
+        println!("Client: Generate M4");
         let collection_m4 = CollectionC::<Config>::generate_collection_m4(
             &mut OsRng,
             collection_m2.clone(),
@@ -178,6 +238,7 @@ async fn main() {
         );
 
         // send to server get m5
+        println!("Client: Send M4 to server and retrieve M5");
         let collection_m5 = collection_send_message_to_server_and_await_response(
             collection_m4.clone(),
             "http://localhost:8080/boomerang_collection_m5".to_string(),
@@ -197,6 +258,7 @@ async fn main() {
         // signature
         let sig_n = &collection_state.sig_state[0];
 
+        println!("Client: Verify Signature");
         let check = SigVerify::<Config>::verify(
             skp.s_key_pair.verifying_key,
             skp.s_key_pair.tag_key,
@@ -204,8 +266,90 @@ async fn main() {
             "message",
         );
         assert!(check);
-        println!("Signature check passed!");
+        println!("Client: Collection Signature check passed!");
 
         collection_state
     };
+
+    println!("Client: Start spending protocol...");
+    let spending_state = {
+        // spending m1 - request from server
+        println!("Client: Request M1 from server");
+        let spendverify_m1 = get_spending_m1().await;
+
+        // spending m2
+        println!("Client: Generate M2");
+        let spendverify_m2 = SpendVerifyC::<Config>::generate_spendverify_m2(
+            &mut OsRng,
+            collection_state,
+            spendverify_m1,
+            skp.clone(),
+        );
+        assert!(spendverify_m2.m2.comm.comm.is_on_curve());
+
+        // create policy vector
+        // This policy vector defines how each incentive is rewarded.
+        // For this proof of concept, we just assign a static value for
+        // each incenitve.
+        let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
+        let policy_vector_scalar: Vec<SF> = policy_vector
+            .clone()
+            .into_iter()
+            .map(|u64_value| SF::from(u64_value))
+            .collect();
+        // This state vector defines the interactions with the incentive
+        // system. For the proof of concept we simple assign a static value.
+        let state_vector = vec![5u64; 64];
+
+        // send to server get m3
+        println!("Client: Send M2 to server and retrieve M3");
+        let spendverify_m3 = spending_send_message_to_server_and_await_response(
+            spendverify_m2.clone(),
+            "http://localhost:8080/boomerang_spending_m3".to_string(),
+            Some(vec![policy_vector.clone(), state_vector]),
+        )
+        .await;
+
+        // m4
+        println!("Client: Generate M4");
+        let spendverify_m4 = SpendVerifyC::<Config>::generate_spendverify_m4(
+            &mut OsRng,
+            spendverify_m2.clone(),
+            spendverify_m3.clone(),
+            policy_vector,
+        );
+
+        // send to server get m5
+        println!("Client: Send M4 to server and retrieve M5");
+        let spendverify_m5 = spending_send_message_to_server_and_await_response(
+            spendverify_m4.clone(),
+            "http://localhost:8080/boomerang_spending_m5".to_string(),
+            None,
+        )
+        .await;
+
+        // populate state
+        let spending_state = SpendVerifyC::<Config>::populate_state(
+            spendverify_m4,
+            spendverify_m5,
+            skp.clone(),
+            ckp.clone(),
+        );
+        assert!(spending_state.sig_state[0].sigma.zeta.is_on_curve());
+        assert!(spending_state.sig_state[0].sigma.zeta1.is_on_curve());
+
+        spending_state
+    };
+
+    let sig_n = &spending_state.sig_state[0];
+
+    println!("Client: Verify Signature");
+    let check = SigVerify::<Config>::verify(
+        skp.s_key_pair.verifying_key,
+        skp.s_key_pair.tag_key,
+        sig_n.clone(),
+        "message",
+    );
+    assert!(check);
+    println!("Client: Spending Signature check passed!");
 }
