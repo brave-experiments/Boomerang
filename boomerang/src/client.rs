@@ -20,6 +20,7 @@ use pedersen::{
     pedersen_config::PedersenComm,
 };
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand, Zero};
 
 /// The token representation.
@@ -61,17 +62,12 @@ impl<B: BoomerangConfig> UKeyPair<B> {
             x,
         }
     }
-
-    /// User public key
-    pub const fn public_key(&self) -> &sw::Affine<B> {
-        &self.public_key
-    }
 }
 
 /// Issuance Protocol
 /// IssuanceM1. This struct acts as a container for the first message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM1<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -91,14 +87,14 @@ pub struct IssuanceM1<B: BoomerangConfig> {
 
 /// IssuanceM3. This struct acts as a container for the thrid message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM3<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// IssuanceC. This struct represents the issuance protocol for the client.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceC<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: IssuanceM1<B>,
@@ -212,7 +208,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
 /// Collection Protocol
 /// CollectionM2. This struct acts as a container for the second message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -244,14 +240,14 @@ pub struct CollectionM2<B: BoomerangConfig> {
 
 /// CollectionM4. This struct acts as a container for the fourth message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM4<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// CollectionC. This struct represents the collection protocol for the client.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionC<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: CollectionM2<B>,
@@ -427,7 +423,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
 /// Spending/Verification Protocol
 /// SpendVerifyM2. This struct acts as a container for the second message of
 /// the spendverify protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM2<B: BoomerangConfig> {
     /// tag: the tag value.
     pub tag: <B as CurveConfig>::ScalarField,
@@ -463,14 +459,14 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
 
 /// SpendVerifyM4. This struct acts as a container for the fourth message of
 /// the spendverify protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM4<B: BoomerangConfig> {
     /// e: the signature challenge value.
     pub e: SigChall<B>,
 }
 
 /// SpendVerifyC. This struct represents the spendverify protocol for the client.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyC<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: SpendVerifyM2<B>,

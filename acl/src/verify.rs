@@ -17,6 +17,7 @@ use merlin::Transcript;
 use std::marker::PhantomData;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigComm<A: ACLConfig> {
     /// comms: the multi-commitment to chosen values.
     pub comms: sw::Affine<A>,
@@ -79,6 +80,7 @@ impl<A: ACLConfig> SigComm<A> {
 }
 
 /// SigResp. This struct acts as a container for the third message (the response) of the Signature.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigResp<A: ACLConfig> {
     /// c: the first message value.
     pub c: <A as CurveConfig>::ScalarField,

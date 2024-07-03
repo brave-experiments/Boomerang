@@ -4,6 +4,7 @@ use ark_ec::{
     AffineRepr, CurveGroup,
 };
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use digest::{ExtendableOutputDirty, Update, XofReader};
 use rand::{CryptoRng, RngCore};
@@ -27,6 +28,7 @@ pub trait ACLConfig: SWCurveConfig {
 
 /// ACL keypair.
 ///
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeyPair<A: ACLConfig> {
     /// Public key
     pub verifying_key: sw::Affine<A>,

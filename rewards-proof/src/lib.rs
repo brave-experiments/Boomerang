@@ -1,8 +1,10 @@
 use ark_bulletproofs::{BulletproofGens, PedersenGens};
 use ark_ec::{models::short_weierstrass::SWCurveConfig, short_weierstrass::Affine};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 pub mod api;
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct RewardsGenerators<C: SWCurveConfig> {
     /// PedersenGenerators
     pub pedersen_gens: Vec<PedersenGens<Affine<C>>>,
@@ -32,6 +34,7 @@ impl<C: SWCurveConfig> RewardsGenerators<C> {
     }
 }
 
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct RewardsProof<C: SWCurveConfig> {
     /// the range proof
     pub range_proof: Vec<u8>,

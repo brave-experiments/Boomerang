@@ -17,13 +17,14 @@ use acl::{
 use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
 
 use rewards_proof::{RewardsGenerators, RewardsProof};
 
 /// Server keypair.
 ///
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ServerKeyPair<B: BoomerangConfig> {
     /// Public key
     pub s_key_pair: KeyPair<B>,
@@ -65,7 +66,7 @@ impl<B: BoomerangConfig> ServerKeyPair<B> {
 /// Issuance protocol
 /// IssuanceM2. This struct acts as a container for the second message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM2<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -81,14 +82,14 @@ pub struct IssuanceM2<B: BoomerangConfig> {
 
 /// IssuanceM4. This struct acts as a container for the fourth message of
 /// the issuance protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM4<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
 /// IssuanceS. This struct represents the issuance protocol for the server.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceS<B: BoomerangConfig> {
     /// m2: the second message value.
     pub m2: IssuanceM2<B>,
@@ -164,7 +165,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
 /// Collection protocol
 /// CollectionM1. This struct acts as a container for the first message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM1<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     pub r2: <B as CurveConfig>::ScalarField,
@@ -172,6 +173,7 @@ pub struct CollectionM1<B: BoomerangConfig> {
 
 /// CollectionM3. This struct acts as a container for the fourth message of
 /// the collection protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -199,14 +201,14 @@ impl<B: BoomerangConfig> Clone for CollectionM3<B> {
 
 /// CollectionM5. This struct acts as a container for the fourth message of
 /// the collection protocol.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionM5<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
 }
 
 /// CollectionS. This struct represents the collection protocol for the server.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CollectionS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: CollectionM1<B>,
@@ -358,6 +360,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
 /// Spending/Verification protocol
 /// SpendVerifyM1. This struct acts as a container for the first message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM1<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     pub r2: <B as CurveConfig>::ScalarField,
@@ -371,6 +374,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
 
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -401,6 +405,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
 
 /// SpendVerifyM5. This struct acts as a container for the fifth message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM5<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,
@@ -413,6 +418,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
 }
 
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: SpendVerifyM1<B>,
