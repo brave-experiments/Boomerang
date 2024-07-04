@@ -1,4 +1,3 @@
-
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 use acl::verify::SigVerify;
@@ -143,7 +142,6 @@ async fn spending_protocol(
         skp.clone(),
     );
 
-
     let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
     let state_vector = vec![5u64; 64];
 
@@ -165,18 +163,18 @@ async fn spending_protocol(
 
     // send to server get m5
     let spendverify_m5 = spending_send_message_to_server_and_await_response(
-           spendverify_m4.clone(),
-           "http://localhost:8080/boomerang_spending_m5".to_string(),
-           None,
+        spendverify_m4.clone(),
+        "http://localhost:8080/boomerang_spending_m5".to_string(),
+        None,
     )
     .await;
 
     // populate state
     let spending_state = SpendVerifyC::<Config>::populate_state(
-           spendverify_m4,
-           spendverify_m5,
-           skp.clone(),
-           ckp.clone(),
+        spendverify_m4,
+        spendverify_m5,
+        skp.clone(),
+        ckp.clone(),
     );
 
     let sig_n = &spending_state.sig_state[0];
@@ -341,11 +339,9 @@ fn benchmark_boomerang_mult_users(c: &mut Criterion) {
     c_custom.bench_function("boomerang-mult-user", |b| {
         b.to_async(&rt).iter(|| async {
             // Simulate multiple users by spawning multiple tasks
-            let tasks: Vec<_> = (0..number_of_users).map(|_| {
-                task::spawn(async move {
-                    boomerang_protocol().await
-                })
-            }).collect();
+            let tasks: Vec<_> = (0..number_of_users)
+                .map(|_| task::spawn(async move { boomerang_protocol().await }))
+                .collect();
 
             // Await all tasks
             for task in tasks {

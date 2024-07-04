@@ -386,7 +386,12 @@ macro_rules! bench_tboomerang_spending_m2_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m2 time"), |b| {
                 b.iter(|| {
-                    SVBCM::generate_spendverify_m2(&mut OsRng, c_state.clone(), s_m1.clone(), skp.clone());
+                    SVBCM::generate_spendverify_m2(
+                        &mut OsRng,
+                        c_state.clone(),
+                        s_m1.clone(),
+                        skp.clone(),
+                    );
                 });
             });
         }
@@ -426,7 +431,8 @@ macro_rules! bench_tboomerang_spending_m3_time {
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
-            let s_m2 = SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+            let s_m2 =
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
 
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
@@ -434,7 +440,15 @@ macro_rules! bench_tboomerang_spending_m3_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m3 time"), |b| {
                 b.iter(|| {
-                    SVBSM::generate_spendverify_m3(&mut OsRng, s_m2.clone(), s_m1.clone(), skp.clone(), v, state_vector.clone(), policy_vector.clone());
+                    SVBSM::generate_spendverify_m3(
+                        &mut OsRng,
+                        s_m2.clone(),
+                        s_m1.clone(),
+                        skp.clone(),
+                        v,
+                        state_vector.clone(),
+                        policy_vector.clone(),
+                    );
                 });
             });
         }
@@ -474,15 +488,29 @@ macro_rules! bench_tboomerang_spending_m4_time {
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
-            let s_m2 = SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+            let s_m2 =
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
-            let s_m3 = SVBSM::generate_spendverify_m3(&mut OsRng, s_m2.clone(), s_m1.clone(), skp.clone(), v, state_vector, policy_vector.clone());
+            let s_m3 = SVBSM::generate_spendverify_m3(
+                &mut OsRng,
+                s_m2.clone(),
+                s_m1.clone(),
+                skp.clone(),
+                v,
+                state_vector,
+                policy_vector.clone(),
+            );
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m4 time"), |b| {
                 b.iter(|| {
-                    SVBCM::generate_spendverify_m4(&mut OsRng, s_m2.clone(), s_m3.clone(), policy_vector.clone());
+                    SVBCM::generate_spendverify_m4(
+                        &mut OsRng,
+                        s_m2.clone(),
+                        s_m3.clone(),
+                        policy_vector.clone(),
+                    );
                 });
             });
         }
@@ -522,11 +550,25 @@ macro_rules! bench_tboomerang_spending_m5_time {
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
-            let s_m2 = SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+            let s_m2 =
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
-            let s_m3 = SVBSM::generate_spendverify_m3(&mut OsRng, s_m2.clone(), s_m1.clone(), skp.clone(), v, state_vector, policy_vector.clone());
-            let s_m4 = SVBCM::generate_spendverify_m4(&mut OsRng, s_m2.clone(), s_m3.clone(), policy_vector);
+            let s_m3 = SVBSM::generate_spendverify_m3(
+                &mut OsRng,
+                s_m2.clone(),
+                s_m1.clone(),
+                skp.clone(),
+                v,
+                state_vector,
+                policy_vector.clone(),
+            );
+            let s_m4 = SVBCM::generate_spendverify_m4(
+                &mut OsRng,
+                s_m2.clone(),
+                s_m3.clone(),
+                policy_vector,
+            );
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m5 time"), |b| {
@@ -571,11 +613,25 @@ macro_rules! bench_tboomerang_spending_m6_time {
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
-            let s_m2 = SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+            let s_m2 =
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
-            let s_m3 = SVBSM::generate_spendverify_m3(&mut OsRng, s_m2.clone(), s_m1.clone(), skp.clone(), v, state_vector, policy_vector.clone());
-            let s_m4 = SVBCM::generate_spendverify_m4(&mut OsRng, s_m2.clone(), s_m3.clone(), policy_vector);
+            let s_m3 = SVBSM::generate_spendverify_m3(
+                &mut OsRng,
+                s_m2.clone(),
+                s_m1.clone(),
+                skp.clone(),
+                v,
+                state_vector,
+                policy_vector.clone(),
+            );
+            let s_m4 = SVBCM::generate_spendverify_m4(
+                &mut OsRng,
+                s_m2.clone(),
+                s_m3.clone(),
+                policy_vector,
+            );
             let s_m5 = SVBSM::generate_spendverify_m5(s_m4.clone(), s_m3.clone(), skp.clone());
 
             // Now we can just benchmark how long it takes for the first message.
@@ -606,9 +662,10 @@ macro_rules! bench_tboomerang_import_everything {
         use ark_std::One;
         use ark_std::UniformRand;
         use boomerang::{
-            client::CollectionC as CBCM, client::IssuanceC as IBCM, client::UKeyPair as CBKP,
-            config::BoomerangConfig, server::CollectionS as CBSM, server::IssuanceS as IBSM,
-            server::ServerKeyPair as SBKP, server::SpendVerifyS as SVBSM, client::SpendVerifyC as SVBCM,
+            client::CollectionC as CBCM, client::IssuanceC as IBCM, client::SpendVerifyC as SVBCM,
+            client::UKeyPair as CBKP, config::BoomerangConfig, server::CollectionS as CBSM,
+            server::IssuanceS as IBSM, server::ServerKeyPair as SBKP,
+            server::SpendVerifyS as SVBSM,
         };
         use core::ops::Mul;
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
