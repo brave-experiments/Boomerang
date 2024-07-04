@@ -16,6 +16,8 @@ use tokio::task;
 
 type SF = <Config as CurveConfig>::ScalarField;
 
+static SERVER_ENDPOINT: &str = "localhost:8080";
+
 // functions to benchmark
 async fn boomerang_protocol() {
     // Generate user keys
@@ -33,9 +35,10 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
     let issuance_m1 = IssuanceC::<Config>::generate_issuance_m1(ckp.clone(), &mut OsRng);
 
     // send to server get m2
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m2");
     let issuance_m2 = crate::issuance_send_message_to_server_and_await_response(
         issuance_m1.clone(),
-        "http://localhost:8080/boomerang_issuance_m2".to_string(),
+        endpoint,
     )
     .await;
 
@@ -44,9 +47,10 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
         IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2, &mut OsRng);
 
     // send to server get m4
+    let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m4");
     let issuance_m4 = issuance_send_message_to_server_and_await_response(
         issuance_m3.clone(),
-        "http://localhost:8080/boomerang_issuance_m4".to_string(),
+        endpoint2,
     )
     .await;
 
@@ -84,9 +88,10 @@ async fn collection_protocol(
     );
 
     // send to server get m3
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m3");
     let collection_m3 = collection_send_message_to_server_and_await_response(
         collection_m2.clone(),
-        "http://localhost:8080/boomerang_collection_m3".to_string(),
+        endpoint,
     )
     .await;
 
@@ -98,9 +103,10 @@ async fn collection_protocol(
     );
 
     // send to server get m5
+    let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m5");
     let collection_m5 = collection_send_message_to_server_and_await_response(
         collection_m4.clone(),
-        "http://localhost:8080/boomerang_collection_m5".to_string(),
+        endpoint2,
     )
     .await;
 
@@ -146,9 +152,10 @@ async fn spending_protocol(
     let state_vector = vec![5u64; 64];
 
     // send to server get m3
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m3");
     let spendverify_m3 = spending_send_message_to_server_and_await_response(
         spendverify_m2.clone(),
-        "http://localhost:8080/boomerang_spending_m3".to_string(),
+        endpoint,
         Some(vec![policy_vector.clone(), state_vector]),
     )
     .await;
@@ -162,9 +169,10 @@ async fn spending_protocol(
     );
 
     // send to server get m5
+    let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m5");
     let spendverify_m5 = spending_send_message_to_server_and_await_response(
         spendverify_m4.clone(),
-        "http://localhost:8080/boomerang_spending_m5".to_string(),
+        endpoint2,
         None,
     )
     .await;
@@ -193,8 +201,9 @@ async fn spending_protocol(
 // helper functions
 async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
     let client = reqwest::Client::new();
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/server_keypair");
     let response = client
-        .get("http://localhost:8080/server_keypair")
+        .get(endpoint)
         .send()
         .await;
 
@@ -207,8 +216,9 @@ async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
 
 async fn get_collection_m1() -> CollectionS<Config> {
     let client = reqwest::Client::new();
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m1");
     let response = client
-        .get("http://localhost:8080/boomerang_collection_m1")
+        .get(endpoint)
         .send()
         .await;
 
@@ -221,8 +231,9 @@ async fn get_collection_m1() -> CollectionS<Config> {
 
 async fn get_spending_m1() -> SpendVerifyS<Config> {
     let client = reqwest::Client::new();
+    let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m1");
     let response = client
-        .get("http://localhost:8080/boomerang_spending_m1")
+        .get(endpoint)
         .send()
         .await;
 
