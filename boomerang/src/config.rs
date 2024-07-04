@@ -12,6 +12,7 @@ pub trait BoomerangConfig:
 
 /// Boomerang state.
 ///
+#[derive(Clone)]
 pub struct State<B: BoomerangConfig> {
     /// The signature state
     pub sig_state: Vec<SigSign<B>>,
