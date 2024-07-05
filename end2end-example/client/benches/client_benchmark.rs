@@ -16,7 +16,7 @@ use tokio::task;
 
 type SF = <Config as CurveConfig>::ScalarField;
 
-static SERVER_ENDPOINT: &str = "localhost:8080";
+static SERVER_ENDPOINT: &str = "localhost:8080";//"52.11.217.156:8080";//
 
 // functions to benchmark
 async fn boomerang_protocol() {
@@ -36,19 +36,19 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
 
     // send to server get m2
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m2");
-    let issuance_m2 = crate::issuance_send_message_to_server_and_await_response(
+    let issuance_m2 = issuance_send_m1_get_m2(
         issuance_m1.clone(),
         endpoint,
-    )
-    .await;
+    ).await;
 
     // issuance m3
     let issuance_m3 =
-        IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2, &mut OsRng);
+        IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
     // send to server get m4
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m4");
-    let issuance_m4 = issuance_send_message_to_server_and_await_response(
+    let issuance_m4 = issuance_send_m2m3_get_m4(
+        issuance_m2.clone(),
         issuance_m3.clone(),
         endpoint2,
     )
@@ -89,7 +89,8 @@ async fn collection_protocol(
 
     // send to server get m3
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m3");
-    let collection_m3 = collection_send_message_to_server_and_await_response(
+    let collection_m3 = collection_send_m1m2_get_m3(
+        collection_m1.clone(),
         collection_m2.clone(),
         endpoint,
     )
@@ -104,7 +105,8 @@ async fn collection_protocol(
 
     // send to server get m5
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m5");
-    let collection_m5 = collection_send_message_to_server_and_await_response(
+    let collection_m5 = collection_send_m3m4_get_m5(
+        collection_m3.clone(),
         collection_m4.clone(),
         endpoint2,
     )
@@ -144,7 +146,7 @@ async fn spending_protocol(
     let spendverify_m2 = SpendVerifyC::<Config>::generate_spendverify_m2(
         &mut OsRng,
         collection_state,
-        spendverify_m1,
+        spendverify_m1.clone(),
         skp.clone(),
     );
 
@@ -153,10 +155,12 @@ async fn spending_protocol(
 
     // send to server get m3
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m3");
-    let spendverify_m3 = spending_send_message_to_server_and_await_response(
+    let spendverify_m3 = spending_send_m1m2_get_m3(
+        spendverify_m1.clone(),
         spendverify_m2.clone(),
         endpoint,
-        Some(vec![policy_vector.clone(), state_vector]),
+        policy_vector.clone(),
+        state_vector,
     )
     .await;
 
@@ -170,10 +174,10 @@ async fn spending_protocol(
 
     // send to server get m5
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m5");
-    let spendverify_m5 = spending_send_message_to_server_and_await_response(
+    let spendverify_m5 = spending_send_m3m4_get_m5(
+        spendverify_m3.clone(),
         spendverify_m4.clone(),
         endpoint2,
-        None,
     )
     .await;
 
@@ -244,7 +248,7 @@ async fn get_spending_m1() -> SpendVerifyS<Config> {
     SpendVerifyS::<Config>::deserialize_compressed(&*spending_m1_bytes).unwrap()
 }
 
-async fn issuance_send_message_to_server_and_await_response(
+async fn issuance_send_m1_get_m2(    
     issuance_c: IssuanceC<Config>,
     endpoint: String,
 ) -> IssuanceS<Config> {
@@ -272,54 +276,173 @@ async fn issuance_send_message_to_server_and_await_response(
     IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap()
 }
 
-async fn collection_send_message_to_server_and_await_response(
-    collection_c: CollectionC<Config>,
+async fn issuance_send_m2m3_get_m4(
+    issuance_m2: IssuanceS<Config>,
+    issuance_m3: IssuanceC<Config>,
     endpoint: String,
-) -> CollectionS<Config> {
-    // serialize issuance_m* as json string
-    let mut collection_c_bytes = Vec::new();
-    collection_c
-        .serialize_compressed(&mut collection_c_bytes)
+) -> IssuanceS<Config> {
+    // serialize issuance_m1 as json string
+    let mut issuance_m2_bytes = Vec::new();
+    issuance_m2
+        .serialize_compressed(&mut issuance_m2_bytes)
         .unwrap();
-    let collection_c_json = json!(collection_c_bytes).to_string();
+    let mut issuance_m3_bytes = Vec::new();
+    issuance_m3
+        .serialize_compressed(&mut issuance_m3_bytes)
+        .unwrap();
 
-    // send collection_m* as json string to server
+    let body_vec = vec![issuance_m2_bytes, issuance_m3_bytes];
+    let body = serde_json::to_string(&body_vec).unwrap();
+
+    // send issuance_m1 as json string to server
     let client = reqwest::Client::new();
     let response = client
         .post(endpoint)
         .header("Content-Type", "application/json")
-        .body(collection_c_json)
+        .body(body)
         .send()
         .await;
 
     let response_body = response.unwrap().text().await;
     //println!("Response body:\n{}", response_body.unwrap());
 
-    // deserialize collection_m2 response from server
+    // deserialize issuance_m4 response from server
+    let issuance_m4_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    IssuanceS::<Config>::deserialize_compressed(&*issuance_m4_bytes).unwrap()
+}
+
+async fn collection_send_m1m2_get_m3(
+    collection_m1: CollectionS<Config>,
+    collection_m2: CollectionC<Config>,
+    endpoint: String,
+) -> CollectionS<Config> {
+    // serialize collection_m1 as json string
+    let mut collection_m1_bytes = Vec::new();
+    collection_m1
+        .serialize_compressed(&mut collection_m1_bytes)
+        .unwrap();
+
+    // serialize collection_m1 as json string
+    let mut collection_m2_bytes = Vec::new();
+    collection_m2
+        .serialize_compressed(&mut collection_m2_bytes)
+        .unwrap();
+
+    let body_vec = vec![collection_m1_bytes, collection_m2_bytes];
+    let body = serde_json::to_string(&body_vec).unwrap();
+
+    // send collection_m* as json string to server
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+    //println!("Response body:\n{}", response_body.unwrap());
+
+    // deserialize collection_m3 response from server
     let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
     CollectionS::<Config>::deserialize_compressed(&*collection_s_bytes).unwrap()
 }
 
-async fn spending_send_message_to_server_and_await_response(
-    spending_c: SpendVerifyC<Config>,
+async fn collection_send_m3m4_get_m5(
+    collection_m3: CollectionS<Config>,
+    collection_m4: CollectionC<Config>,
     endpoint: String,
-    additional_parameters: Option<Vec<Vec<u64>>>,
-) -> SpendVerifyS<Config> {
-    // serialize spending_m* as json string
-    let mut spending_c_bytes = Vec::new();
-    spending_c
-        .serialize_compressed(&mut spending_c_bytes)
+) -> CollectionS<Config> {
+    // serialize collection_m3 as json string
+    let mut collection_m3_bytes = Vec::new();
+    collection_m3
+        .serialize_compressed(&mut collection_m3_bytes)
         .unwrap();
 
-    // if there are additional parameters, then add it to the body
-    let body: String;
-    if let Some(mut params) = additional_parameters {
-        let spending_c_u64 = spending_c_bytes.into_iter().map(u64::from).collect();
-        params.push(spending_c_u64);
-        body = serde_json::to_string(&params).unwrap();
-    } else {
-        body = json!(spending_c_bytes).to_string();
-    }
+    // serialize collection_m4 as json string
+    let mut collection_m4_bytes = Vec::new();
+    collection_m4
+        .serialize_compressed(&mut collection_m4_bytes)
+        .unwrap();
+
+    let body_vec = vec![collection_m3_bytes, collection_m4_bytes];
+    let body = serde_json::to_string(&body_vec).unwrap();
+
+    // send collection_m* as json string to server
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+    //println!("Response body:\n{}", response_body.unwrap());
+
+    // deserialize collection_m5 response from server
+    let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    CollectionS::<Config>::deserialize_compressed(&*collection_s_bytes).unwrap()
+}
+
+async fn spending_send_m1m2_get_m3(
+    spending_m1: SpendVerifyS<Config>,
+    spending_m2: SpendVerifyC<Config>,
+    endpoint: String,
+    policy_vector: Vec<u64>,
+    state_vector: Vec<u64>,
+) -> SpendVerifyS<Config> {
+    // serialize spending_m* as json string
+    let mut spending_m1_bytes = Vec::new();
+    spending_m1
+        .serialize_compressed(&mut spending_m1_bytes)
+        .unwrap();
+    // serialize spending_m* as json string
+    let mut spending_m2_bytes = Vec::new();
+    spending_m2
+        .serialize_compressed(&mut spending_m2_bytes)
+        .unwrap();
+
+    let spending_m1_u64: Vec<u64> = spending_m1_bytes.into_iter().map(u64::from).collect();
+    let spending_m2_u64: Vec<u64> = spending_m2_bytes.into_iter().map(u64::from).collect();
+    let body_vec: Vec<Vec<u64>> = vec![spending_m1_u64, spending_m2_u64, state_vector, policy_vector];
+    let body = serde_json::to_string(&body_vec).unwrap();
+
+    // send spending_m* as json string to server
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+    //println!("Response body:\n{}", response_body.unwrap());
+
+    // deserialize spending_m* response from server
+    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    SpendVerifyS::<Config>::deserialize_compressed(&*spending_s_bytes).unwrap()
+}
+
+async fn spending_send_m3m4_get_m5(
+    spending_m3: SpendVerifyS<Config>,
+    spending_m4: SpendVerifyC<Config>,
+    endpoint: String,
+) -> SpendVerifyS<Config> {
+    // serialize spending_m* as json string
+    let mut spending_m3_bytes = Vec::new();
+    spending_m3
+        .serialize_compressed(&mut spending_m3_bytes)
+        .unwrap();
+    // serialize spending_m* as json string
+    let mut spending_m4_bytes = Vec::new();
+    spending_m4
+        .serialize_compressed(&mut spending_m4_bytes)
+        .unwrap();
+
+    let body_vec = vec![spending_m3_bytes, spending_m4_bytes];
+    let body = serde_json::to_string(&body_vec).unwrap();
 
     // send spending_m* as json string to server
     let client = reqwest::Client::new();
@@ -342,7 +465,7 @@ async fn spending_send_message_to_server_and_await_response(
 // This function runs an entire boomerang protocol for multiple users
 fn benchmark_boomerang_mult_users(c: &mut Criterion) {
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let number_of_users = 1;
+    let number_of_users = 2;
 
     // customize sample count
     let mut c_custom = Criterion::default().sample_size(10);

@@ -11,7 +11,7 @@ use t256::Config; // use arksecp256r1
 
 type SF = <Config as CurveConfig>::ScalarField;
 
-async fn issuance_send_message_to_server_and_await_response(
+async fn issuance_send_m1_get_m2(    
     issuance_c: IssuanceC<Config>,
     endpoint: String,
 ) -> IssuanceS<Config> {
@@ -37,6 +37,43 @@ async fn issuance_send_message_to_server_and_await_response(
     // deserialize issuance_m2 response from server
     let issuance_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
     IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap()
+}
+
+async fn issuance_send_m2m3_get_m4(
+    issuance_m2: IssuanceS<Config>,
+    issuance_m3: IssuanceC<Config>,
+    endpoint: String,
+) -> IssuanceS<Config> {
+    // serialize issuance_m1 as json string
+    let mut issuance_m2_bytes = Vec::new();
+    issuance_m2
+        .serialize_compressed(&mut issuance_m2_bytes)
+        .unwrap();
+    let mut issuance_m3_bytes = Vec::new();
+    issuance_m3
+        .serialize_compressed(&mut issuance_m3_bytes)
+        .unwrap();
+
+    let body_vec = vec![issuance_m2_bytes, issuance_m3_bytes];
+    let body = serde_json::to_string(&body_vec).unwrap();
+
+    println!("body: {body}");
+
+    // send issuance_m1 as json string to server
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .header("Content-Type", "application/json")
+        .body(body)
+        .send()
+        .await;
+
+    let response_body = response.unwrap().text().await;
+    //println!("Response body:\n{}", response_body.unwrap());
+
+    // deserialize issuance_m4 response from server
+    let issuance_m4_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    IssuanceS::<Config>::deserialize_compressed(&*issuance_m4_bytes).unwrap()
 }
 
 async fn collection_send_message_to_server_and_await_response(
@@ -164,11 +201,10 @@ async fn main() {
 
         // send to server get m2
         println!("Client: Send M1 to server and retrieve M2");
-        let issuance_m2 = issuance_send_message_to_server_and_await_response(
-            issuance_m1.clone(),
+        let issuance_m2 = issuance_send_m1_get_m2(
+            issuance_m1.clone(), 
             "http://localhost:8080/boomerang_issuance_m2".to_string(),
-        )
-        .await;
+        ).await;
         // check some properties
         assert!(issuance_m2.m2.verifying_key.is_on_curve());
         assert!(issuance_m2.m2.tag_key.is_on_curve());
@@ -176,11 +212,12 @@ async fn main() {
         // issuance m3
         println!("Client: Generate M3");
         let issuance_m3 =
-            IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2, &mut OsRng);
+            IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
         // send to server get m4
         println!("Client: Send M3 to server and retrieve M4");
-        let issuance_m4 = issuance_send_message_to_server_and_await_response(
+        let issuance_m4 = issuance_send_m2m3_get_m4(
+            issuance_m2.clone(),
             issuance_m3.clone(),
             "http://localhost:8080/boomerang_issuance_m4".to_string(),
         )

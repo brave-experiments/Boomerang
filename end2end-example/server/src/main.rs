@@ -15,19 +15,24 @@ type SF = <Config as CurveConfig>::ScalarField;
 
 async fn boomerang_spending_m5(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Spending M5...");
+
+    let parameters: Vec<Vec<u8>> = serde_json::from_str(&req_body).unwrap();
+
     // Deserialize spending_m4 from client
-    let spending_m4_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
+    let spending_m3_bytes: Vec<u8> = parameters[0].clone();
+    let spending_m3 =
+        SpendVerifyS::<Config>::deserialize_compressed(spending_m3_bytes.as_slice()).unwrap();
+
+    // Deserialize spending_m4 from client
+    let spending_m4_bytes: Vec<u8> = parameters[1].clone();
     let spending_m4 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m4_bytes.as_slice()).unwrap();
-
-    let mut spending_s = data.spending_s.lock().unwrap();
-
+    
     let spending_m5 = SpendVerifyS::<Config>::generate_spendverify_m5(
         spending_m4,
-        spending_s.clone().unwrap(),
+        spending_m3,
         data.skp.clone(),
     );
-    *spending_s = Some(spending_m5.clone());
 
     // Serialize spending_m3
     let mut spending_m5_bytes = Vec::new();
@@ -44,10 +49,21 @@ async fn boomerang_spending_m5(data: web::Data<AppState>, req_body: String) -> i
 async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Spending M3...");
 
+    //println!("body: {req_body}");
+
     let parameters: Vec<Vec<u64>> = serde_json::from_str(&req_body).unwrap();
 
     // Deserialize spending_m2 from client
-    let spending_m2_bytes: Vec<u8> = parameters[2]
+    let spending_m1_bytes: Vec<u8> = parameters[0]
+        .clone()
+        .into_iter()
+        .map(|x: u64| x as u8)
+        .collect();
+    let spending_m1 =
+        SpendVerifyS::<Config>::deserialize_compressed(spending_m1_bytes.as_slice()).unwrap();
+
+    // Deserialize spending_m2 from client
+    let spending_m2_bytes: Vec<u8> = parameters[1]
         .clone()
         .into_iter()
         .map(|x: u64| x as u8)
@@ -55,21 +71,20 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
     let spending_m2 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m2_bytes.as_slice()).unwrap();
 
+
     let v: SF = SF::one();
-    let state_vector = &parameters[1];
-    let policy_vector = &parameters[0];
-    let mut spending_s = data.spending_s.lock().unwrap();
+    let state_vector = &parameters[2];
+    let policy_vector = &parameters[3];
 
     let spending_m3 = SpendVerifyS::<Config>::generate_spendverify_m3(
         &mut OsRng,
         spending_m2,
-        spending_s.clone().unwrap(),
+        spending_m1,
         data.skp.clone(),
         v,
         state_vector.to_vec(),
         policy_vector.to_vec(),
     );
-    *spending_s = Some(spending_m3.clone());
 
     // Serialize spending_m3
     let mut spending_m3_bytes = Vec::new();
@@ -83,12 +98,9 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
     HttpResponse::Ok().body(spending_m3_json)
 }
 
-async fn boomerang_spending_m1(data: web::Data<AppState>) -> impl Responder {
+async fn boomerang_spending_m1() -> impl Responder {
     println!("Boomerang Spending M1...");
     let spending_m1 = SpendVerifyS::<Config>::generate_spendverify_m1(&mut OsRng);
-
-    let mut spending_s = data.spending_s.lock().unwrap();
-    *spending_s = Some(spending_m1.clone());
 
     // Serialize server key pair
     let mut spending_m1_bytes = Vec::new();
@@ -103,15 +115,22 @@ async fn boomerang_spending_m1(data: web::Data<AppState>) -> impl Responder {
 
 async fn boomerang_collection_m5(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Collection M5...");
+
+    let body: Vec<Vec<u8>> = serde_json::from_str(&req_body).unwrap();
+
     // Deserialize collection_m4 from client
-    let collection_m4_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
+    let collection_m3_bytes: Vec<u8> = body[0].clone();
+    let collection_m3 =
+        CollectionS::<Config>::deserialize_compressed(collection_m3_bytes.as_slice()).unwrap();
+
+    // Deserialize collection_m4 from client
+    let collection_m4_bytes: Vec<u8> = body[1].clone();
     let collection_m4 =
         CollectionC::<Config>::deserialize_compressed(collection_m4_bytes.as_slice()).unwrap();
 
-    let collection_s = data.collection_s.lock().unwrap().clone();
     let collection_m5 = CollectionS::<Config>::generate_collection_m5(
         collection_m4,
-        collection_s.unwrap(),
+        collection_m3,
         data.skp.clone(),
     );
 
@@ -129,22 +148,27 @@ async fn boomerang_collection_m5(data: web::Data<AppState>, req_body: String) ->
 
 async fn boomerang_collection_m3(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Collection M3...");
+
+    let body: Vec<Vec<u8>> = serde_json::from_str(&req_body).unwrap();
+
     // Deserialize collection_m2 from client
-    let collection_m2_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
+    let collection_m1_bytes: Vec<u8> = body[0].clone();
+    let collection_m1 =
+        CollectionS::<Config>::deserialize_compressed(collection_m1_bytes.as_slice()).unwrap();
+
+    // Deserialize collection_m2 from client
+    let collection_m2_bytes: Vec<u8> = body[1].clone();
     let collection_m2 =
         CollectionC::<Config>::deserialize_compressed(collection_m2_bytes.as_slice()).unwrap();
 
     let v: SF = SF::one();
-    let mut collection_s = data.collection_s.lock().unwrap();
-
     let collection_m3 = CollectionS::<Config>::generate_collection_m3(
         &mut OsRng,
         collection_m2,
-        collection_s.clone().unwrap(),
+        collection_m1,
         data.skp.clone(),
         v,
     );
-    *collection_s = Some(collection_m3.clone());
 
     // Serialize collection_m3
     let mut collection_m3_bytes = Vec::new();
@@ -158,12 +182,9 @@ async fn boomerang_collection_m3(data: web::Data<AppState>, req_body: String) ->
     HttpResponse::Ok().body(collection_m3_json)
 }
 
-async fn boomerang_collection_m1(data: web::Data<AppState>) -> impl Responder {
+async fn boomerang_collection_m1() -> impl Responder {
     println!("Boomerang Collection M1...");
     let collection_m1 = CollectionS::<Config>::generate_collection_m1(&mut OsRng);
-
-    let mut collection_s = data.collection_s.lock().unwrap();
-    *collection_s = Some(collection_m1.clone());
 
     // Serialize server key pair
     let mut collection_m1_bytes = Vec::new();
@@ -178,16 +199,22 @@ async fn boomerang_collection_m1(data: web::Data<AppState>) -> impl Responder {
 
 async fn boomerang_issuance_m4(data: web::Data<AppState>, req_body: String) -> impl Responder {
     println!("Boomerang Issuance M4...");
-    // Deserialize issuance_m1 from client
-    let issuance_m3_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
+
+    let body: Vec<Vec<u8>> = serde_json::from_str(&req_body).unwrap();
+
+    // Deserialize issuance_m2 from client
+    let issuance_m2_bytes: Vec<u8> = body[0].clone();
+    let issuance_m2 =
+        IssuanceS::<Config>::deserialize_compressed(issuance_m2_bytes.as_slice()).unwrap();
+
+    // Deserialize issuance_m3 from client
+    let issuance_m3_bytes: Vec<u8> = body[1].clone();
     let issuance_m3 =
         IssuanceC::<Config>::deserialize_compressed(issuance_m3_bytes.as_slice()).unwrap();
 
-    let issuance_s = data.issuance_s.lock().unwrap().clone();
-
     let issuance_m4 = IssuanceS::<Config>::generate_issuance_m4(
         issuance_m3,
-        issuance_s.unwrap(),
+        issuance_m2,
         data.skp.clone(),
     );
 
@@ -211,8 +238,6 @@ async fn boomerang_issuance_m2(data: web::Data<AppState>, req_body: String) -> i
 
     let issuance_m2 =
         IssuanceS::<Config>::generate_issuance_m2(issuance_m1, data.skp.clone(), &mut OsRng);
-    let mut issuance_s = data.issuance_s.lock().unwrap();
-    *issuance_s = Some(issuance_m2.clone());
 
     // Serialize issuance_m2
     let mut issuance_m2_bytes = Vec::new();
@@ -242,9 +267,6 @@ async fn server_keypair(data: web::Data<AppState>) -> impl Responder {
 // Shared state struct between all routes
 struct AppState {
     skp: ServerKeyPair<Config>,
-    issuance_s: Mutex<Option<IssuanceS<Config>>>,
-    collection_s: Mutex<Option<CollectionS<Config>>>,
-    spending_s: Mutex<Option<SpendVerifyS<Config>>>,
 }
 
 #[actix_web::main]
@@ -254,9 +276,6 @@ async fn main() -> std::io::Result<()> {
     // Generate server key pair
     let app_state = web::Data::new(AppState {
         skp: ServerKeyPair::<Config>::generate(&mut OsRng),
-        issuance_s: Mutex::new(None),
-        collection_s: Mutex::new(None),
-        spending_s: Mutex::new(None),
     });
 
     println!("Start HTTP server. Wait for requests...");
