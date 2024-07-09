@@ -8,6 +8,7 @@ use boomerang::{
 use rand::rngs::OsRng;
 use serde_json::json;
 use t256::Config; // use arksecp256r1
+use bytes::Bytes;
 
 type SF = <Config as CurveConfig>::ScalarField;
 
@@ -16,45 +17,102 @@ static SERVER_ENDPOINT: &str = "localhost:8080";
 async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/server_keypair");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
+    let request = client
+    .get(endpoint)
+    .header("Content-Type", "application/json")
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize server keypair
-    let server_keypair_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let server_keypair_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     ServerKeyPair::<Config>::deserialize_compressed(&*server_keypair_bytes).unwrap()
 }
 
 async fn get_collection_m1() -> CollectionS<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m1");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
+    let request = client
+    .get(endpoint)
+    .header("Content-Type", "application/json")
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize message m1
-    let collection_m1_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let collection_m1_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     CollectionS::<Config>::deserialize_compressed(&*collection_m1_bytes).unwrap()
 }
 
 async fn get_spending_m1() -> SpendVerifyS<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m1");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
+    let request = client
+    .get(endpoint)
+    .header("Content-Type", "application/json")
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize message m1
-    let spending_m1_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let spending_m1_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     SpendVerifyS::<Config>::deserialize_compressed(&*spending_m1_bytes).unwrap()
 }
 
@@ -71,18 +129,35 @@ async fn issuance_send_m1_get_m2(
 
     // send issuance_m1 as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(issuance_c_json)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(issuance_c_json)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize issuance_m2 response from server
-    let issuance_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let issuance_s_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     IssuanceS::<Config>::deserialize_compressed(&*issuance_s_bytes).unwrap()
 }
 
@@ -106,18 +181,35 @@ async fn issuance_send_m2m3_get_m4(
 
     // send issuance_m1 as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(body)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize issuance_m4 response from server
-    let issuance_m4_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let issuance_m4_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     IssuanceS::<Config>::deserialize_compressed(&*issuance_m4_bytes).unwrap()
 }
 
@@ -143,18 +235,35 @@ async fn collection_send_m1m2_get_m3(
 
     // send collection_m* as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(body)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize collection_m3 response from server
-    let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     CollectionS::<Config>::deserialize_compressed(&*collection_s_bytes).unwrap()
 }
 
@@ -180,18 +289,35 @@ async fn collection_send_m3m4_get_m5(
 
     // send collection_m* as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(body)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize collection_m5 response from server
-    let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let collection_s_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     CollectionS::<Config>::deserialize_compressed(&*collection_s_bytes).unwrap()
 }
 
@@ -220,18 +346,35 @@ async fn spending_send_m1m2_get_m3(
 
     // send spending_m* as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(body)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize spending_m* response from server
-    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     SpendVerifyS::<Config>::deserialize_compressed(&*spending_s_bytes).unwrap()
 }
 
@@ -256,18 +399,35 @@ async fn spending_send_m3m4_get_m5(
 
     // send spending_m* as json string to server
     let client = reqwest::Client::new();
-    let response = client
-        .post(endpoint)
-        .header("Content-Type", "application/json")
-        .body(body)
-        .send()
-        .await;
 
-    let response_body = response.unwrap().text().await;
-    //println!("Response body:\n{}", response_body.unwrap());
+    let request = client
+    .post(endpoint)
+    .header("Content-Type", "application/json")
+    .body(body)
+    .build()
+    .unwrap();
+
+    // Calculate request size
+    let request_size = request.headers().iter()
+    .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+    .sum::<usize>() + request.body().map_or(0, |body| body.as_bytes().map_or(0, |b| b.len()));
+
+    let response = client.execute(request).await.unwrap();
+
+    let headers = response.headers().clone();
+    let response_body = response.text().await.unwrap();
+
+    // Calculate response size
+    let response_size = headers.iter()
+        .map(|(name, value)| name.as_str().len() + value.as_bytes().len())
+        .sum::<usize>() + Bytes::from(response_body.clone()).len();
+
+    println!("Request size: {} bytes", request_size);
+    println!("Response size: {} bytes", response_size);
+    println!("Total data consumption: {} bytes", request_size + response_size);
 
     // deserialize spending_m* response from server
-    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body.unwrap()).unwrap();
+    let spending_s_bytes: Vec<u8> = serde_json::from_str(&response_body).unwrap();
     SpendVerifyS::<Config>::deserialize_compressed(&*spending_s_bytes).unwrap()
 }
 
