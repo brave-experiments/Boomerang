@@ -54,7 +54,7 @@ impl<A: ACLConfig> KeyPair<A> {
     pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<A> {
         use sha3::{Digest, Sha3_256};
 
-        for i in 0..=u8::max_value() {
+        for i in 0..=u8::MAX {
             let mut sha = Sha3_256::new();
             Digest::update(&mut sha, bytes);
             Digest::update(&mut sha, [i]);
