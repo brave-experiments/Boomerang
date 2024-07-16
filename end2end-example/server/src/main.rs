@@ -8,7 +8,6 @@ use boomerang::{
 };
 use rand::rngs::OsRng;
 use serde_json::json;
-use std::sync::Mutex;
 use t256::Config;
 
 type SF = <Config as CurveConfig>::ScalarField;

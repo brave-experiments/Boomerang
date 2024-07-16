@@ -1,5 +1,4 @@
 use acl::verify::SigVerify;
-use ark_ec::models::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use boomerang::{
     client::{CollectionC, IssuanceC, SpendVerifyC, UKeyPair},
@@ -9,8 +8,6 @@ use rand::rngs::OsRng;
 use serde_json::json;
 use t256::Config; // use arksecp256r1
 use bytes::Bytes;
-
-type SF = <Config as CurveConfig>::ScalarField;
 
 static SERVER_ENDPOINT: &str = "localhost:8080";
 
