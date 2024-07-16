@@ -27,12 +27,9 @@ async fn boomerang_spending_m5(data: web::Data<AppState>, req_body: String) -> i
     let spending_m4_bytes: Vec<u8> = parameters[1].clone();
     let spending_m4 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m4_bytes.as_slice()).unwrap();
-    
-    let spending_m5 = SpendVerifyS::<Config>::generate_spendverify_m5(
-        spending_m4,
-        spending_m3,
-        data.skp.clone(),
-    );
+
+    let spending_m5 =
+        SpendVerifyS::<Config>::generate_spendverify_m5(spending_m4, spending_m3, data.skp.clone());
 
     // Serialize spending_m3
     let mut spending_m5_bytes = Vec::new();
@@ -70,7 +67,6 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
         .collect();
     let spending_m2 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m2_bytes.as_slice()).unwrap();
-
 
     let v: SF = SF::one();
     let state_vector = &parameters[2];
@@ -212,11 +208,8 @@ async fn boomerang_issuance_m4(data: web::Data<AppState>, req_body: String) -> i
     let issuance_m3 =
         IssuanceC::<Config>::deserialize_compressed(issuance_m3_bytes.as_slice()).unwrap();
 
-    let issuance_m4 = IssuanceS::<Config>::generate_issuance_m4(
-        issuance_m3,
-        issuance_m2,
-        data.skp.clone(),
-    );
+    let issuance_m4 =
+        IssuanceS::<Config>::generate_issuance_m4(issuance_m3, issuance_m2, data.skp.clone());
 
     // Serialize issuance_m4
     let mut issuance_m4_bytes = Vec::new();
