@@ -87,13 +87,14 @@ impl<G: AffineRepr> VecPoly1<G> {
         Poly2(t0, t1, t2)
     }
 
+    /// Evalutate the vector polynomial at the given field point
     pub fn eval(&self, x: G::ScalarField) -> Vec<G::ScalarField> {
-        let n = self.0.len();
-        let mut out = vec![G::ScalarField::zero(); n];
-        for i in 0..n {
-            out[i] = self.0[i] + self.1[i] * x;
-        }
-        out
+        // Each coefficient is indexed separately, so zip them
+        // together to produce a sequence of ordered pairs
+        // for evaluation.
+        self.0.iter().zip(self.1.iter())
+            .map(|(&a, &b)| a + b * x)
+            .collect()
     }
 }
 
@@ -133,12 +134,13 @@ impl<G: AffineRepr> VecPoly3<G> {
     }
 
     pub fn eval(&self, x: G::ScalarField) -> Vec<G::ScalarField> {
-        let n = self.0.len();
-        let mut out = vec![G::ScalarField::zero(); n];
-        for i in 0..n {
-            out[i] = self.0[i] + x * (self.1[i] + x * (self.2[i] + x * self.3[i]));
-        }
-        out
+        // Each coefficient is indexed separately, so zip them
+        // together to produce a sequence for evaluation. The
+        // nesting is necessary because the std::iter API only
+        // does pairs.
+        self.0.iter().zip(self.1.iter()).zip(self.2.iter()).zip(self.3.iter())
+            .map(|(((&a, &b), &c), &d)| a + x * (b + x * (c + x * d)))
+            .collect()
     }
 }
 
