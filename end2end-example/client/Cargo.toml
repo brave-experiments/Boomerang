@@ -8,7 +8,7 @@ edition = "2021"
 boomerang = { path = "../../boomerang" }
 t256 = { path = "../../t256" }
 acl = { path = "../../acl" }
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1.15", features = ["full"] }
 futures = "0.3"
 serde = { version = "1.0", features = ["derive"] }
