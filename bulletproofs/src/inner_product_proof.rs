@@ -34,6 +34,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
     ///
     /// The lengths of the vectors must all be the same, and must all be
     /// either 0 or a power of 2.
+    #[allow(clippy::too_many_arguments)]
     pub fn create(
         transcript: &mut Transcript,
         Q: &G,
@@ -317,7 +318,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
     /// but for efficiency the actual protocols would use `verification_scalars`
     /// method to combine inner product verification with other checks
     /// in a single multiscalar multiplication.
-    #[allow(dead_code)]
+    #[allow(dead_code, clippy::too_many_arguments)]
     pub fn verify<IG, IH>(
         &self,
         n: usize,
