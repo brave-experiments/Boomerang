@@ -20,7 +20,7 @@ ark-std = { version = "0.4.0", default-features = false }
 bytes = { version = "1.1" }
 
 [dev-dependencies]
-criterion = { version = "0.4", features = ["html_reports", "async", "async_tokio"] }
+criterion = { version = "0.5", features = ["html_reports", "async", "async_tokio"] }
 
 [[bench]]
 name = "client_benchmark"
