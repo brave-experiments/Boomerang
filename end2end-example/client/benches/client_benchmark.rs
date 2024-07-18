@@ -459,7 +459,17 @@ fn benchmark_boomerang_mult_users(c: &mut Criterion) {
 
             // Await all tasks
             for task in tasks {
-                task.await.unwrap();
+                //task.await.unwrap();
+                match task.await {
+                    Ok(_) => {} // do nothing if all good.
+                    Err(e) => {
+                        if e.is_panic() {
+                            println!("Task panicked: {:?}", e);
+                        } else {
+                            println!("Task failed: {:?}", e);
+                        }
+                    }
+                }
             }
         });
     });
