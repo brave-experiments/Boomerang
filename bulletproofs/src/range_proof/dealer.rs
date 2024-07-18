@@ -367,8 +367,9 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
         } else {
             // Proof verification failed. Now audit the parties:
             let mut bad_shares = Vec::new();
-            for j in 0..self.m {
-                match proof_shares[j].audit_share(
+            // assemble_shares should have verified the slice lengths above
+            for (j, share) in proof_shares.iter().enumerate() {
+                match share.audit_share(
                     self.bp_gens,
                     self.pc_gens,
                     j,

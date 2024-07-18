@@ -70,11 +70,11 @@ impl ShuffleProof {
     /// Attempt to construct a proof that `output` is a permutation of `input`.
     ///
     /// Returns a tuple `(proof, input_commitments || output_commitments)`.
-    pub fn prove<'a, 'b, R: CryptoRng + RngCore>(
+    pub fn prove<R: CryptoRng + RngCore>(
         prng: &mut R,
-        pc_gens: &'b PedersenGens<Affine>,
-        bp_gens: &'b BulletproofGens<Affine>,
-        transcript: &'a mut Transcript,
+        pc_gens: &PedersenGens<Affine>,
+        bp_gens: &BulletproofGens<Affine>,
+        transcript: &mut Transcript,
         input: &[Fr],
         output: &[Fr],
     ) -> Result<(ShuffleProof, Vec<Affine>, Vec<Affine>), R1CSError> {
@@ -84,21 +84,21 @@ impl ShuffleProof {
         transcript.append_message(b"dom-sep", b"ShuffleProof");
         transcript.append_u64(b"k", k as u64);
 
-        let mut prover = Prover::new(&pc_gens, transcript);
+        let mut prover = Prover::new(pc_gens, transcript);
 
         let (input_commitments, input_vars): (Vec<_>, Vec<_>) = input
-            .into_iter()
+            .iter()
             .map(|v| prover.commit(*v, Fr::rand(prng)))
             .unzip();
 
         let (output_commitments, output_vars): (Vec<_>, Vec<_>) = output
-            .into_iter()
+            .iter()
             .map(|v| prover.commit(*v, Fr::rand(prng)))
             .unzip();
 
         ShuffleProof::gadget(&mut prover, input_vars, output_vars)?;
 
-        let proof = prover.prove(prng, &bp_gens)?;
+        let proof = prover.prove(prng, bp_gens)?;
 
         Ok((ShuffleProof(proof), input_commitments, output_commitments))
     }
@@ -106,13 +106,13 @@ impl ShuffleProof {
 
 impl ShuffleProof {
     /// Attempt to verify a `ShuffleProof`.
-    pub fn verify<'a, 'b>(
+    pub fn verify(
         &self,
-        pc_gens: &'b PedersenGens<Affine>,
-        bp_gens: &'b BulletproofGens<Affine>,
-        transcript: &'a mut Transcript,
-        input_commitments: &Vec<Affine>,
-        output_commitments: &Vec<Affine>,
+        pc_gens: &PedersenGens<Affine>,
+        bp_gens: &BulletproofGens<Affine>,
+        transcript: &mut Transcript,
+        input_commitments: &[Affine],
+        output_commitments: &[Affine],
     ) -> Result<(), R1CSError> {
         // Apply a domain separator with the shuffle parameters to the transcript
         // XXX should this be part of the gadget?
@@ -134,7 +134,7 @@ impl ShuffleProof {
 
         ShuffleProof::gadget(&mut verifier, input_vars, output_vars)?;
 
-        verifier.verify(&self.0, &pc_gens, &bp_gens)
+        verifier.verify(&self.0, pc_gens, bp_gens)
     }
 }
 

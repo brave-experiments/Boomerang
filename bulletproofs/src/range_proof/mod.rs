@@ -87,7 +87,7 @@ impl<G: AffineRepr> RangeProof<G> {
             pc_gens,
             transcript,
             &[v],
-            &[(*v_blinding).clone()],
+            &[*v_blinding],
             n,
             rng,
         )?;
@@ -248,11 +248,13 @@ impl<G: AffineRepr> RangeProof<G> {
     ) -> Result<(), ProofError> {
         let m = value_commitments.len();
 
-        let scalars = self
-            .compute_verification_scalars_with_rng(bp_gens, transcript, value_commitments, n, rng)?
-            .iter()
-            .copied()
-            .collect::<Vec<G::ScalarField>>();
+        let scalars = self.compute_verification_scalars_with_rng(
+            bp_gens,
+            transcript,
+            value_commitments,
+            n,
+            rng,
+        )?;
 
         let mega_check = G::Group::msm(
             &iter::once(self.A)
@@ -365,7 +367,7 @@ impl<G: AffineRepr> RangeProof<G> {
             .map(|((s_i_inv, exp_y_inv), z_and_2)| z + exp_y_inv * (zz * z_and_2 - b * s_i_inv))
             .collect();
 
-        let mut value_commitment_scalars: Vec<G::ScalarField> = util::exp_iter::<G>(z.clone())
+        let mut value_commitment_scalars: Vec<G::ScalarField> = util::exp_iter::<G>(z)
             .take(m)
             .map(|z_exp| c * zz * z_exp)
             .collect();
@@ -429,10 +431,7 @@ impl<G: AffineRepr> RangeProof<G> {
                 max_m = *m_i;
             }
         }
-        let grouped_scalars = Self::group_scalars(all_scaled_scalars.as_slice(), n, max_m)
-            .iter()
-            .copied()
-            .collect::<Vec<G::ScalarField>>();
+        let grouped_scalars = Self::group_scalars(all_scaled_scalars.as_slice(), n, max_m).to_vec();
 
         let mut elems = vec![];
         for (proof, value_commitments) in proofs.iter().zip(value_commitments) {
@@ -567,8 +566,8 @@ mod tests {
         for _ in 0..n {
             power_g += (z - z2) * exp_y - z3 * exp_2;
 
-            exp_y = exp_y * &y; // y^i -> y^(i+1)
-            exp_2 = exp_2 + &exp_2; // 2^i -> 2^(i+1)
+            exp_y *= y; // y^i -> y^(i+1)
+            exp_2 += exp_2; // 2^i -> 2^(i+1)
         }
 
         assert_eq!(power_g, delta::<Affine>(n, 1, &y, &z),);

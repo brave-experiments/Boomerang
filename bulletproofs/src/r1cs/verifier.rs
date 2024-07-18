@@ -652,11 +652,11 @@ where
         all_scalars[0] += scaled_scalars[0]; // B
         all_scalars[1] += scaled_scalars[1]; // B_blinding
                                              // g values
-        for (i, s) in (&scaled_scalars[2..2 + padded_n]).iter().enumerate() {
-            all_scalars[i + 2] += *s;
+        for (i, s) in scaled_scalars[2..2 + padded_n].iter().enumerate() {
+            all_scalars[i + 2] += s;
         }
         // h values
-        for (i, s) in (&scaled_scalars[2 + padded_n..2 + 2 * padded_n])
+        for (i, s) in scaled_scalars[2 + padded_n..2 + 2 * padded_n]
             .iter()
             .enumerate()
         {

@@ -9,7 +9,7 @@ use ark_ec::{
 };
 use merlin::Transcript;
 
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 
@@ -48,7 +48,7 @@ pub trait AddMulProofTranscriptable {
 /// Note that the documentation for this struct uses the notation that `t = (x * y) + z`.
 /// Moreover, the challenge is `c` and the random values are `b1, ..., b9`.
 /// We also have that X = xg + r_x h and Y = yg + r_y h.
-#[derive(Clone)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct AddMulProof<P: PedersenConfig> {
     /// t1: a random point produced by the prover during setup.
     pub t1: sw::Affine<P>,

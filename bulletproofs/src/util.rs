@@ -293,7 +293,7 @@ mod tests {
             unsafe { slice::from_raw_parts(x.as_ptr() as *const u8, mem::size_of_val(x)) }
         }
 
-        assert_eq!(flat_slice(&v.as_slice()), &[0u8; 64][..]);
+        assert_eq!(flat_slice(&v), &[0u8; 64][..]);
         assert_eq!(v[0], F::zero());
         assert_eq!(v[1], F::zero());
     }

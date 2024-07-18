@@ -4,6 +4,7 @@ use ark_ec::{
     AffineRepr, CurveGroup,
 };
 
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use digest::{ExtendableOutputDirty, Update, XofReader};
 use rand::{CryptoRng, RngCore};
@@ -27,6 +28,7 @@ pub trait ACLConfig: SWCurveConfig {
 
 /// ACL keypair.
 ///
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeyPair<A: ACLConfig> {
     /// Public key
     pub verifying_key: sw::Affine<A>,
@@ -50,17 +52,14 @@ impl<A: ACLConfig> Clone for KeyPair<A> {
 
 impl<A: ACLConfig> KeyPair<A> {
     pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<A> {
-        extern crate crypto;
-        use crypto::digest::Digest;
-        use crypto::sha3::Sha3;
+        use sha3::{Digest, Sha3_256};
 
-        for i in 0..=u8::max_value() {
-            let mut sha = Sha3::sha3_256();
-            sha.input(bytes);
-            sha.input(&[i]);
-            let mut buf = [0u8; 32];
-            sha.result(&mut buf);
-            let res = sw::Affine::<A>::from_random_bytes(&buf);
+        for i in 0..=u8::MAX {
+            let mut sha = Sha3_256::new();
+            Digest::update(&mut sha, bytes);
+            Digest::update(&mut sha, [i]);
+            let hash = sha.finalize();
+            let res = sw::Affine::<A>::from_random_bytes(hash.as_slice());
             if let Some(point) = res {
                 return point;
             }

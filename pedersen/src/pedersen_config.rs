@@ -4,7 +4,7 @@ use ark_ec::{
     AffineRepr, CurveGroup,
 };
 
-use ark_serialize::CanonicalDeserialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 use std::ops;
@@ -273,6 +273,7 @@ pub trait PedersenConfig: SWCurveConfig {
 }
 
 /// Generators. This structure holds the generators for a multi-commitment.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Generators<P: PedersenConfig> {
     pub generators: Vec<sw::Affine<P>>,
 }
@@ -290,7 +291,7 @@ impl<P: PedersenConfig> Clone for Generators<P> {
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
 /// and the associated randomness. Any serialised proofs should solely use `comm` in their transcripts /
 /// serialisations.
-#[derive(Debug)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PedersenComm<P: PedersenConfig> {
     /// comm: the point which acts as the commitment.
     pub comm: sw::Affine<P>,
@@ -452,17 +453,14 @@ impl<P: PedersenConfig> PedersenComm<P> {
     }
 
     pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<P> {
-        extern crate crypto;
-        use crypto::digest::Digest;
-        use crypto::sha3::Sha3;
-
-        for i in 0..=u8::max_value() {
-            let mut sha = Sha3::sha3_256();
-            sha.input(bytes);
-            sha.input(&[i]);
-            let mut buf = [0u8; 32];
-            sha.result(&mut buf);
-            let res = sw::Affine::<P>::from_random_bytes(&buf);
+        use sha3::{Digest, Sha3_256};
+        // Try a deterministic sequence of hashes to find a valid point.
+        for i in 0..=u8::MAX {
+            let mut sha = Sha3_256::new();
+            Digest::update(&mut sha, bytes);
+            Digest::update(&mut sha, [i]);
+            let hash = sha.finalize();
+            let res = sw::Affine::<P>::from_random_bytes(hash.as_slice());
             if let Some(point) = res {
                 return point;
             }
