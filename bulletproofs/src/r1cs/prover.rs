@@ -671,7 +671,8 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         let mut l_poly = util::VecPoly3::<G>::zero(n);
         let mut r_poly = util::VecPoly3::<G>::zero(n);
 
-        let mut exp_y = G::ScalarField::one(); // y^n starting at n=0
+        // y^n starting at n=0
+        let mut exp_y_iter = util::exp_iter::<G>(y);
         let y_inv = y.inverse().unwrap();
         let exp_y_inv = util::exp_iter::<G>(y_inv)
             .take(padded_n)
@@ -682,6 +683,9 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             .chain(s_L2.iter())
             .zip(s_R1.iter().chain(s_R2.iter()));
         for (i, (sl, sr)) in sLsR.enumerate() {
+            // y^i -> y^(i+1)
+            let exp_y = exp_y_iter.next()
+                .expect("exponentional iterator shouldn't terminate");
             // l_poly.0 = 0
             // l_poly.1 = a_L + y^-n * (z * z^Q * W_R)
             l_poly.1[i] = self.secrets.a_L[i] + exp_y_inv[i] * wR[i];
@@ -696,8 +700,6 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             // r_poly.2 = 0
             // r_poly.3 = y^n * s_R
             r_poly.3[i] = exp_y * sr;
-
-            exp_y *= y; // y^i -> y^(i+1)
         }
 
         let t_poly = util::VecPoly3::special_inner_product(&l_poly, &r_poly);
@@ -744,16 +746,17 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         let t_x = t_poly.eval(x);
         let t_x_blinding = t_blinding_poly.eval(x);
         let mut l_vec = l_poly.eval(x);
-        l_vec.append(&mut vec![G::ScalarField::zero(); pad]);
+        // Pad out to the nearest power of two with zeros
+        l_vec.resize(padded_n, G::ScalarField::zero());
 
         let mut r_vec = r_poly.eval(x);
-        r_vec.append(&mut vec![G::ScalarField::zero(); pad]);
-
+        // Pad out with additional powers of y
         // XXX this should refer to the notes to explain why this is correct
-        for i in n..padded_n {
-            r_vec[i] = -exp_y;
-            exp_y *= y; // y^i -> y^(i+1)
-        }
+        r_vec.resize_with(padded_n, || {
+            let exp_y = exp_y_iter.next()
+                .expect("exponentional iterator shouldn't terminate");
+            -exp_y
+        });
 
         let i_blinding = i_blinding1 + u * i_blinding2;
         let o_blinding = o_blinding1 + u * o_blinding2;
