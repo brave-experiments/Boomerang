@@ -16,7 +16,7 @@ use tokio::task;
 
 type SF = <Config as CurveConfig>::ScalarField;
 
-static SERVER_ENDPOINT: &str = "localhost:8080";//"52.11.217.156:8080";//
+static SERVER_ENDPOINT: &str = "localhost:8080"; //"52.11.217.156:8080";//
 
 // functions to benchmark
 async fn boomerang_protocol() {
@@ -36,23 +36,19 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
 
     // send to server get m2
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m2");
-    let issuance_m2 = issuance_send_m1_get_m2(
-        issuance_m1.clone(),
-        endpoint,
-    ).await;
+    let issuance_m2 = issuance_send_m1_get_m2(issuance_m1.clone(), endpoint).await;
 
     // issuance m3
-    let issuance_m3 =
-        IssuanceC::<Config>::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
+    let issuance_m3 = IssuanceC::<Config>::generate_issuance_m3(
+        issuance_m1.clone(),
+        issuance_m2.clone(),
+        &mut OsRng,
+    );
 
     // send to server get m4
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_issuance_m4");
-    let issuance_m4 = issuance_send_m2m3_get_m4(
-        issuance_m2.clone(),
-        issuance_m3.clone(),
-        endpoint2,
-    )
-    .await;
+    let issuance_m4 =
+        issuance_send_m2m3_get_m4(issuance_m2.clone(), issuance_m3.clone(), endpoint2).await;
 
     // populate state
     let issuance_state =
@@ -89,12 +85,8 @@ async fn collection_protocol(
 
     // send to server get m3
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m3");
-    let collection_m3 = collection_send_m1m2_get_m3(
-        collection_m1.clone(),
-        collection_m2.clone(),
-        endpoint,
-    )
-    .await;
+    let collection_m3 =
+        collection_send_m1m2_get_m3(collection_m1.clone(), collection_m2.clone(), endpoint).await;
 
     // m4
     let collection_m4 = CollectionC::<Config>::generate_collection_m4(
@@ -105,12 +97,8 @@ async fn collection_protocol(
 
     // send to server get m5
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m5");
-    let collection_m5 = collection_send_m3m4_get_m5(
-        collection_m3.clone(),
-        collection_m4.clone(),
-        endpoint2,
-    )
-    .await;
+    let collection_m5 =
+        collection_send_m3m4_get_m5(collection_m3.clone(), collection_m4.clone(), endpoint2).await;
 
     // populate state
     let collection_state = CollectionC::<Config>::populate_state(
@@ -174,12 +162,8 @@ async fn spending_protocol(
 
     // send to server get m5
     let endpoint2 = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m5");
-    let spendverify_m5 = spending_send_m3m4_get_m5(
-        spendverify_m3.clone(),
-        spendverify_m4.clone(),
-        endpoint2,
-    )
-    .await;
+    let spendverify_m5 =
+        spending_send_m3m4_get_m5(spendverify_m3.clone(), spendverify_m4.clone(), endpoint2).await;
 
     // populate state
     let spending_state = SpendVerifyC::<Config>::populate_state(
@@ -206,10 +190,7 @@ async fn spending_protocol(
 async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/server_keypair");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
+    let response = client.get(endpoint).send().await;
 
     let response_body = response.unwrap().text().await;
 
@@ -221,10 +202,7 @@ async fn get_server_keypair_from_server() -> ServerKeyPair<Config> {
 async fn get_collection_m1() -> CollectionS<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_collection_m1");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
+    let response = client.get(endpoint).send().await;
 
     let response_body = response.unwrap().text().await;
 
@@ -236,10 +214,7 @@ async fn get_collection_m1() -> CollectionS<Config> {
 async fn get_spending_m1() -> SpendVerifyS<Config> {
     let client = reqwest::Client::new();
     let endpoint = format!("http://{}{}", SERVER_ENDPOINT, "/boomerang_spending_m1");
-    let response = client
-        .get(endpoint)
-        .send()
-        .await;
+    let response = client.get(endpoint).send().await;
 
     let response_body = response.unwrap().text().await;
 
@@ -248,7 +223,7 @@ async fn get_spending_m1() -> SpendVerifyS<Config> {
     SpendVerifyS::<Config>::deserialize_compressed(&*spending_m1_bytes).unwrap()
 }
 
-async fn issuance_send_m1_get_m2(    
+async fn issuance_send_m1_get_m2(
     issuance_c: IssuanceC<Config>,
     endpoint: String,
 ) -> IssuanceS<Config> {
@@ -405,7 +380,12 @@ async fn spending_send_m1m2_get_m3(
 
     let spending_m1_u64: Vec<u64> = spending_m1_bytes.into_iter().map(u64::from).collect();
     let spending_m2_u64: Vec<u64> = spending_m2_bytes.into_iter().map(u64::from).collect();
-    let body_vec: Vec<Vec<u64>> = vec![spending_m1_u64, spending_m2_u64, state_vector, policy_vector];
+    let body_vec: Vec<Vec<u64>> = vec![
+        spending_m1_u64,
+        spending_m2_u64,
+        state_vector,
+        policy_vector,
+    ];
     let body = serde_json::to_string(&body_vec).unwrap();
 
     // send spending_m* as json string to server
@@ -479,7 +459,17 @@ fn benchmark_boomerang_mult_users(c: &mut Criterion) {
 
             // Await all tasks
             for task in tasks {
-                task.await.unwrap();
+                //task.await.unwrap();
+                match task.await {
+                    Ok(_) => {} // do nothing if all good.
+                    Err(e) => {
+                        if e.is_panic() {
+                            println!("Task panicked: {:?}", e);
+                        } else {
+                            println!("Task failed: {:?}", e);
+                        }
+                    }
+                }
             }
         });
     });
