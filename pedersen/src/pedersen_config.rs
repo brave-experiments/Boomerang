@@ -455,7 +455,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
     pub fn affine_from_bytes_tai(bytes: &[u8]) -> sw::Affine<P> {
         use sha3::{Digest, Sha3_256};
         // Try a deterministic sequence of hashes to find a valid point.
-        for i in 0..=u8::max_value() {
+        for i in 0..=u8::MAX {
             let mut sha = Sha3_256::new();
             Digest::update(&mut sha, bytes);
             Digest::update(&mut sha, [i]);

@@ -393,8 +393,8 @@ pub struct SpendVerifyM3<B: BoomerangConfig> {
 impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
     fn clone(&self) -> Self {
         Self {
-            comm: self.comm.clone(),
-            sig_commit: self.sig_commit.clone(),
+            comm: self.comm,
+            sig_commit: self.sig_commit,
             id_1: self.id_1,
             verifying_key: self.verifying_key,
             tag_key: self.tag_key,
