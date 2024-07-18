@@ -463,7 +463,11 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
         let (wL, wR, wO, wV, wc) = self.flattened_constraints(&z);
 
         // Get IPP variables
-        let VerificationScalars {challenges_sq, challenges_inv_sq, s} = proof
+        let VerificationScalars {
+            challenges_sq,
+            challenges_inv_sq,
+            s,
+        } = proof
             .ipp_proof
             .verification_scalars(padded_n, self.transcript.borrow_mut())
             .map_err(|_| R1CSError::VerificationError)?;

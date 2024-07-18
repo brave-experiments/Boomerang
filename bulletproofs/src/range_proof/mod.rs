@@ -344,7 +344,11 @@ impl<G: AffineRepr> RangeProof<G> {
         // Challenge value for batching statements to be verified
         let c = G::ScalarField::rand(rng);
 
-        let VerificationScalars { mut challenges_sq, mut challenges_inv_sq, s } = self.ipp_proof.verification_scalars(n * m, transcript)?;
+        let VerificationScalars {
+            mut challenges_sq,
+            mut challenges_inv_sq,
+            s,
+        } = self.ipp_proof.verification_scalars(n * m, transcript)?;
         let s_inv = s.iter().rev();
 
         let a: G::ScalarField = self.ipp_proof.a;
