@@ -185,7 +185,7 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4, "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
         }
 
@@ -224,7 +224,7 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
 
             let proof = ACLSP::prove(&mut OsRng, kp.tag_key, m4, vals, gens.generators, c1.r);
@@ -270,7 +270,7 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
 
             let proof = ACLSP::prove(
@@ -287,7 +287,7 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
 
-            let check = ACLSPV::verify(proof, kp.tag_key, m4);
+            let check = ACLSPV::verify(proof, kp.tag_key, &m4);
             assert!(check == true);
         }
     };

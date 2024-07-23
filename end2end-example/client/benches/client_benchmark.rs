@@ -59,7 +59,7 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig.clone(),
+        &sig,
         "message",
     );
     assert!(check);
@@ -114,7 +114,7 @@ async fn collection_protocol(
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig_n.clone(),
+        &sig_n,
         "message",
     );
     assert!(check);
@@ -178,7 +178,7 @@ async fn spending_protocol(
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig_n.clone(),
+        &sig_n,
         "message",
     );
     assert!(check);

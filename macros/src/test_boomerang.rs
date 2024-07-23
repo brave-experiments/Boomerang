@@ -142,7 +142,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig.clone(),
+                &sig,
                 "message",
             );
             assert!(check == true);
@@ -187,7 +187,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig.clone(),
+                &sig,
                 "message",
             );
             assert!(check == true);
@@ -238,7 +238,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig.clone(),
+                &sig,
                 "message",
             );
             assert!(check == true);
@@ -304,7 +304,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig.clone(),
+                &sig,
                 "message",
             );
             assert!(check == true);
@@ -357,7 +357,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig_n.clone(),
+                &sig_n,
                 "message",
             );
             assert!(check == true);
@@ -411,7 +411,7 @@ macro_rules! __test_boomerang {
                 let check = ACLSV::verify(
                     skp.s_key_pair.verifying_key,
                     skp.s_key_pair.tag_key,
-                    sig.clone(),
+                    &sig,
                     "message",
                 );
                 assert!(check == true);
@@ -465,7 +465,7 @@ macro_rules! __test_boomerang {
                 let check = ACLSV::verify(
                     skp.s_key_pair.verifying_key,
                     skp.s_key_pair.tag_key,
-                    sig_n.clone(),
+                    &sig_n,
                     "message",
                 );
                 assert!(check == true);
@@ -544,7 +544,7 @@ macro_rules! __test_boomerang {
             let check = ACLSV::verify(
                 skp.s_key_pair.verifying_key,
                 skp.s_key_pair.tag_key,
-                sig_n.clone(),
+                &sig_n,
                 "message",
             );
             assert!(check == true);

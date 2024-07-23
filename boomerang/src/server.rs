@@ -245,7 +245,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
             "message",
         );
 
@@ -256,7 +256,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let check2 = SigVerifProof::verify(
             c_m.m2.s_proof,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
         );
 
         if !check2 {
@@ -468,7 +468,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
             "message",
         );
 
@@ -480,7 +480,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let check2 = SigVerifProof::verify(
             c_m.m2.s_proof,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
         );
 
         if !check2 {
