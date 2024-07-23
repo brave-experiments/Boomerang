@@ -301,7 +301,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies correctly.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1.comm, vals.len(), gens.clone()));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, vals.len(), &gens));
         }
 
         #[test]
@@ -333,7 +333,7 @@ macro_rules! __test_pedersen {
 
             // Now check that the proof verifies correctly.
             let mut transcript_v = Transcript::new(label);
-            assert!(proof.verify(&mut transcript_v, &c1.comm, &pk, vals.len(), gens.clone()));
+            assert!(proof.verify(&mut transcript_v, &c1.comm, &pk, vals.len(), &gens));
         }
 
         #[test]

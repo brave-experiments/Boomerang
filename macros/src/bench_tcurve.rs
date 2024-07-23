@@ -112,7 +112,7 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(b"test-open-multi");
-                        proof.verify(&mut transcript_v, &com.comm, vals.len(), gens.clone());
+                        proof.verify(&mut transcript_v, &com.comm, vals.len(), &gens);
                     });
                 },
             );
@@ -198,7 +198,7 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(b"test-issue-multi");
-                        proof.verify(&mut transcript_v, &com.comm, &pk, vals.len(), gens.clone());
+                        proof.verify(&mut transcript_v, &com.comm, &pk, vals.len(), &gens);
                     });
                 },
             );

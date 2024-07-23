@@ -113,7 +113,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
             &c_m.m1.comm.comm,
             &c_m.m1.u_pk,
             c_m.m1.len,
-            c_m.m1.gens.clone(),
+            &c_m.m1.gens,
         );
 
         if !check {
@@ -269,7 +269,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let check3 = c_m
             .m2
             .pi_1
-            .verify(&mut transcript, &c_m.m2.comm.comm, 4, c_m.m2.gens.clone());
+            .verify(&mut transcript, &c_m.m2.comm.comm, 4, &c_m.m2.gens);
 
         if !check3 {
             panic!("Boomerang collection: invalid proof opening 1");
@@ -282,7 +282,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
             &mut transcript1,
             &c_m.m2.prev_comm.comm,
             4,
-            c_m.m2.prev_gens.clone(),
+            &c_m.m2.prev_gens,
         );
 
         if !check4 {
@@ -493,7 +493,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             &mut transcript_p1,
             &c_m.m2.comm.comm,
             4,
-            c_m.m2.gens.clone(),
+            &c_m.m2.gens,
         );
 
         if !check3 {
@@ -506,7 +506,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             &mut transcript_p2,
             &c_m.m2.prev_comm.comm,
             4,
-            c_m.m2.prev_gens.clone(),
+            &c_m.m2.prev_gens,
         );
 
         /*if !check4 {
