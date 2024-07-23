@@ -130,7 +130,7 @@ macro_rules! __test_boomerang {
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
                 issuance_m4.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 
@@ -175,7 +175,7 @@ macro_rules! __test_boomerang {
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
                 issuance_m4.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 
@@ -226,7 +226,7 @@ macro_rules! __test_boomerang {
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
                 issuance_m4.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 
@@ -292,7 +292,7 @@ macro_rules! __test_boomerang {
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
                 issuance_m4.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 
@@ -345,7 +345,7 @@ macro_rules! __test_boomerang {
             let collection_state = CBCM::populate_state(
                 collection_m4.clone(),
                 collection_m5.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 
@@ -399,7 +399,7 @@ macro_rules! __test_boomerang {
                 let issuance_state = IBCM::populate_state(
                     issuance_m3.clone(),
                     issuance_m4.clone(),
-                    skp.clone(),
+                    &skp,
                     ckp.clone(),
                 );
 
@@ -454,7 +454,7 @@ macro_rules! __test_boomerang {
                 let collection_state = CBCM::populate_state(
                     collection_m4.clone(),
                     collection_m5.clone(),
-                    skp.clone(),
+                    &skp,
                     ckp.clone(),
                 );
                 assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
@@ -532,7 +532,7 @@ macro_rules! __test_boomerang {
             let spendverify_state = SVBCM::populate_state(
                 spendverify_m4.clone(),
                 spendverify_m5.clone(),
-                skp.clone(),
+                &skp,
                 ckp.clone(),
             );
 

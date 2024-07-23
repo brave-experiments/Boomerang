@@ -562,7 +562,7 @@ async fn main() {
 
         // populate state
         let issuance_state =
-            IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, skp.clone(), ckp.clone());
+            IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, &skp, ckp.clone());
 
         let sig = &issuance_state.sig_state[0];
 
@@ -621,7 +621,7 @@ async fn main() {
         let collection_state = CollectionC::<Config>::populate_state(
             collection_m4.clone(),
             collection_m5.clone(),
-            skp.clone(),
+            &skp,
             ckp.clone(),
         );
         assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
@@ -700,7 +700,7 @@ async fn main() {
         let spending_state = SpendVerifyC::<Config>::populate_state(
             spendverify_m4,
             spendverify_m5,
-            skp.clone(),
+            &skp,
             ckp.clone(),
         );
         assert!(spending_state.sig_state[0].sigma.zeta.is_on_curve());

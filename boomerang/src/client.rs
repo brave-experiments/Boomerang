@@ -174,7 +174,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     pub fn populate_state(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
@@ -389,7 +389,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
     pub fn populate_state(
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
@@ -635,7 +635,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
     pub fn populate_state(
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
