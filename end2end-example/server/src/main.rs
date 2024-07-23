@@ -123,11 +123,8 @@ async fn boomerang_collection_m5(data: web::Data<AppState>, req_body: String) ->
     let collection_m4 =
         CollectionC::<Config>::deserialize_compressed(collection_m4_bytes.as_slice()).unwrap();
 
-    let collection_m5 = CollectionS::<Config>::generate_collection_m5(
-        collection_m4,
-        collection_m3,
-        &data.skp,
-    );
+    let collection_m5 =
+        CollectionS::<Config>::generate_collection_m5(collection_m4, collection_m3, &data.skp);
 
     // Serialize collection_m3
     let mut collection_m5_bytes = Vec::new();
@@ -228,8 +225,7 @@ async fn boomerang_issuance_m2(data: web::Data<AppState>, req_body: String) -> i
     let issuance_m1_bytes: Vec<u8> = serde_json::from_str(&req_body).unwrap();
     let issuance_m1 = IssuanceC::<Config>::deserialize_compressed(&*issuance_m1_bytes).unwrap();
 
-    let issuance_m2 =
-        IssuanceS::<Config>::generate_issuance_m2(issuance_m1, &data.skp, &mut OsRng);
+    let issuance_m2 = IssuanceS::<Config>::generate_issuance_m2(issuance_m1, &data.skp, &mut OsRng);
 
     // Serialize issuance_m2
     let mut issuance_m2_bytes = Vec::new();

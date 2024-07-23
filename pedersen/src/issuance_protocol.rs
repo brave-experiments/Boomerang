@@ -162,7 +162,7 @@ impl<P: PedersenConfig> IssuanceProofMulti<P> {
         rng: &mut T,
         c1: &PedersenComm<P>,
         l: usize,
-        gens: &Generators<P>
+        gens: &Generators<P>,
     ) -> IssuanceProofMultiIntermediate<P> {
         let mut total: sw::Affine<P> = sw::Affine::identity();
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];

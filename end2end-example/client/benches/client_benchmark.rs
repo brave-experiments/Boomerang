@@ -166,12 +166,8 @@ async fn spending_protocol(
         spending_send_m3m4_get_m5(spendverify_m3.clone(), spendverify_m4.clone(), endpoint2).await;
 
     // populate state
-    let spending_state = SpendVerifyC::<Config>::populate_state(
-        spendverify_m4,
-        spendverify_m5,
-        &skp,
-        ckp.clone(),
-    );
+    let spending_state =
+        SpendVerifyC::<Config>::populate_state(spendverify_m4, spendverify_m5, &skp, ckp.clone());
 
     let sig_n = &spending_state.sig_state[0];
 

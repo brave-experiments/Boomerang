@@ -253,11 +253,8 @@ impl<B: BoomerangConfig> CollectionS<B> {
             panic!("Boomerang collection: invalid signature");
         }
 
-        let check2 = SigVerifProof::verify(
-            c_m.m2.s_proof,
-            key_pair.s_key_pair.tag_key,
-            &c_m.m2.sig,
-        );
+        let check2 =
+            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
 
         if !check2 {
             panic!("Boomerang collection: invalid proof sig");
@@ -477,11 +474,8 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
 
         // verify signature proof
-        let check2 = SigVerifProof::verify(
-            c_m.m2.s_proof,
-            key_pair.s_key_pair.tag_key,
-            &c_m.m2.sig,
-        );
+        let check2 =
+            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
 
         if !check2 {
             panic!("Boomerang spend/verify: invalid proof sig");
@@ -489,12 +483,10 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         // verify opening proof \pi_open(tk0)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        let check3 = c_m.m2.pi_1.verify(
-            &mut transcript_p1,
-            &c_m.m2.comm.comm,
-            4,
-            &c_m.m2.gens,
-        );
+        let check3 = c_m
+            .m2
+            .pi_1
+            .verify(&mut transcript_p1, &c_m.m2.comm.comm, 4, &c_m.m2.gens);
 
         if !check3 {
             panic!("Boomerang spend/verify: invalid proof opening 1");
@@ -555,8 +547,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             <B as CurveConfig>::ScalarField::zero(),
             <B as CurveConfig>::ScalarField::zero(),
         ];
-        let c0dashdash =
-            PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
+        let c0dashdash = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
 
         // C0 = C0' - C0''
         let c0 = c_m.m2.comm - c0dashdash;

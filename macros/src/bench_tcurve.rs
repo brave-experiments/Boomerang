@@ -66,13 +66,7 @@ macro_rules! bench_tcurve_opening_multi_prover_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript = Transcript::new(b"test-open-multi");
-                        OPM::create(
-                            &mut transcript,
-                            &mut OsRng,
-                            &vals,
-                            &com,
-                            &gens,
-                        )
+                        OPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens)
                     });
                 },
             );
@@ -98,13 +92,7 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
 
             // Make the proof object.
             let mut transcript = Transcript::new(b"test-open-multi");
-            let proof = OPM::create(
-                &mut transcript,
-                &mut OsRng,
-                &vals,
-                &com,
-                &gens,
-            );
+            let proof = OPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens);
 
             // And now just check how long it takes to verify the proof.
             c.bench_function(
@@ -147,13 +135,7 @@ macro_rules! bench_tcurve_issuance_multi_prover_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript = Transcript::new(b"test-issue-multi");
-                        IPM::create(
-                            &mut transcript,
-                            &mut OsRng,
-                            &vals,
-                            &com,
-                            &gens,
-                        )
+                        IPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens)
                     });
                 },
             );
@@ -184,13 +166,7 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
 
             // Make the proof object.
             let mut transcript = Transcript::new(b"test-issue-multi");
-            let proof = IPM::create(
-                &mut transcript,
-                &mut OsRng,
-                &vals,
-                &com,
-                &gens,
-            );
+            let proof = IPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens);
 
             // And now just check how long it takes to verify the proof.
             c.bench_function(

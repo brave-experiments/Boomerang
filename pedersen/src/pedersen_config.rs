@@ -515,9 +515,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
                 comm: (total + q.mul(r)).into_affine(),
                 r,
             },
-            Generators {
-                generators: gens,
-            },
+            Generators { generators: gens },
         )
     }
 
@@ -574,10 +572,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
                 comm: (total + P::GENERATOR2.mul(r)).into_affine(),
                 r,
             },
-            Generators {
-                generators: gens,
-            },
-
+            Generators { generators: gens },
         )
     }
 

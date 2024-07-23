@@ -273,14 +273,7 @@ macro_rules! __test_acl {
             let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
 
-            let proof = ACLSP::prove(
-                &mut OsRng,
-                kp.tag_key,
-                &m4,
-                &vals,
-                &gens.generators,
-                c1.r,
-            );
+            let proof = ACLSP::prove(&mut OsRng, kp.tag_key, &m4, &vals, &gens.generators, c1.r);
 
             assert!(proof.b_gamma.is_on_curve());
             assert!(proof.pi1.t1.is_on_curve());

@@ -124,8 +124,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
 
-        let proof =
-            IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
+        let proof = IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let m1 = IssuanceM1 {
             comm: c1,
@@ -288,8 +287,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
 
-        let proof_1 =
-            OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
+        let proof_1 = OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let label1 = b"BoomerangCollectionM2O2";
         let mut transcript1 = Transcript::new(label1);
@@ -510,8 +508,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
 
         // pi_open tk0 (token)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        let proof_1 =
-            OpeningProofMulti::create(&mut transcript_p1, rng, &vals, &c1, &gens);
+        let proof_1 = OpeningProofMulti::create(&mut transcript_p1, rng, &vals, &c1, &gens);
 
         // pi_open tk? (previous token?)
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
