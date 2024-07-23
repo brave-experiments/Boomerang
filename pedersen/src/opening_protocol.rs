@@ -402,9 +402,9 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         c1: &PedersenComm<P>,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> Self {
         // This function just creates the intermediary objects and makes the proof from
         // those.
@@ -428,7 +428,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         rng: &mut T,
         c1: &PedersenComm<P>,
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> OpeningProofMultiIntermediate<P> {
         let mut total: sw::Affine<P> = sw::Affine::identity();
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
@@ -453,7 +453,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn create_proof(
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
         chal_buf: &[u8],
@@ -473,7 +473,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     pub fn create_proof_own_challenge(
         transcript: &mut Transcript,
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
     ) -> Self {
@@ -489,7 +489,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     /// * `chal` - the challenge.
     pub fn create_proof_with_challenge(
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,

@@ -125,14 +125,14 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let mut transcript = Transcript::new(label);
 
         let proof =
-            IssuanceProofMulti::create(&mut transcript, rng, vals.clone(), &c1, gens.clone());
+            IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let m1 = IssuanceM1 {
             comm: c1,
             pi_issuance: proof,
             u_pk: key_pair.public_key,
             len: vals.len(),
-            gens: gens.clone(),
+            gens,
             id_0,
             r: r_0,
         };
@@ -289,7 +289,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let mut transcript = Transcript::new(label);
 
         let proof_1 =
-            OpeningProofMulti::create(&mut transcript, rng, vals.clone(), &c1, gens.clone());
+            OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let label1 = b"BoomerangCollectionM2O2";
         let mut transcript1 = Transcript::new(label1);
@@ -297,9 +297,9 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let proof_2 = OpeningProofMulti::create(
             &mut transcript1,
             rng,
-            prev_vals.clone(),
+            &prev_vals,
             &state.comm_state[0],
-            state.token_state[0].gens.clone(),
+            &state.token_state[0].gens,
         );
 
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
@@ -511,16 +511,16 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         // pi_open tk0 (token)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
         let proof_1 =
-            OpeningProofMulti::create(&mut transcript_p1, rng, vals.clone(), &c1, gens.clone());
+            OpeningProofMulti::create(&mut transcript_p1, rng, &vals, &c1, &gens);
 
         // pi_open tk? (previous token?)
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
         let proof_2 = OpeningProofMulti::create(
             &mut transcript_p2,
             rng,
-            prev_vals.clone(),
+            &prev_vals,
             &state.comm_state[0],
-            state.token_state[0].gens.clone(),
+            &state.token_state[0].gens,
         );
 
         // tag = (sk_u * tk0.r1) + r2

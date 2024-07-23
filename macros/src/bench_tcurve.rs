@@ -69,9 +69,9 @@ macro_rules! bench_tcurve_opening_multi_prover_time {
                         OPM::create(
                             &mut transcript,
                             &mut OsRng,
-                            vals.clone(),
+                            &vals,
                             &com,
-                            gens.clone(),
+                            &gens,
                         )
                     });
                 },
@@ -101,9 +101,9 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
             let proof = OPM::create(
                 &mut transcript,
                 &mut OsRng,
-                vals.clone(),
+                &vals,
                 &com,
-                gens.clone(),
+                &gens,
             );
 
             // And now just check how long it takes to verify the proof.
@@ -150,9 +150,9 @@ macro_rules! bench_tcurve_issuance_multi_prover_time {
                         IPM::create(
                             &mut transcript,
                             &mut OsRng,
-                            vals.clone(),
+                            &vals,
                             &com,
-                            gens.clone(),
+                            &gens,
                         )
                     });
                 },
@@ -187,9 +187,9 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
             let proof = IPM::create(
                 &mut transcript,
                 &mut OsRng,
-                vals.clone(),
+                &vals,
                 &com,
-                gens.clone(),
+                &gens,
             );
 
             // And now just check how long it takes to verify the proof.
