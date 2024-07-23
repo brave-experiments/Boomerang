@@ -127,7 +127,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v1, v2, v3];
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m1.gens);
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m1.gens);
 
         let c = c1 + c_m.m1.comm;
 
@@ -317,7 +317,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v, v2, v3];
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
         let c = c1 + c_m.m2.comm;
 
         let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
@@ -556,7 +556,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             <B as CurveConfig>::ScalarField::zero(),
         ];
         let c0dashdash =
-            PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
+            PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
 
         // C0 = C0' - C0''
         let c0 = c_m.m2.comm - c0dashdash;

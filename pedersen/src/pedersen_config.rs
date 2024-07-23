@@ -546,17 +546,17 @@ impl<P: PedersenConfig> PedersenComm<P> {
     /// * `r` - the randomness to use.
     /// Returns a new commitment to `x`.
     pub fn new_multi_with_both(
-        vals: Vec<<P as CurveConfig>::ScalarField>,
+        vals: &[<P as CurveConfig>::ScalarField],
         r: <P as CurveConfig>::ScalarField,
     ) -> (Self, Generators<P>) {
-        let mut gens: Vec<sw::Affine<P>> = vec![];
-        gens.push(<P as SWCurveConfig>::GENERATOR);
-
         let label = [b'G', 0, 0, 0, 0];
         let mut shake = Shake256::default();
         shake.update(b"GeneratorsChain");
         shake.update(label);
         let mut reader = shake.finalize_xof_dirty();
+
+        let mut gens: Vec<sw::Affine<P>> = Vec::with_capacity(vals.len() + 1);
+        gens.push(<P as SWCurveConfig>::GENERATOR);
 
         for _ in 1..vals.len() {
             let mut uniform_bytes = [0u8; 64];
@@ -565,10 +565,6 @@ impl<P: PedersenConfig> PedersenComm<P> {
             let rest = Self::affine_from_bytes_tai(&uniform_bytes);
             gens.push(rest);
         }
-
-        let gens_s = Generators {
-            generators: gens.clone(),
-        };
 
         let mut total: sw::Affine<P> = sw::Affine::identity();
         for i in 0..gens.len() {
@@ -580,7 +576,10 @@ impl<P: PedersenConfig> PedersenComm<P> {
                 comm: (total + P::GENERATOR2.mul(r)).into_affine(),
                 r,
             },
-            gens_s.clone(),
+            Generators {
+                generators: gens,
+            },
+
         )
     }
 
@@ -593,9 +592,9 @@ impl<P: PedersenConfig> PedersenComm<P> {
     /// secure.
     /// Returns a new commitment to `x`.
     pub fn new_multi_with_all_generators<T: RngCore + CryptoRng>(
-        vals: Vec<<P as CurveConfig>::ScalarField>,
+        vals: &[<P as CurveConfig>::ScalarField],
         rng: &mut T,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> Self {
         // Returns a new multi pedersen commitment using fixed generators.
         let r = <P as CurveConfig>::ScalarField::rand(rng);
