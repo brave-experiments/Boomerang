@@ -119,7 +119,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
 
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_0, v, key_pair.x, r_0];
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
@@ -283,7 +283,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
             state.token_state[0].r,
         ];
 
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
@@ -506,7 +506,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         ];
 
         // pedersen commitment
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         // pi_open tk0 (token)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");

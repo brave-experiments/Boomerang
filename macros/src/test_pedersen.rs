@@ -276,7 +276,7 @@ macro_rules! __test_pedersen {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
         }
 
@@ -293,7 +293,7 @@ macro_rules! __test_pedersen {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             let proof = OPM::create(&mut transcript, &mut OsRng, vals.clone(), &c1, gens.clone());
@@ -325,7 +325,7 @@ macro_rules! __test_pedersen {
             vals.push(d);
             vals.push(e);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             let proof = IPM::create(&mut transcript, &mut OsRng, vals.clone(), &c1, gens.clone());
