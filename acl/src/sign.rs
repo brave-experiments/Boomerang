@@ -386,9 +386,9 @@ impl<A: ACLConfig> SigProof<A> {
     pub fn prove<T: RngCore + CryptoRng>(
         rng: &mut T,
         tag_key: sw::Affine<A>,
-        sig_m: SigSign<A>,
-        vals: Vec<<A as CurveConfig>::ScalarField>,
-        gens: Vec<sw::Affine<A>>,
+        sig_m: &SigSign<A>,
+        vals: &[<A as CurveConfig>::ScalarField],
+        gens: &[sw::Affine<A>],
         comm_r: <A as CurveConfig>::ScalarField,
     ) -> SigProof<A> {
         let b_gamma = (A::GENERATOR.mul(sig_m.opening.gamma)).into_affine();

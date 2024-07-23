@@ -333,9 +333,9 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
-            state.sig_state[0].clone(),
-            prev_vals,
-            state.token_state[0].gens.generators.clone(),
+            &state.sig_state[0],
+            &prev_vals,
+            &state.token_state[0].gens.generators,
             state.comm_state[0].r,
         );
 
@@ -558,9 +558,9 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
-            state.sig_state[0].clone(),
-            prev_vals,
-            state.token_state[0].gens.generators.clone(),
+            &state.sig_state[0],
+            &prev_vals,
+            &state.token_state[0].gens.generators,
             state.comm_state[0].r,
         );
 

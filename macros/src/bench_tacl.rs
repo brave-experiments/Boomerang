@@ -177,9 +177,9 @@ macro_rules! bench_tacl_sign_proof_time {
                     ACLSP::prove(
                         &mut OsRng,
                         kp.tag_key,
-                        m4.clone(),
-                        vals.clone(),
-                        gens.generators.clone(),
+                        &m4,
+                        &vals,
+                        &gens.generators,
                         com.r,
                     );
                 });
@@ -212,9 +212,9 @@ macro_rules! bench_tacl_sign_verify_time {
             let proof = ACLSP::prove(
                 &mut OsRng,
                 kp.tag_key,
-                m4.clone(),
-                vals.clone(),
-                gens.generators.clone(),
+                &m4,
+                &vals,
+                &gens.generators,
                 com.r,
             );
 
