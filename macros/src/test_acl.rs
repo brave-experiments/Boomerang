@@ -44,7 +44,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp, &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -72,7 +72,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -103,7 +103,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -136,7 +136,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -172,7 +172,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -211,7 +211,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -257,7 +257,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());

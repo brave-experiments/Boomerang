@@ -80,7 +80,7 @@ async fn collection_protocol(
         &mut OsRng,
         issuance_state,
         collection_m1.clone(),
-        skp.clone(),
+        &skp,
     );
 
     // send to server get m3
@@ -135,7 +135,7 @@ async fn spending_protocol(
         &mut OsRng,
         collection_state,
         spendverify_m1.clone(),
-        skp.clone(),
+        &skp,
     );
 
     let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();

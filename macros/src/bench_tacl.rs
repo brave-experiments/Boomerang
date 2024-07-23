@@ -18,7 +18,7 @@ macro_rules! bench_tacl_commit_time {
             // Now we can just benchmark how long it takes to commit.
             c.bench_function(concat!($curve_name, " acl commit time"), |b| {
                 b.iter(|| {
-                    ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+                    ACLSC::commit(&kp, &mut OsRng, com.comm);
                 });
             });
         }
@@ -41,7 +41,7 @@ macro_rules! bench_tacl_challenge_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
 
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(concat!($curve_name, " acl challenge time"), |b| {
@@ -69,7 +69,7 @@ macro_rules! bench_tacl_respond_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
             // Now we can just benchmark how long it takes to create a new multi proof.
@@ -98,7 +98,7 @@ macro_rules! bench_tacl_sign_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
 
@@ -134,7 +134,7 @@ macro_rules! bench_tacl_verify_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
@@ -165,7 +165,7 @@ macro_rules! bench_tacl_sign_proof_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");
@@ -204,7 +204,7 @@ macro_rules! bench_tacl_sign_verify_time {
             // And commit to them.
             let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
             let kp = ACLKP::generate(&mut OsRng);
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, com.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, com.comm);
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
             let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2.clone());
             let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2.clone(), m3, "message");

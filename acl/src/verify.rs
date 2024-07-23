@@ -49,7 +49,7 @@ impl<A: ACLConfig> SigComm<A> {
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn commit<T: RngCore + CryptoRng>(
-        keys: KeyPair<A>,
+        keys: &KeyPair<A>,
         rng: &mut T,
         comm: sw::Affine<A>,
     ) -> SigComm<A> {

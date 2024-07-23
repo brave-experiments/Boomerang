@@ -591,7 +591,7 @@ async fn main() {
             &mut OsRng,
             issuance_state,
             collection_m1.clone(),
-            skp.clone(),
+            &skp,
         );
         assert!(collection_m2.m2.comm.comm.is_on_curve());
 
@@ -655,7 +655,7 @@ async fn main() {
             &mut OsRng,
             collection_state,
             spendverify_m1.clone(),
-            skp.clone(),
+            &skp,
         );
         assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 

@@ -268,7 +268,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
         rng: &mut T,
         state: State<B>,
         s_m: CollectionS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
     ) -> CollectionC<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -487,7 +487,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         rng: &mut T,
         state: State<B>,
         s_m: SpendVerifyS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
         // Generate r1, ID_0'
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);

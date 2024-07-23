@@ -52,7 +52,7 @@ macro_rules! __test_boomerang {
             let issuance_m1 = IBCM::generate_issuance_m1(ckp, &mut OsRng);
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
-            let issuance_m2 = IBSM::generate_issuance_m2(issuance_m1, skp, &mut OsRng);
+            let issuance_m2 = IBSM::generate_issuance_m2(issuance_m1, &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
         }
@@ -70,7 +70,7 @@ macro_rules! __test_boomerang {
             let issuance_m1 = IBCM::generate_issuance_m1(ckp, &mut OsRng);
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
-            let issuance_m2 = IBSM::generate_issuance_m2(issuance_m1.clone(), skp, &mut OsRng);
+            let issuance_m2 = IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -92,7 +92,7 @@ macro_rules! __test_boomerang {
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
             let issuance_m2 =
-                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -100,7 +100,7 @@ macro_rules! __test_boomerang {
                 IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
             let issuance_m4 =
-                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), &skp);
         }
 
         #[test]
@@ -117,7 +117,7 @@ macro_rules! __test_boomerang {
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
             let issuance_m2 =
-                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -125,7 +125,7 @@ macro_rules! __test_boomerang {
                 IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
             let issuance_m4 =
-                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), &skp);
 
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
@@ -162,7 +162,7 @@ macro_rules! __test_boomerang {
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
             let issuance_m2 =
-                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -170,7 +170,7 @@ macro_rules! __test_boomerang {
                 IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
             let issuance_m4 =
-                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), &skp);
 
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
@@ -194,7 +194,7 @@ macro_rules! __test_boomerang {
 
             let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
             let collection_m2 =
-                CBCM::generate_collection_m2(&mut OsRng, issuance_state, collection_m1, skp);
+                CBCM::generate_collection_m2(&mut OsRng, issuance_state, collection_m1, &skp);
 
             assert!(collection_m2.m2.comm.comm.is_on_curve());
         }
@@ -213,7 +213,7 @@ macro_rules! __test_boomerang {
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
             let issuance_m2 =
-                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -221,7 +221,7 @@ macro_rules! __test_boomerang {
                 IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
             let issuance_m4 =
-                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), &skp);
 
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
@@ -248,7 +248,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 issuance_state,
                 collection_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             assert!(collection_m2.m2.comm.comm.is_on_curve());
@@ -258,7 +258,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 collection_m2,
                 collection_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
 
@@ -279,7 +279,7 @@ macro_rules! __test_boomerang {
             assert!(issuance_m1.m1.u_pk.is_on_curve());
 
             let issuance_m2 =
-                IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
             assert!(issuance_m2.m2.verifying_key.is_on_curve());
             assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -287,7 +287,7 @@ macro_rules! __test_boomerang {
                 IBCM::generate_issuance_m3(issuance_m1.clone(), issuance_m2.clone(), &mut OsRng);
 
             let issuance_m4 =
-                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), skp.clone());
+                IBSM::generate_issuance_m4(issuance_m3.clone(), issuance_m2.clone(), &skp);
 
             let issuance_state = IBCM::populate_state(
                 issuance_m3.clone(),
@@ -314,7 +314,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 issuance_state,
                 collection_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             assert!(collection_m2.m2.comm.comm.is_on_curve());
@@ -324,7 +324,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 collection_m2.clone(),
                 collection_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
 
@@ -339,7 +339,7 @@ macro_rules! __test_boomerang {
             let collection_m5 = CBSM::generate_collection_m5(
                 collection_m4.clone(),
                 collection_m3.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let collection_state = CBCM::populate_state(
@@ -380,7 +380,7 @@ macro_rules! __test_boomerang {
                 assert!(issuance_m1.m1.u_pk.is_on_curve());
 
                 let issuance_m2 =
-                    IBSM::generate_issuance_m2(issuance_m1.clone(), skp.clone(), &mut OsRng);
+                    IBSM::generate_issuance_m2(issuance_m1.clone(), &skp, &mut OsRng);
                 assert!(issuance_m2.m2.verifying_key.is_on_curve());
                 assert!(issuance_m2.m2.tag_key.is_on_curve());
 
@@ -393,7 +393,7 @@ macro_rules! __test_boomerang {
                 let issuance_m4 = IBSM::generate_issuance_m4(
                     issuance_m3.clone(),
                     issuance_m2.clone(),
-                    skp.clone(),
+                    &skp,
                 );
 
                 let issuance_state = IBCM::populate_state(
@@ -425,7 +425,7 @@ macro_rules! __test_boomerang {
                     &mut OsRng,
                     issuance_state,
                     collection_m1.clone(),
-                    skp.clone(),
+                    &skp,
                 );
                 assert!(collection_m2.m2.comm.comm.is_on_curve());
 
@@ -434,7 +434,7 @@ macro_rules! __test_boomerang {
                     &mut OsRng,
                     collection_m2.clone(),
                     collection_m1.clone(),
-                    skp.clone(),
+                    &skp,
                     v,
                 );
                 assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
@@ -448,7 +448,7 @@ macro_rules! __test_boomerang {
                 let collection_m5 = CBSM::generate_collection_m5(
                     collection_m4.clone(),
                     collection_m3.clone(),
-                    skp.clone(),
+                    &skp,
                 );
 
                 let collection_state = CBCM::populate_state(
@@ -481,7 +481,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 collection_state,
                 spendverify_m1.clone(),
-                skp.clone(),
+                &skp,
             );
             assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 
@@ -505,7 +505,7 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 spendverify_m2.clone(),
                 spendverify_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
                 state_vector,
                 policy_vector.clone(),
@@ -525,7 +525,7 @@ macro_rules! __test_boomerang {
             let spendverify_m5 = SVBSM::generate_spendverify_m5(
                 spendverify_m4.clone(),
                 spendverify_m3.clone(),
-                skp.clone(),
+                &skp,
             );
 
             // populate state

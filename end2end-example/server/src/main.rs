@@ -28,7 +28,7 @@ async fn boomerang_spending_m5(data: web::Data<AppState>, req_body: String) -> i
         SpendVerifyC::<Config>::deserialize_compressed(spending_m4_bytes.as_slice()).unwrap();
 
     let spending_m5 =
-        SpendVerifyS::<Config>::generate_spendverify_m5(spending_m4, spending_m3, data.skp.clone());
+        SpendVerifyS::<Config>::generate_spendverify_m5(spending_m4, spending_m3, &data.skp);
 
     // Serialize spending_m3
     let mut spending_m5_bytes = Vec::new();
@@ -75,7 +75,7 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
         &mut OsRng,
         spending_m2,
         spending_m1,
-        data.skp.clone(),
+        &data.skp,
         v,
         state_vector.to_vec(),
         policy_vector.to_vec(),
@@ -126,7 +126,7 @@ async fn boomerang_collection_m5(data: web::Data<AppState>, req_body: String) ->
     let collection_m5 = CollectionS::<Config>::generate_collection_m5(
         collection_m4,
         collection_m3,
-        data.skp.clone(),
+        &data.skp,
     );
 
     // Serialize collection_m3
@@ -161,7 +161,7 @@ async fn boomerang_collection_m3(data: web::Data<AppState>, req_body: String) ->
         &mut OsRng,
         collection_m2,
         collection_m1,
-        data.skp.clone(),
+        &data.skp,
         v,
     );
 
@@ -208,7 +208,7 @@ async fn boomerang_issuance_m4(data: web::Data<AppState>, req_body: String) -> i
         IssuanceC::<Config>::deserialize_compressed(issuance_m3_bytes.as_slice()).unwrap();
 
     let issuance_m4 =
-        IssuanceS::<Config>::generate_issuance_m4(issuance_m3, issuance_m2, data.skp.clone());
+        IssuanceS::<Config>::generate_issuance_m4(issuance_m3, issuance_m2, &data.skp);
 
     // Serialize issuance_m4
     let mut issuance_m4_bytes = Vec::new();
@@ -229,7 +229,7 @@ async fn boomerang_issuance_m2(data: web::Data<AppState>, req_body: String) -> i
     let issuance_m1 = IssuanceC::<Config>::deserialize_compressed(&*issuance_m1_bytes).unwrap();
 
     let issuance_m2 =
-        IssuanceS::<Config>::generate_issuance_m2(issuance_m1, data.skp.clone(), &mut OsRng);
+        IssuanceS::<Config>::generate_issuance_m2(issuance_m1, &data.skp, &mut OsRng);
 
     // Serialize issuance_m2
     let mut issuance_m2_bytes = Vec::new();

@@ -27,7 +27,7 @@ macro_rules! bench_tboomerang_issuance_m2_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m2 time"), |b| {
                 b.iter(|| {
-                    IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+                    IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
                 });
             });
         }
@@ -42,7 +42,7 @@ macro_rules! bench_tboomerang_issuance_m3_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m3 time"), |b| {
@@ -62,13 +62,13 @@ macro_rules! bench_tboomerang_issuance_m4_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m4 time"), |b| {
                 b.iter(|| {
-                    IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+                    IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
                 });
             });
         }
@@ -83,9 +83,9 @@ macro_rules! bench_tboomerang_issuance_m5_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m5 time"), |b| {
@@ -105,9 +105,9 @@ macro_rules! bench_tboomerang_collection_m1_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
 
             // Now we can just benchmark how long it takes for the first message.
@@ -128,9 +128,9 @@ macro_rules! bench_tboomerang_collection_m2_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
 
@@ -141,7 +141,7 @@ macro_rules! bench_tboomerang_collection_m2_time {
                         &mut OsRng,
                         i_state.clone(),
                         c_m1.clone(),
-                        skp.clone(),
+                        &skp,
                     );
                 });
             });
@@ -157,16 +157,16 @@ macro_rules! bench_tboomerang_collection_m3_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -177,7 +177,7 @@ macro_rules! bench_tboomerang_collection_m3_time {
                         &mut OsRng,
                         c_m2.clone(),
                         c_m1.clone(),
-                        skp.clone(),
+                        &skp,
                         v,
                     );
                 });
@@ -194,16 +194,16 @@ macro_rules! bench_tboomerang_collection_m4_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -211,7 +211,7 @@ macro_rules! bench_tboomerang_collection_m4_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
 
@@ -233,16 +233,16 @@ macro_rules! bench_tboomerang_collection_m5_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -250,7 +250,7 @@ macro_rules! bench_tboomerang_collection_m5_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
 
@@ -259,7 +259,7 @@ macro_rules! bench_tboomerang_collection_m5_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " collection m5 time"), |b| {
                 b.iter(|| {
-                    CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+                    CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
                 });
             });
         }
@@ -274,16 +274,16 @@ macro_rules! bench_tboomerang_collection_m6_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -291,11 +291,11 @@ macro_rules! bench_tboomerang_collection_m6_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " collection m6 time"), |b| {
@@ -315,16 +315,16 @@ macro_rules! bench_tboomerang_spending_m1_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -332,11 +332,11 @@ macro_rules! bench_tboomerang_spending_m1_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             // Now we can just benchmark how long it takes for the first message.
@@ -357,16 +357,16 @@ macro_rules! bench_tboomerang_spending_m2_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -374,11 +374,11 @@ macro_rules! bench_tboomerang_spending_m2_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
@@ -390,7 +390,7 @@ macro_rules! bench_tboomerang_spending_m2_time {
                         &mut OsRng,
                         c_state.clone(),
                         s_m1.clone(),
-                        skp.clone(),
+                        &skp,
                     );
                 });
             });
@@ -406,16 +406,16 @@ macro_rules! bench_tboomerang_spending_m3_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -423,16 +423,16 @@ macro_rules! bench_tboomerang_spending_m3_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v.clone(),
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
             let s_m2 =
-                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), &skp);
 
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
@@ -444,7 +444,7 @@ macro_rules! bench_tboomerang_spending_m3_time {
                         &mut OsRng,
                         s_m2.clone(),
                         s_m1.clone(),
-                        skp.clone(),
+                        &skp,
                         v,
                         state_vector.clone(),
                         policy_vector.clone(),
@@ -463,16 +463,16 @@ macro_rules! bench_tboomerang_spending_m4_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -480,23 +480,23 @@ macro_rules! bench_tboomerang_spending_m4_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v.clone(),
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
             let s_m2 =
-                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), &skp);
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
             let s_m3 = SVBSM::generate_spendverify_m3(
                 &mut OsRng,
                 s_m2.clone(),
                 s_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
                 state_vector,
                 policy_vector.clone(),
@@ -525,16 +525,16 @@ macro_rules! bench_tboomerang_spending_m5_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -542,23 +542,23 @@ macro_rules! bench_tboomerang_spending_m5_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v.clone(),
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
             let s_m2 =
-                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), &skp);
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
             let s_m3 = SVBSM::generate_spendverify_m3(
                 &mut OsRng,
                 s_m2.clone(),
                 s_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
                 state_vector,
                 policy_vector.clone(),
@@ -573,7 +573,7 @@ macro_rules! bench_tboomerang_spending_m5_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m5 time"), |b| {
                 b.iter(|| {
-                    SVBSM::generate_spendverify_m5(s_m4.clone(), s_m3.clone(), skp.clone());
+                    SVBSM::generate_spendverify_m5(s_m4.clone(), s_m3.clone(), &skp);
                 });
             });
         }
@@ -588,16 +588,16 @@ macro_rules! bench_tboomerang_spending_m6_time {
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
             let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
-            let m2 = IBSM::generate_issuance_m2(m1.clone(), skp.clone(), &mut OsRng);
+            let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
-            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), skp.clone());
+            let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
             let i_state = IBCM::populate_state(m3.clone(), m4.clone(), skp.clone(), kp.clone());
             let c_m1 = CBSM::<$config>::generate_collection_m1(&mut OsRng);
             let c_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 i_state.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
             );
 
             let v = <$config as CurveConfig>::ScalarField::one();
@@ -605,23 +605,23 @@ macro_rules! bench_tboomerang_spending_m6_time {
                 &mut OsRng,
                 c_m2.clone(),
                 c_m1.clone(),
-                skp.clone(),
+                &skp,
                 v.clone(),
             );
             let c_m4 = CBCM::generate_collection_m4(&mut OsRng, c_m2.clone(), c_m3.clone());
-            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), skp.clone());
+            let c_m5 = CBSM::generate_collection_m5(c_m4.clone(), c_m3.clone(), &skp);
             let c_state = CBCM::populate_state(c_m4.clone(), c_m5.clone(), skp.clone(), kp.clone());
 
             let s_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
             let s_m2 =
-                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), skp.clone());
+                SVBCM::generate_spendverify_m2(&mut OsRng, c_state, s_m1.clone(), &skp);
             let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
             let state_vector = vec![5u64; 64];
             let s_m3 = SVBSM::generate_spendverify_m3(
                 &mut OsRng,
                 s_m2.clone(),
                 s_m1.clone(),
-                skp.clone(),
+                &skp,
                 v,
                 state_vector,
                 policy_vector.clone(),
@@ -632,7 +632,7 @@ macro_rules! bench_tboomerang_spending_m6_time {
                 s_m3.clone(),
                 policy_vector,
             );
-            let s_m5 = SVBSM::generate_spendverify_m5(s_m4.clone(), s_m3.clone(), skp.clone());
+            let s_m5 = SVBSM::generate_spendverify_m5(s_m4.clone(), s_m3.clone(), &skp);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " spending m6 time"), |b| {
