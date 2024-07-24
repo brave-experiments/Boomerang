@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! bench_tboomerang_issuance_m1_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -17,7 +17,7 @@ macro_rules! bench_tboomerang_issuance_m1_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_issuance_m2_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -36,7 +36,7 @@ macro_rules! bench_tboomerang_issuance_m2_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_issuance_m3_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -56,7 +56,7 @@ macro_rules! bench_tboomerang_issuance_m3_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_issuance_m4_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -77,7 +77,7 @@ macro_rules! bench_tboomerang_issuance_m4_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_issuance_m5_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang issuance scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -99,7 +99,7 @@ macro_rules! bench_tboomerang_issuance_m5_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m1_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -122,7 +122,7 @@ macro_rules! bench_tboomerang_collection_m1_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m2_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the second message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -146,7 +146,7 @@ macro_rules! bench_tboomerang_collection_m2_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m3_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the third message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -173,7 +173,7 @@ macro_rules! bench_tboomerang_collection_m3_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m4_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the fourth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -203,7 +203,7 @@ macro_rules! bench_tboomerang_collection_m4_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m5_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the fifth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -235,7 +235,7 @@ macro_rules! bench_tboomerang_collection_m5_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_collection_m6_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the sixth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -267,7 +267,7 @@ macro_rules! bench_tboomerang_collection_m6_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m1_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the first message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -300,7 +300,7 @@ macro_rules! bench_tboomerang_spending_m1_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m2_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the second message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -335,7 +335,7 @@ macro_rules! bench_tboomerang_spending_m2_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m3_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the third message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -387,7 +387,7 @@ macro_rules! bench_tboomerang_spending_m3_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m4_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the forth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -444,7 +444,7 @@ macro_rules! bench_tboomerang_spending_m4_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m5_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the fifth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -502,7 +502,7 @@ macro_rules! bench_tboomerang_spending_m5_time {
 
 #[macro_export]
 macro_rules! bench_tboomerang_spending_m6_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Bench the sixth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
@@ -598,109 +598,92 @@ macro_rules! bench_tboomerang_import_everything {
 
 #[macro_export]
 macro_rules! bench_tboomerang_make_all {
-    ($config: ty, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $curve_name: tt) => {
         $crate::bench_tboomerang_import_everything!();
         $crate::bench_tboomerang_issuance_m1_time!(
             $config,
             boomerang_issuance_m1,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_issuance_m2_time!(
             $config,
             boomerang_issuance_m2,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_issuance_m3_time!(
             $config,
             boomerang_issuance_m3,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_issuance_m4_time!(
             $config,
             boomerang_issuance_m4,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_issuance_m5_time!(
             $config,
             boomerang_issuance_m5,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m1_time!(
             $config,
             boomerang_collection_m1,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m2_time!(
             $config,
             boomerang_collection_m2,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m3_time!(
             $config,
             boomerang_collection_m3,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m4_time!(
             $config,
             boomerang_collection_m4,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m5_time!(
             $config,
             boomerang_collection_m5,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_collection_m6_time!(
             $config,
             boomerang_collection_m6,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m1_time!(
             $config,
             boomerang_spending_m1,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m2_time!(
             $config,
             boomerang_spending_m2,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m3_time!(
             $config,
             boomerang_spending_m3,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m4_time!(
             $config,
             boomerang_spending_m4,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m5_time!(
             $config,
             boomerang_spending_m5,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tboomerang_spending_m6_time!(
             $config,
             boomerang_spending_m6,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
 
         criterion_group!(

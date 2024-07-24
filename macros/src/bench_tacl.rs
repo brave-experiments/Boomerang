@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! bench_tacl_commit_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -27,7 +27,7 @@ macro_rules! bench_tacl_commit_time {
 
 #[macro_export]
 macro_rules! bench_tacl_challenge_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -55,7 +55,7 @@ macro_rules! bench_tacl_challenge_time {
 
 #[macro_export]
 macro_rules! bench_tacl_respond_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -84,7 +84,7 @@ macro_rules! bench_tacl_respond_time {
 
 #[macro_export]
 macro_rules! bench_tacl_sign_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -120,7 +120,7 @@ macro_rules! bench_tacl_sign_time {
 
 #[macro_export]
 macro_rules! bench_tacl_verify_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -151,7 +151,7 @@ macro_rules! bench_tacl_verify_time {
 
 #[macro_export]
 macro_rules! bench_tacl_sign_proof_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -183,7 +183,7 @@ macro_rules! bench_tacl_sign_proof_time {
 
 #[macro_export]
 macro_rules! bench_tacl_sign_verify_time {
-    ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
             let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
@@ -244,29 +244,26 @@ macro_rules! bench_tacl_import_everything {
 
 #[macro_export]
 macro_rules! bench_tacl_make_all {
-    ($config: ty, $curve_name: tt, $OtherProjectiveType: ty) => {
+    ($config: ty, $curve_name: tt) => {
         $crate::bench_tacl_import_everything!();
-        $crate::bench_tacl_commit_time!($config, acl_commit, $curve_name, $OtherProjectiveType);
+        $crate::bench_tacl_commit_time!($config, acl_commit, $curve_name);
         $crate::bench_tacl_challenge_time!(
             $config,
             acl_challenge,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
-        $crate::bench_tacl_respond_time!($config, acl_respond, $curve_name, $OtherProjectiveType);
-        $crate::bench_tacl_sign_time!($config, acl_sign, $curve_name, $OtherProjectiveType);
-        $crate::bench_tacl_verify_time!($config, acl_verify, $curve_name, $OtherProjectiveType);
+        $crate::bench_tacl_respond_time!($config, acl_respond, $curve_name);
+        $crate::bench_tacl_sign_time!($config, acl_sign, $curve_name);
+        $crate::bench_tacl_verify_time!($config, acl_verify, $curve_name);
         $crate::bench_tacl_sign_proof_time!(
             $config,
             acl_sign_proof,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
         $crate::bench_tacl_sign_verify_time!(
             $config,
             acl_sign_verify,
-            $curve_name,
-            $OtherProjectiveType
+            $curve_name
         );
 
         criterion_group!(
