@@ -58,7 +58,7 @@ macro_rules! bench_tcurve_opening_multi_prover_time {
             vals.push(d);
 
             // And commit to them.
-            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+            let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
 
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(
@@ -66,13 +66,7 @@ macro_rules! bench_tcurve_opening_multi_prover_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript = Transcript::new(b"test-open-multi");
-                        OPM::create(
-                            &mut transcript,
-                            &mut OsRng,
-                            vals.clone(),
-                            &com,
-                            gens.clone(),
-                        )
+                        OPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens)
                     });
                 },
             );
@@ -94,17 +88,11 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
             vals.push(d);
 
             // And commit to them.
-            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+            let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
 
             // Make the proof object.
             let mut transcript = Transcript::new(b"test-open-multi");
-            let proof = OPM::create(
-                &mut transcript,
-                &mut OsRng,
-                vals.clone(),
-                &com,
-                gens.clone(),
-            );
+            let proof = OPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens);
 
             // And now just check how long it takes to verify the proof.
             c.bench_function(
@@ -112,7 +100,7 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(b"test-open-multi");
-                        proof.verify(&mut transcript_v, &com.comm, vals.len(), gens.clone());
+                        proof.verify(&mut transcript_v, &com.comm, vals.len(), &gens);
                     });
                 },
             );
@@ -139,7 +127,7 @@ macro_rules! bench_tcurve_issuance_multi_prover_time {
             let pk = gen.mul(sk).into_affine();
 
             // And commit to them.
-            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+            let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
 
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(
@@ -147,13 +135,7 @@ macro_rules! bench_tcurve_issuance_multi_prover_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript = Transcript::new(b"test-issue-multi");
-                        IPM::create(
-                            &mut transcript,
-                            &mut OsRng,
-                            vals.clone(),
-                            &com,
-                            gens.clone(),
-                        )
+                        IPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens)
                     });
                 },
             );
@@ -180,17 +162,11 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
             let pk = gen.mul(sk).into_affine();
 
             // And commit to them.
-            let (com, gens) = PedersenComm::<$config>::new_multi(vals.clone(), &mut OsRng);
+            let (com, gens) = PedersenComm::<$config>::new_multi(&vals, &mut OsRng);
 
             // Make the proof object.
             let mut transcript = Transcript::new(b"test-issue-multi");
-            let proof = IPM::create(
-                &mut transcript,
-                &mut OsRng,
-                vals.clone(),
-                &com,
-                gens.clone(),
-            );
+            let proof = IPM::create(&mut transcript, &mut OsRng, &vals, &com, &gens);
 
             // And now just check how long it takes to verify the proof.
             c.bench_function(
@@ -198,7 +174,7 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
                 |b| {
                     b.iter(|| {
                         let mut transcript_v = Transcript::new(b"test-issue-multi");
-                        proof.verify(&mut transcript_v, &com.comm, &pk, vals.len(), gens.clone());
+                        proof.verify(&mut transcript_v, &com.comm, &pk, vals.len(), &gens);
                     });
                 },
             );

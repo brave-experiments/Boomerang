@@ -49,7 +49,7 @@ impl<A: ACLConfig> SigComm<A> {
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn commit<T: RngCore + CryptoRng>(
-        keys: KeyPair<A>,
+        keys: &KeyPair<A>,
         rng: &mut T,
         comm: sw::Affine<A>,
     ) -> SigComm<A> {
@@ -163,7 +163,7 @@ impl<A: ACLConfig> SigVerify<A> {
     pub fn verify(
         pub_key: sw::Affine<A>,
         tag_key: sw::Affine<A>,
-        sig_m: SigSign<A>,
+        sig_m: &SigSign<A>,
         message: &str,
     ) -> bool {
         let z2 = sig_m.sigma.zeta - sig_m.sigma.zeta1;
@@ -225,7 +225,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         transcript.append_message(b"c1", &compressed_bytes[..]);
     }
 
-    pub fn verify(proof: SigProof<A>, tag_key: sw::Affine<A>, sig_m: SigSign<A>) -> bool {
+    pub fn verify(proof: SigProof<A>, tag_key: sw::Affine<A>, sig_m: &SigSign<A>) -> bool {
         // Equality proof of zeta = b_gamma
         let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
         let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();

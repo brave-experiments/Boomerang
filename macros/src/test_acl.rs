@@ -34,7 +34,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random points works.
@@ -44,7 +44,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp, &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -63,7 +63,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -72,7 +72,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -94,7 +94,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -103,7 +103,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -127,7 +127,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -136,7 +136,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -163,7 +163,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals, &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -172,7 +172,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -185,7 +185,7 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4, "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
         }
 
@@ -202,7 +202,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -211,7 +211,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -224,10 +224,10 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
 
-            let proof = ACLSP::prove(&mut OsRng, kp.tag_key, m4, vals, gens.generators, c1.r);
+            let proof = ACLSP::prove(&mut OsRng, kp.tag_key, &m4, &vals, &gens.generators, c1.r);
 
             assert!(proof.b_gamma.is_on_curve());
             assert!(proof.pi1.t1.is_on_curve());
@@ -248,7 +248,7 @@ macro_rules! __test_acl {
             vals.push(c);
             vals.push(d);
 
-            let (c1, gens) = PC::new_multi(vals.clone(), &mut OsRng);
+            let (c1, gens) = PC::new_multi(&vals, &mut OsRng);
             let mut transcript = Transcript::new(label);
 
             // Test that committing to a random point works.
@@ -257,7 +257,7 @@ macro_rules! __test_acl {
             let kp = ACLKP::generate(&mut OsRng);
             assert!(kp.verifying_key.is_on_curve());
 
-            let m1 = ACLSC::commit(kp.clone(), &mut OsRng, c1.comm);
+            let m1 = ACLSC::commit(&kp, &mut OsRng, c1.comm);
             assert!(m1.a.is_on_curve());
             assert!(m1.a1.is_on_curve());
             assert!(m1.a2.is_on_curve());
@@ -270,24 +270,17 @@ macro_rules! __test_acl {
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
-            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, m4.clone(), "message");
+            let check = ACLSV::verify(kp.verifying_key, kp.tag_key, &m4, "message");
             assert!(check == true);
 
-            let proof = ACLSP::prove(
-                &mut OsRng,
-                kp.tag_key,
-                m4.clone(),
-                vals,
-                gens.generators,
-                c1.r,
-            );
+            let proof = ACLSP::prove(&mut OsRng, kp.tag_key, &m4, &vals, &gens.generators, c1.r);
 
             assert!(proof.b_gamma.is_on_curve());
             assert!(proof.pi1.t1.is_on_curve());
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
 
-            let check = ACLSPV::verify(proof, kp.tag_key, m4);
+            let check = ACLSPV::verify(proof, kp.tag_key, &m4);
             assert!(check == true);
         }
     };

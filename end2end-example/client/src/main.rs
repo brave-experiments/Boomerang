@@ -562,7 +562,7 @@ async fn main() {
 
         // populate state
         let issuance_state =
-            IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, skp.clone(), ckp.clone());
+            IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, &skp, ckp.clone());
 
         let sig = &issuance_state.sig_state[0];
 
@@ -570,7 +570,7 @@ async fn main() {
         let check = SigVerify::<Config>::verify(
             skp.s_key_pair.verifying_key,
             skp.s_key_pair.tag_key,
-            sig.clone(),
+            &sig,
             "message",
         );
         assert!(check);
@@ -591,7 +591,7 @@ async fn main() {
             &mut OsRng,
             issuance_state,
             collection_m1.clone(),
-            skp.clone(),
+            &skp,
         );
         assert!(collection_m2.m2.comm.comm.is_on_curve());
 
@@ -621,7 +621,7 @@ async fn main() {
         let collection_state = CollectionC::<Config>::populate_state(
             collection_m4.clone(),
             collection_m5.clone(),
-            skp.clone(),
+            &skp,
             ckp.clone(),
         );
         assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
@@ -634,7 +634,7 @@ async fn main() {
         let check = SigVerify::<Config>::verify(
             skp.s_key_pair.verifying_key,
             skp.s_key_pair.tag_key,
-            sig_n.clone(),
+            sig_n,
             "message",
         );
         assert!(check);
@@ -655,7 +655,7 @@ async fn main() {
             &mut OsRng,
             collection_state,
             spendverify_m1.clone(),
-            skp.clone(),
+            &skp,
         );
         assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 
@@ -700,7 +700,7 @@ async fn main() {
         let spending_state = SpendVerifyC::<Config>::populate_state(
             spendverify_m4,
             spendverify_m5,
-            skp.clone(),
+            &skp,
             ckp.clone(),
         );
         assert!(spending_state.sig_state[0].sigma.zeta.is_on_curve());
@@ -715,7 +715,7 @@ async fn main() {
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig_n.clone(),
+        sig_n,
         "message",
     );
     assert!(check);

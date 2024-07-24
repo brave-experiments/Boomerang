@@ -103,7 +103,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
     /// * `inter` - the intermediate values to use.
     pub fn generate_issuance_m2<T: RngCore + CryptoRng>(
         c_m: IssuanceC<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
         rng: &mut T,
     ) -> IssuanceS<B> {
         let label = b"BoomerangM1";
@@ -113,7 +113,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
             &c_m.m1.comm.comm,
             &c_m.m1.u_pk,
             c_m.m1.len,
-            c_m.m1.gens.clone(),
+            &c_m.m1.gens,
         );
 
         if !check {
@@ -127,11 +127,11 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v1, v2, v3];
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m1.gens);
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m1.gens);
 
         let c = c1 + c_m.m1.comm;
 
-        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
+        let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
         let m2 = IssuanceM2 {
             id_1,
             comm: c1,
@@ -146,7 +146,7 @@ impl<B: BoomerangConfig> IssuanceS<B> {
     pub fn generate_issuance_m4(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
     ) -> IssuanceS<B> {
         let sig_resp = SigResp::respond(
             key_pair.s_key_pair.clone(),
@@ -239,13 +239,13 @@ impl<B: BoomerangConfig> CollectionS<B> {
         rng: &mut T,
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
         v: <B as CurveConfig>::ScalarField,
     ) -> CollectionS<B> {
         let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
             "message",
         );
 
@@ -253,11 +253,8 @@ impl<B: BoomerangConfig> CollectionS<B> {
             panic!("Boomerang collection: invalid signature");
         }
 
-        let check2 = SigVerifProof::verify(
-            c_m.m2.s_proof,
-            key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
-        );
+        let check2 =
+            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
 
         if !check2 {
             panic!("Boomerang collection: invalid proof sig");
@@ -269,7 +266,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let check3 = c_m
             .m2
             .pi_1
-            .verify(&mut transcript, &c_m.m2.comm.comm, 4, c_m.m2.gens.clone());
+            .verify(&mut transcript, &c_m.m2.comm.comm, 4, &c_m.m2.gens);
 
         if !check3 {
             panic!("Boomerang collection: invalid proof opening 1");
@@ -282,7 +279,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
             &mut transcript1,
             &c_m.m2.prev_comm.comm,
             4,
-            c_m.m2.prev_gens.clone(),
+            &c_m.m2.prev_gens,
         );
 
         if !check4 {
@@ -317,10 +314,10 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v, v2, v3];
 
-        let c1 = PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
         let c = c1 + c_m.m2.comm;
 
-        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c.comm);
+        let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
 
         let m3 = CollectionM3 {
             id_1,
@@ -340,7 +337,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
     pub fn generate_collection_m5(
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
     ) -> CollectionS<B> {
         let sig_resp = SigResp::respond(
             key_pair.s_key_pair.clone(),
@@ -459,7 +456,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         rng: &mut T,
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
         v: <B as CurveConfig>::ScalarField,
         state_vector: Vec<u64>,
         policy_vector: Vec<u64>,
@@ -468,7 +465,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
+            &c_m.m2.sig,
             "message",
         );
 
@@ -477,11 +474,8 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
 
         // verify signature proof
-        let check2 = SigVerifProof::verify(
-            c_m.m2.s_proof,
-            key_pair.s_key_pair.tag_key,
-            c_m.m2.sig.clone(),
-        );
+        let check2 =
+            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
 
         if !check2 {
             panic!("Boomerang spend/verify: invalid proof sig");
@@ -489,12 +483,10 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         // verify opening proof \pi_open(tk0)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        let check3 = c_m.m2.pi_1.verify(
-            &mut transcript_p1,
-            &c_m.m2.comm.comm,
-            4,
-            c_m.m2.gens.clone(),
-        );
+        let check3 = c_m
+            .m2
+            .pi_1
+            .verify(&mut transcript_p1, &c_m.m2.comm.comm, 4, &c_m.m2.gens);
 
         if !check3 {
             panic!("Boomerang spend/verify: invalid proof opening 1");
@@ -506,7 +498,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             &mut transcript_p2,
             &c_m.m2.prev_comm.comm,
             4,
-            c_m.m2.prev_gens.clone(),
+            &c_m.m2.prev_gens,
         );
 
         /*if !check4 {
@@ -555,8 +547,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             <B as CurveConfig>::ScalarField::zero(),
             <B as CurveConfig>::ScalarField::zero(),
         ];
-        let c0dashdash =
-            PedersenComm::new_multi_with_all_generators(vals.clone(), rng, c_m.m2.gens);
+        let c0dashdash = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
 
         // C0 = C0' - C0''
         let c0 = c_m.m2.comm - c0dashdash;
@@ -564,7 +555,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         // create signature commitment
         // R = BSA.comm(sk_IC, C0)
         // sig_comm = R
-        let sig_comm = SigComm::commit(key_pair.s_key_pair.clone(), rng, c0.comm);
+        let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c0.comm);
 
         // Compute reward state
         let reward: u64 = state_vector
@@ -613,7 +604,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
     pub fn generate_spendverify_m5(
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
-        key_pair: ServerKeyPair<B>,
+        key_pair: &ServerKeyPair<B>,
     ) -> SpendVerifyS<B> {
         let sig_resp = SigResp::respond(
             key_pair.s_key_pair.clone(),
