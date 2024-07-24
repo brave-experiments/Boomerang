@@ -441,9 +441,10 @@ fn benchmark_boomerang_mult_users(c: &mut Criterion) {
     let number_of_users = 2;
 
     // customize sample count
-    let mut c_custom = Criterion::default().sample_size(10);
+    let mut group = c.benchmark_group("minimum-sample-size");
+    group.sample_size(10);
 
-    c_custom.bench_function("boomerang-mult-user", |b| {
+    group.bench_function("boomerang-mult-user", |b| {
         b.to_async(&rt).iter(|| async {
             // Simulate multiple users by spawning multiple tasks
             let tasks: Vec<_> = (0..number_of_users)
