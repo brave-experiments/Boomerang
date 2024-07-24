@@ -30,8 +30,7 @@ fn rewards_proof_example<C: SWCurveConfig>() {
     let reward: u64 = state
         .iter()
         .zip(policy_vector.iter())
-        .map(|(x, y)| x.checked_mul(*y))
-        .flatten()
+        .filter_map(|(x, y)| x.checked_mul(*y))
         .sum();
 
     println!("Policy vector: {:?}", policy_vector);

@@ -45,8 +45,7 @@ fn benchmark_rewardsproof_generation<C: SWCurveConfig>(c: &mut Criterion) {
         let reward: u64 = state
             .iter()
             .zip(policy_vector.iter())
-            .map(|(x, y)| x.checked_mul(*y))
-            .flatten()
+            .filter_map(|(x, y)| x.checked_mul(*y))
             .sum();
 
         // create generators
@@ -97,8 +96,7 @@ fn benchmark_rewardsproof_verification<C: SWCurveConfig>(c: &mut Criterion) {
         let reward: u64 = state
             .iter()
             .zip(policy_vector.iter())
-            .map(|(x, y)| x.checked_mul(*y))
-            .flatten()
+            .filter_map(|(x, y)| x.checked_mul(*y))
             .sum();
 
         // create variables for linear proof
@@ -170,8 +168,7 @@ fn benchmark_rewardsproof_verification_multiple_users<C: SWCurveConfig>(
     let reward: u64 = state
         .iter()
         .zip(policy_vector.iter())
-        .map(|(x, y)| x.checked_mul(*y))
-        .flatten()
+        .filter_map(|(x, y)| x.checked_mul(*y))
         .sum();
 
     // generate number_of_users proofs
