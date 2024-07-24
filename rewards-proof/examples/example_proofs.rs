@@ -70,7 +70,7 @@ fn rewards_proof_example<C: SWCurveConfig>() {
         policy_vector_scalar,
         linear_comm,
     ) {
-        println!("Rewards proof verification successfull!");
+        println!("Rewards proof verification successful!");
     } else {
         println!("Rewards proof verification failed!");
     }
