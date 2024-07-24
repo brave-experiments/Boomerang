@@ -31,14 +31,14 @@ fn benchmark_rewardsproof_generation<C: SWCurveConfig>(c: &mut Criterion) {
         let policy_vector_scalar: Vec<C::ScalarField> = policy_vector
             .clone()
             .into_iter()
-            .map(|u64_value| C::ScalarField::from(u64_value))
+            .map(C::ScalarField::from)
             .collect();
         // private value
         let state: Vec<u64> = (0..*size).map(|_| rng.gen_range(0..10)).collect();
         let state_scalar: Vec<C::ScalarField> = state
             .clone()
             .into_iter()
-            .map(|u64_value| C::ScalarField::from(u64_value))
+            .map(C::ScalarField::from)
             .collect();
 
         // reward = <state, policy_vector>
@@ -82,14 +82,14 @@ fn benchmark_rewardsproof_verification<C: SWCurveConfig>(c: &mut Criterion) {
         let policy_vector_scalar: Vec<C::ScalarField> = policy_vector
             .clone()
             .into_iter()
-            .map(|u64_value| C::ScalarField::from(u64_value))
+            .map(C::ScalarField::from)
             .collect();
         // private value
         let state: Vec<u64> = (0..*size).map(|_| rng.gen_range(0..10)).collect();
         let state_scalar: Vec<C::ScalarField> = state
             .clone()
             .into_iter()
-            .map(|u64_value| C::ScalarField::from(u64_value))
+            .map(C::ScalarField::from)
             .collect();
 
         // reward = <state, policy_vector>
@@ -154,14 +154,14 @@ fn benchmark_rewardsproof_verification_multiple_users<C: SWCurveConfig>(
     let policy_vector_scalar: Vec<C::ScalarField> = policy_vector
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
     // private value
     let state: Vec<u64> = (0..incentive_size).map(|_| rng.gen_range(0..10)).collect();
     let state_scalar: Vec<C::ScalarField> = state
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
 
     // reward = <state, policy_vector>

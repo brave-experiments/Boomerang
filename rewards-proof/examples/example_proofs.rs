@@ -41,13 +41,13 @@ fn rewards_proof_example<C: SWCurveConfig>() {
     let state_scalar: Vec<C::ScalarField> = state
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
 
     let policy_vector_scalar: Vec<C::ScalarField> = policy_vector
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
 
     // generate rewards proof
