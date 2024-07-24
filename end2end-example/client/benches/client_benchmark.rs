@@ -1,7 +1,6 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use acl::verify::SigVerify;
-use ark_ec::models::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use boomerang::{
     client::{CollectionC, IssuanceC, SpendVerifyC, UKeyPair},
@@ -13,8 +12,6 @@ use serde_json::json;
 use t256::Config; // use arksecp256r1
 
 use tokio::task;
-
-type SF = <Config as CurveConfig>::ScalarField;
 
 static SERVER_ENDPOINT: &str = "localhost:8080"; //"52.11.217.156:8080";//
 
