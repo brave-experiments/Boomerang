@@ -250,16 +250,18 @@ fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::Scal
     result
 }
 
-pub fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
-    if a.len() != b.len() {
-        // throw some error
-        //println!("lengths of vectors don't match for vector addition");
-    }
-    let mut out = vec![G::ScalarField::zero(); b.len()];
-    for i in 0..a.len() {
-        out[i] = a[i] + b[i];
-    }
-    out
+/// Vector addition where components are field scalars
+///
+/// Adds two slices of scalar values element-by-element, producing a
+/// third vector of scalars.
+///
+/// Panics if the slices are of different length.
+fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
+    assert_eq!(a.len(), b.len(),
+        "argument length must match for vector addition");
+    a.iter().zip(b)
+        .map(|(a, b)| *a + *b)
+        .collect()
 }
 
 #[cfg(test)]
@@ -322,5 +324,38 @@ mod tests {
         let v = scalar_exp_vartime::<G>(&a, n);
 
         assert_eq!(v, scalar_exp_vartime_slow::<G>(&a, n));
+    }
+
+    #[test]
+    fn vector_addition() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+
+        let a = vec![F::from(24u64), F::from(42u64), F::from(17)];
+        let b = vec![F::from(7u64), F::from(8u64), F::from(0)];
+        let c = vec![F::from(31u64), F::from(50u64), F::from(17)];
+        assert_eq!(add_vec::<G>(&a, &b), c);
+    }
+
+    #[test]
+    #[should_panic]
+    fn vector_addition_lengths() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+
+        // Several different-length vectors
+        let zero = vec![];
+        let one = vec![F::from(1u64)];
+        let two = vec![F::from(2u64), F::from(0)];
+
+        // Same length addition should succeed
+        let _ = add_vec::<G>(&zero, &zero);
+        let _ = add_vec::<G>(&one, &one);
+        let _ = add_vec::<G>(&two, &two);
+
+        // Mismatched length addition should fail
+        let _ = add_vec::<G>(&one, &two);
+        let _ = add_vec::<G>(&two, &zero);
+        let _ = add_vec::<G>(&zero, &one);
     }
 }
