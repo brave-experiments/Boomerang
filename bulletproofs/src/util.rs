@@ -238,6 +238,8 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
 }
 
 /// Raises `x` to the power `n`.
+/// Naive implementation for verifying correctness.
+#[cfg(test)]
 fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::ScalarField {
     let mut result = G::ScalarField::one();
     for _ in 0..n {
@@ -304,5 +306,19 @@ mod tests {
         assert_eq!(flat_slice(&v), &[0u8; 64][..]);
         assert_eq!(v[0], F::zero());
         assert_eq!(v[1], F::zero());
+    }
+
+    #[test]
+    /// Confirm different implementations give identical results
+    fn scalar_exp_variants() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+        // This can be made deterministic by setting
+        // DETERMINISTIC_TEST_RNG=1 in the environment
+        let a = F::from(42u64);
+        let n = 12;
+        let v = scalar_exp_vartime::<G>(&a, n);
+
+        assert_eq!(v, scalar_exp_vartime_slow::<G>(&a, n));
     }
 }
