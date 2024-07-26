@@ -220,9 +220,10 @@ fn sum_of_powers_slow<G: AffineRepr>(x: &G::ScalarField, n: usize) -> G::ScalarF
     exp_iter::<G>(*x).take(n).sum()
 }
 
-/// Raises `x` to the power `n` using binary exponentiation,
-/// with (1 to 2)*lg(n) scalar multiplications.
-/// TODO: a consttime version of this would be awfully similar to a Montgomery ladder.
+/// Raises `x` to the power `n` using binary exponentiation
+///
+/// Uses (1 to 2)*lg(n) scalar multiplications.
+/// TODO: a consttime version of this would be similar to a Montgomery ladder.
 pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::ScalarField {
     let mut result = G::ScalarField::one();
     let mut aux = *x; // x, x^2, x^4, x^8, ...
@@ -238,6 +239,7 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
 }
 
 /// Raises `x` to the power `n`.
+///
 /// Naive implementation for verifying correctness.
 #[cfg(test)]
 fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::ScalarField {
