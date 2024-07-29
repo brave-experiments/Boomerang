@@ -247,24 +247,12 @@ macro_rules! bench_tacl_make_all {
     ($config: ty, $curve_name: tt) => {
         $crate::bench_tacl_import_everything!();
         $crate::bench_tacl_commit_time!($config, acl_commit, $curve_name);
-        $crate::bench_tacl_challenge_time!(
-            $config,
-            acl_challenge,
-            $curve_name
-        );
+        $crate::bench_tacl_challenge_time!($config, acl_challenge, $curve_name);
         $crate::bench_tacl_respond_time!($config, acl_respond, $curve_name);
         $crate::bench_tacl_sign_time!($config, acl_sign, $curve_name);
         $crate::bench_tacl_verify_time!($config, acl_verify, $curve_name);
-        $crate::bench_tacl_sign_proof_time!(
-            $config,
-            acl_sign_proof,
-            $curve_name
-        );
-        $crate::bench_tacl_sign_verify_time!(
-            $config,
-            acl_sign_verify,
-            $curve_name
-        );
+        $crate::bench_tacl_sign_proof_time!($config, acl_sign_proof, $curve_name);
+        $crate::bench_tacl_sign_verify_time!($config, acl_sign_verify, $curve_name);
 
         criterion_group!(
             benches,

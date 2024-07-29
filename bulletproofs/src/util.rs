@@ -257,11 +257,12 @@ fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::Scal
 ///
 /// Panics if the slices are of different length.
 fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
-    assert_eq!(a.len(), b.len(),
-        "argument length must match for vector addition");
-    a.iter().zip(b)
-        .map(|(a, b)| *a + *b)
-        .collect()
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "argument length must match for vector addition"
+    );
+    a.iter().zip(b).map(|(a, b)| *a + *b).collect()
 }
 
 #[cfg(test)]
