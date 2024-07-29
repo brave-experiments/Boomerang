@@ -125,6 +125,7 @@ where
 }
 
 /// Verifies the rewards proofs
+#[allow(clippy::too_many_arguments)]
 pub fn rewards_proof_verification_multiple<C>(
     pedersen_gens: &[PedersenGens<C>],
     bulletproof_gens: &[BulletproofGens<C>],

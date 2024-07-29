@@ -104,9 +104,7 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
         // Compute A = <a_L, G> + <a_R, H> + a_blinding * B_blinding
         let mut A = self.pc_gens.B_blinding.mul(a_blinding);
 
-        let mut i = 0;
-
-        for (G_i, H_i) in bp_share.G(self.n).zip(bp_share.H(self.n)) {
+        for (i, (G_i, H_i)) in bp_share.G(self.n).zip(bp_share.H(self.n)).enumerate() {
             // If v_i = 0, we add a_L[i] * G[i] + a_R[i] * H[i] = - H[i]
             // If v_i = 1, we add a_L[i] * G[i] + a_R[i] * H[i] =   G[i]
             let v_i: bool = (self.v >> i) & 1 == 1;
@@ -116,7 +114,6 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
             } else {
                 A.add_assign(H_i.into_group().neg());
             }
-            i += 1;
         }
 
         let s_blinding = G::ScalarField::rand(rng);

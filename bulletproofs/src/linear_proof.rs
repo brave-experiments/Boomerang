@@ -37,6 +37,7 @@ impl<G: AffineRepr> LinearProof<G> {
     ///
     /// The lengths of the vectors must all be the same, and must all be either 0 or a power of 2.
     /// The proof is created with respect to the bases \\(G\\).
+    #[allow(clippy::too_many_arguments)]
     pub fn create<R: Rng>(
         transcript: &mut Transcript,
         rng: &mut R,

@@ -78,6 +78,7 @@ impl<G: AffineRepr> ProofShare<G> {
 
     /// Audit an individual proof share to determine whether it is
     /// malformed.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn audit_share(
         &self,
         bp_gens: &BulletproofGens<G>,
