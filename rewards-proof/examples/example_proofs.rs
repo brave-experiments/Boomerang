@@ -30,8 +30,7 @@ fn rewards_proof_example<C: SWCurveConfig>() {
     let reward: u64 = state
         .iter()
         .zip(policy_vector.iter())
-        .map(|(x, y)| x.checked_mul(*y))
-        .flatten()
+        .filter_map(|(x, y)| x.checked_mul(*y))
         .sum();
 
     println!("Policy vector: {:?}", policy_vector);
@@ -42,13 +41,13 @@ fn rewards_proof_example<C: SWCurveConfig>() {
     let state_scalar: Vec<C::ScalarField> = state
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
 
     let policy_vector_scalar: Vec<C::ScalarField> = policy_vector
         .clone()
         .into_iter()
-        .map(|u64_value| C::ScalarField::from(u64_value))
+        .map(C::ScalarField::from)
         .collect();
 
     // generate rewards proof
@@ -71,7 +70,7 @@ fn rewards_proof_example<C: SWCurveConfig>() {
         policy_vector_scalar,
         linear_comm,
     ) {
-        println!("Rewards proof verification successfull!");
+        println!("Rewards proof verification successful!");
     } else {
         println!("Rewards proof verification failed!");
     }
