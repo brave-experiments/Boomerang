@@ -119,20 +119,19 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
 
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_0, v, key_pair.x, r_0];
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
 
-        let proof =
-            IssuanceProofMulti::create(&mut transcript, rng, vals.clone(), &c1, gens.clone());
+        let proof = IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let m1 = IssuanceM1 {
             comm: c1,
             pi_issuance: proof,
             u_pk: key_pair.public_key,
             len: vals.len(),
-            gens: gens.clone(),
+            gens,
             id_0,
             r: r_0,
         };
@@ -174,7 +173,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     pub fn populate_state(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
@@ -268,7 +267,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
         rng: &mut T,
         state: State<B>,
         s_m: CollectionS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
     ) -> CollectionC<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -283,13 +282,12 @@ impl<B: BoomerangConfig> CollectionC<B> {
             state.token_state[0].r,
         ];
 
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
 
-        let proof_1 =
-            OpeningProofMulti::create(&mut transcript, rng, vals.clone(), &c1, gens.clone());
+        let proof_1 = OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let label1 = b"BoomerangCollectionM2O2";
         let mut transcript1 = Transcript::new(label1);
@@ -297,9 +295,9 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let proof_2 = OpeningProofMulti::create(
             &mut transcript1,
             rng,
-            prev_vals.clone(),
+            &prev_vals,
             &state.comm_state[0],
-            state.token_state[0].gens.clone(),
+            &state.token_state[0].gens,
         );
 
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
@@ -333,9 +331,9 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
-            state.sig_state[0].clone(),
-            prev_vals,
-            state.token_state[0].gens.generators.clone(),
+            &state.sig_state[0],
+            &prev_vals,
+            &state.token_state[0].gens.generators,
             state.comm_state[0].r,
         );
 
@@ -389,7 +387,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
     pub fn populate_state(
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
@@ -487,7 +485,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         rng: &mut T,
         state: State<B>,
         s_m: SpendVerifyS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
         // Generate r1, ID_0'
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -506,21 +504,20 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         ];
 
         // pedersen commitment
-        let (c1, gens) = PedersenComm::new_multi(vals.clone(), rng);
+        let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         // pi_open tk0 (token)
         let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        let proof_1 =
-            OpeningProofMulti::create(&mut transcript_p1, rng, vals.clone(), &c1, gens.clone());
+        let proof_1 = OpeningProofMulti::create(&mut transcript_p1, rng, &vals, &c1, &gens);
 
         // pi_open tk? (previous token?)
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
         let proof_2 = OpeningProofMulti::create(
             &mut transcript_p2,
             rng,
-            prev_vals.clone(),
+            &prev_vals,
             &state.comm_state[0],
-            state.token_state[0].gens.clone(),
+            &state.token_state[0].gens,
         );
 
         // tag = (sk_u * tk0.r1) + r2
@@ -558,9 +555,9 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
-            state.sig_state[0].clone(),
-            prev_vals,
-            state.token_state[0].gens.generators.clone(),
+            &state.sig_state[0],
+            &prev_vals,
+            &state.token_state[0].gens.generators,
             state.comm_state[0].r,
         );
 
@@ -635,7 +632,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
     pub fn populate_state(
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
-        s_key_pair: ServerKeyPair<B>,
+        s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(

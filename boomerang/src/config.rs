@@ -23,10 +23,3 @@ pub struct State<B: BoomerangConfig> {
     /// The user keypair
     pub c_key_pair: UKeyPair<B>,
 }
-
-impl<B: BoomerangConfig> State<B> {
-    /// Boomerang state
-    pub const fn state(&self) -> &Vec<PedersenComm<B>> {
-        &self.comm_state
-    }
-}

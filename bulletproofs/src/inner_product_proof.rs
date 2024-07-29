@@ -22,6 +22,20 @@ pub struct InnerProductProof<G: AffineRepr> {
     pub(crate) b: G::ScalarField,
 }
 
+/// Sequences of scalar values for verifying a proof
+///
+/// Using these is usually more efficient than calling
+/// the `verify` method on the proof itself. See
+/// https://doc-internal.dalek.rs/bulletproofs/inner_product_proof/
+pub struct VerificationScalars<G: AffineRepr> {
+    /// $u^{+2}_0, \dots, u^{+2}_k$
+    pub challenges_sq: Vec<G::ScalarField>,
+    /// $u^{-2}_0, \dots, u^{-2}_k$
+    pub challenges_inv_sq: Vec<G::ScalarField>,
+    /// $s_0, \dots, s_{n-1}$
+    pub s: Vec<G::ScalarField>,
+}
+
 impl<G: AffineRepr> InnerProductProof<G> {
     /// Create an inner-product proof.
     ///
@@ -246,14 +260,7 @@ impl<G: AffineRepr> InnerProductProof<G> {
         &self,
         n: usize,
         transcript: &mut Transcript,
-    ) -> Result<
-        (
-            Vec<G::ScalarField>,
-            Vec<G::ScalarField>,
-            Vec<G::ScalarField>,
-        ),
-        ProofError,
-    > {
+    ) -> Result<VerificationScalars<G>, ProofError> {
         let lg_n = self.L_vec.len();
         if lg_n >= 32 {
             // 4 billion multiplications should be enough for anyone
@@ -311,13 +318,19 @@ impl<G: AffineRepr> InnerProductProof<G> {
             s.push(s[i - k] * u_lg_i_sq);
         }
 
-        Ok((challenges_sq, challenges_inv_sq, s))
+        Ok(VerificationScalars {
+            challenges_sq,
+            challenges_inv_sq,
+            s,
+        })
     }
 
-    /// This method is for testing that proof generation work,
-    /// but for efficiency the actual protocols would use `verification_scalars`
-    /// method to combine inner product verification with other checks
-    /// in a single multiscalar multiplication.
+    /// Verify a generated proof
+    ///
+    /// This method is convenient for testing, but for efficiency
+    /// the actual protocols would use the `verification_scalars`
+    /// method to combine inner product verification with other
+    /// checks in a single multiscalar multiplication.
     #[allow(dead_code, clippy::too_many_arguments)]
     pub fn verify<IG, IH>(
         &self,
@@ -336,24 +349,25 @@ impl<G: AffineRepr> InnerProductProof<G> {
         IH: IntoIterator,
         IH::Item: Borrow<G::ScalarField>,
     {
-        let (u_sq, u_inv_sq, s) = self.verification_scalars(n, transcript)?;
+        // Compute scalar sequences u_sq[i], u_inv_sq[i], s[i]
+        let scalars = self.verification_scalars(n, transcript)?;
 
         let g_times_a_times_s = G_factors
             .into_iter()
-            .zip(s.iter())
+            .zip(scalars.s.iter())
             .map(|(g_i, s_i)| (self.a * s_i) * g_i.borrow())
             .take(G.len());
 
         // 1/s[i] is s[!i], and !i runs from n-1 to 0 as i runs from 0 to n-1
-        let inv_s = s.iter().rev();
+        let inv_s = scalars.s.iter().rev();
 
         let h_times_b_div_s = H_factors
             .into_iter()
             .zip(inv_s)
             .map(|(h_i, s_i_inv)| (self.b * s_i_inv) * h_i.borrow());
 
-        let neg_u_sq = u_sq.iter().map(|ui| ui.neg());
-        let neg_u_inv_sq = u_inv_sq.iter().map(|ui| ui.neg());
+        let neg_u_sq = scalars.challenges_sq.iter().map(|ui| ui.neg());
+        let neg_u_inv_sq = scalars.challenges_inv_sq.iter().map(|ui| ui.neg());
 
         let Ls = &self.L_vec;
         let Rs = &self.R_vec;

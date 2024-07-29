@@ -402,9 +402,9 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     pub fn create<T: RngCore + CryptoRng>(
         transcript: &mut Transcript,
         rng: &mut T,
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         c1: &PedersenComm<P>,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> Self {
         // This function just creates the intermediary objects and makes the proof from
         // those.
@@ -428,7 +428,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         rng: &mut T,
         c1: &PedersenComm<P>,
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> OpeningProofMultiIntermediate<P> {
         let mut total: sw::Affine<P> = sw::Affine::identity();
         let mut ts: Vec<<P as CurveConfig>::ScalarField> = vec![];
@@ -453,7 +453,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn create_proof(
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
         chal_buf: &[u8],
@@ -473,7 +473,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     pub fn create_proof_own_challenge(
         transcript: &mut Transcript,
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
     ) -> Self {
@@ -489,7 +489,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
     /// * `c1` - the commitment that is opened.
     /// * `chal` - the challenge.
     pub fn create_proof_with_challenge(
-        x: Vec<<P as CurveConfig>::ScalarField>,
+        x: &[<P as CurveConfig>::ScalarField],
         inter: &OpeningProofMultiIntermediate<P>,
         c1: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
@@ -519,7 +519,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> bool {
         // Make the transcript.
         self.add_to_transcript(transcript, c1);
@@ -538,7 +538,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         transcript: &mut Transcript,
         c1: &sw::Affine<P>,
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> bool {
         self.verify_proof(c1, &transcript.challenge_scalar(b"c")[..], l, gens)
     }
@@ -554,7 +554,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         c1: &sw::Affine<P>,
         chal_buf: &[u8],
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
@@ -572,7 +572,7 @@ impl<P: PedersenConfig> OpeningProofMulti<P> {
         c1: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
         l: usize,
-        gens: Generators<P>,
+        gens: &Generators<P>,
     ) -> bool {
         let rhs = c1.mul(*chal) + self.alpha;
 

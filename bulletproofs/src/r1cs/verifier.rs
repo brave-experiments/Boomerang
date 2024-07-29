@@ -20,6 +20,7 @@ use super::{
 
 use crate::errors::R1CSError;
 use crate::generators::{BulletproofGens, PedersenGens};
+use crate::inner_product_proof::VerificationScalars;
 use crate::transcript::TranscriptProtocol;
 
 /// A [`ConstraintSystem`] implementation for use by the verifier.
@@ -462,7 +463,11 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
         let (wL, wR, wO, wV, wc) = self.flattened_constraints(&z);
 
         // Get IPP variables
-        let (u_sq, u_inv_sq, s) = proof
+        let VerificationScalars {
+            challenges_sq,
+            challenges_inv_sq,
+            s,
+        } = proof
             .ipp_proof
             .verification_scalars(padded_n, self.transcript.borrow_mut())
             .map_err(|_| R1CSError::VerificationError)?;
@@ -535,8 +540,8 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
             scalars.push(*wVi * rxx);
         }
         scalars.extend_from_slice(&T_scalars);
-        scalars.extend_from_slice(&u_sq);
-        scalars.extend_from_slice(&u_inv_sq);
+        scalars.extend_from_slice(&challenges_sq);
+        scalars.extend_from_slice(&challenges_inv_sq);
         Ok((self, scalars))
     }
 

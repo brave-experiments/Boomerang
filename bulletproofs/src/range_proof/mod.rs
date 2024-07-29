@@ -16,7 +16,7 @@ use merlin::Transcript;
 
 use crate::errors::ProofError;
 use crate::generators::{BulletproofGens, PedersenGens};
-use crate::inner_product_proof::InnerProductProof;
+use crate::inner_product_proof::{InnerProductProof, VerificationScalars};
 use crate::transcript::TranscriptProtocol;
 use crate::util;
 
@@ -344,7 +344,11 @@ impl<G: AffineRepr> RangeProof<G> {
         // Challenge value for batching statements to be verified
         let c = G::ScalarField::rand(rng);
 
-        let (mut x_sq, mut x_inv_sq, s) = self.ipp_proof.verification_scalars(n * m, transcript)?;
+        let VerificationScalars {
+            mut challenges_sq,
+            mut challenges_inv_sq,
+            s,
+        } = self.ipp_proof.verification_scalars(n * m, transcript)?;
         let s_inv = s.iter().rev();
 
         let a: G::ScalarField = self.ipp_proof.a;
@@ -381,8 +385,8 @@ impl<G: AffineRepr> RangeProof<G> {
             c * x,                 // T_1
             c * x * x,
         ]; //T_2
-        scalars.append(&mut x_sq); // L_vec TODO avoid append, better chaining iterators
-        scalars.append(&mut x_inv_sq); // R_vec
+        scalars.append(&mut challenges_sq); // L_vec TODO avoid append, better chaining iterators
+        scalars.append(&mut challenges_inv_sq); // R_vec
         scalars.append(&mut value_commitment_scalars); //Value com
         scalars.push(self.e_blinding.neg() - c * self.t_x_blinding); // B_blinding
         scalars.push(basepoint_scalar); // B

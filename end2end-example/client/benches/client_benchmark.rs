@@ -52,14 +52,14 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
 
     // populate state
     let issuance_state =
-        IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, skp.clone(), ckp.clone());
+        IssuanceC::<Config>::populate_state(issuance_m3, issuance_m4, &skp, ckp.clone());
 
     let sig = &issuance_state.sig_state[0];
 
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig.clone(),
+        &sig,
         "message",
     );
     assert!(check);
@@ -80,7 +80,7 @@ async fn collection_protocol(
         &mut OsRng,
         issuance_state,
         collection_m1.clone(),
-        skp.clone(),
+        &skp,
     );
 
     // send to server get m3
@@ -104,7 +104,7 @@ async fn collection_protocol(
     let collection_state = CollectionC::<Config>::populate_state(
         collection_m4.clone(),
         collection_m5.clone(),
-        skp.clone(),
+        &skp,
         ckp.clone(),
     );
 
@@ -114,7 +114,7 @@ async fn collection_protocol(
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig_n.clone(),
+        &sig_n,
         "message",
     );
     assert!(check);
@@ -135,7 +135,7 @@ async fn spending_protocol(
         &mut OsRng,
         collection_state,
         spendverify_m1.clone(),
-        skp.clone(),
+        &skp,
     );
 
     let policy_vector: Vec<u64> = (0..64).map(|_| 5).collect();
@@ -166,19 +166,15 @@ async fn spending_protocol(
         spending_send_m3m4_get_m5(spendverify_m3.clone(), spendverify_m4.clone(), endpoint2).await;
 
     // populate state
-    let spending_state = SpendVerifyC::<Config>::populate_state(
-        spendverify_m4,
-        spendverify_m5,
-        skp.clone(),
-        ckp.clone(),
-    );
+    let spending_state =
+        SpendVerifyC::<Config>::populate_state(spendverify_m4, spendverify_m5, &skp, ckp.clone());
 
     let sig_n = &spending_state.sig_state[0];
 
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        sig_n.clone(),
+        &sig_n,
         "message",
     );
     assert!(check);
