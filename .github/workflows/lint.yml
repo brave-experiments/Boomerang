@@ -1,4 +1,4 @@
-name: Rust Lint
+name: Rust
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  rustfmt:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
