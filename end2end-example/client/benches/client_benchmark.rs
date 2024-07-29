@@ -1,7 +1,6 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 
 use acl::verify::SigVerify;
-use ark_ec::models::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use boomerang::{
     client::{CollectionC, IssuanceC, SpendVerifyC, UKeyPair},
@@ -13,8 +12,6 @@ use serde_json::json;
 use t256::Config; // use arksecp256r1
 
 use tokio::task;
-
-type SF = <Config as CurveConfig>::ScalarField;
 
 static SERVER_ENDPOINT: &str = "localhost:8080"; //"52.11.217.156:8080";//
 
@@ -59,7 +56,7 @@ async fn issuance_protocol(ckp: UKeyPair<Config>, skp: ServerKeyPair<Config>) ->
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        &sig,
+        sig,
         "message",
     );
     assert!(check);
@@ -114,7 +111,7 @@ async fn collection_protocol(
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        &sig_n,
+        sig_n,
         "message",
     );
     assert!(check);
@@ -174,7 +171,7 @@ async fn spending_protocol(
     let check = SigVerify::<Config>::verify(
         skp.s_key_pair.verifying_key,
         skp.s_key_pair.tag_key,
-        &sig_n,
+        sig_n,
         "message",
     );
     assert!(check);
@@ -444,9 +441,10 @@ fn benchmark_boomerang_mult_users(c: &mut Criterion) {
     let number_of_users = 2;
 
     // customize sample count
-    let mut c_custom = Criterion::default().sample_size(10);
+    let mut group = c.benchmark_group("minimum-sample-size");
+    group.sample_size(10);
 
-    c_custom.bench_function("boomerang-mult-user", |b| {
+    group.bench_function("boomerang-mult-user", |b| {
         b.to_async(&rt).iter(|| async {
             // Simulate multiple users by spawning multiple tasks
             let tasks: Vec<_> = (0..number_of_users)
