@@ -92,7 +92,9 @@ impl<G: AffineRepr> VecPoly1<G> {
         // Each coefficient is indexed separately, so zip them
         // together to produce a sequence of ordered pairs
         // for evaluation.
-        self.0.iter().zip(self.1.iter())
+        self.0
+            .iter()
+            .zip(self.1.iter())
             .map(|(&a, &b)| a + b * x)
             .collect()
     }
@@ -138,7 +140,11 @@ impl<G: AffineRepr> VecPoly3<G> {
         // together to produce a sequence for evaluation. The
         // nesting is necessary because the std::iter API only
         // does pairs.
-        self.0.iter().zip(self.1.iter()).zip(self.2.iter()).zip(self.3.iter())
+        self.0
+            .iter()
+            .zip(self.1.iter())
+            .zip(self.2.iter())
+            .zip(self.3.iter())
             .map(|(((&a, &b), &c), &d)| a + x * (b + x * (c + x * d)))
             .collect()
     }

@@ -684,7 +684,8 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
             .zip(s_R1.iter().chain(s_R2.iter()));
         for (i, (sl, sr)) in sLsR.enumerate() {
             // y^i -> y^(i+1)
-            let exp_y = exp_y_iter.next()
+            let exp_y = exp_y_iter
+                .next()
                 .expect("exponentional iterator shouldn't terminate");
             // l_poly.0 = 0
             // l_poly.1 = a_L + y^-n * (z * z^Q * W_R)
@@ -753,7 +754,8 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
         // Pad out with additional powers of y
         // XXX this should refer to the notes to explain why this is correct
         r_vec.resize_with(padded_n, || {
-            let exp_y = exp_y_iter.next()
+            let exp_y = exp_y_iter
+                .next()
                 .expect("exponentional iterator shouldn't terminate");
             -exp_y
         });
