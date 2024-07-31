@@ -600,91 +600,23 @@ macro_rules! bench_tboomerang_import_everything {
 macro_rules! bench_tboomerang_make_all {
     ($config: ty, $curve_name: tt) => {
         $crate::bench_tboomerang_import_everything!();
-        $crate::bench_tboomerang_issuance_m1_time!(
-            $config,
-            boomerang_issuance_m1,
-            $curve_name
-        );
-        $crate::bench_tboomerang_issuance_m2_time!(
-            $config,
-            boomerang_issuance_m2,
-            $curve_name
-        );
-        $crate::bench_tboomerang_issuance_m3_time!(
-            $config,
-            boomerang_issuance_m3,
-            $curve_name
-        );
-        $crate::bench_tboomerang_issuance_m4_time!(
-            $config,
-            boomerang_issuance_m4,
-            $curve_name
-        );
-        $crate::bench_tboomerang_issuance_m5_time!(
-            $config,
-            boomerang_issuance_m5,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m1_time!(
-            $config,
-            boomerang_collection_m1,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m2_time!(
-            $config,
-            boomerang_collection_m2,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m3_time!(
-            $config,
-            boomerang_collection_m3,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m4_time!(
-            $config,
-            boomerang_collection_m4,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m5_time!(
-            $config,
-            boomerang_collection_m5,
-            $curve_name
-        );
-        $crate::bench_tboomerang_collection_m6_time!(
-            $config,
-            boomerang_collection_m6,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m1_time!(
-            $config,
-            boomerang_spending_m1,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m2_time!(
-            $config,
-            boomerang_spending_m2,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m3_time!(
-            $config,
-            boomerang_spending_m3,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m4_time!(
-            $config,
-            boomerang_spending_m4,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m5_time!(
-            $config,
-            boomerang_spending_m5,
-            $curve_name
-        );
-        $crate::bench_tboomerang_spending_m6_time!(
-            $config,
-            boomerang_spending_m6,
-            $curve_name
-        );
+        $crate::bench_tboomerang_issuance_m1_time!($config, boomerang_issuance_m1, $curve_name);
+        $crate::bench_tboomerang_issuance_m2_time!($config, boomerang_issuance_m2, $curve_name);
+        $crate::bench_tboomerang_issuance_m3_time!($config, boomerang_issuance_m3, $curve_name);
+        $crate::bench_tboomerang_issuance_m4_time!($config, boomerang_issuance_m4, $curve_name);
+        $crate::bench_tboomerang_issuance_m5_time!($config, boomerang_issuance_m5, $curve_name);
+        $crate::bench_tboomerang_collection_m1_time!($config, boomerang_collection_m1, $curve_name);
+        $crate::bench_tboomerang_collection_m2_time!($config, boomerang_collection_m2, $curve_name);
+        $crate::bench_tboomerang_collection_m3_time!($config, boomerang_collection_m3, $curve_name);
+        $crate::bench_tboomerang_collection_m4_time!($config, boomerang_collection_m4, $curve_name);
+        $crate::bench_tboomerang_collection_m5_time!($config, boomerang_collection_m5, $curve_name);
+        $crate::bench_tboomerang_collection_m6_time!($config, boomerang_collection_m6, $curve_name);
+        $crate::bench_tboomerang_spending_m1_time!($config, boomerang_spending_m1, $curve_name);
+        $crate::bench_tboomerang_spending_m2_time!($config, boomerang_spending_m2, $curve_name);
+        $crate::bench_tboomerang_spending_m3_time!($config, boomerang_spending_m3, $curve_name);
+        $crate::bench_tboomerang_spending_m4_time!($config, boomerang_spending_m4, $curve_name);
+        $crate::bench_tboomerang_spending_m5_time!($config, boomerang_spending_m5, $curve_name);
+        $crate::bench_tboomerang_spending_m6_time!($config, boomerang_spending_m6, $curve_name);
 
         criterion_group!(
             benches,
