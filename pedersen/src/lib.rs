@@ -20,3 +20,4 @@ pub mod transcript;
 pub mod zk_attest_collective;
 pub mod zk_attest_point_add_protocol;
 pub mod zk_attest_scalar_mul_protocol;
+pub mod product_protocol;
