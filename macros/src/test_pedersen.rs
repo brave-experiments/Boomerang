@@ -1501,28 +1501,29 @@ macro_rules! __test_pedersen {
         fn test_product_proof() {
             let label = b"ProductProof";
             let mut transcript = Transcript::new(label);
-    
+
             let x: SF = SF::rand(&mut OsRng);
             let y: SF = SF::rand(&mut OsRng);
-    
+
             let cx: PC = PC::new(x, &mut OsRng);
             let cy: PC = PC::new(y, &mut OsRng);
-            let cxy: PC = PC::new(x*y, &mut OsRng);
-    
-            let proof = PP::create(
-                &mut transcript, 
-                &mut OsRng,
-                &x,
-                &y,
-                &cx,
-                &cy,
-                &cxy,
-            );
+            let cxy: PC = PC::new(x * y, &mut OsRng);
+
+            let proof = PP::create(&mut transcript, &mut OsRng, &x, &y, &cx, &cy, &cxy);
             assert!(proof.alpha.is_on_curve());
             assert!(proof.beta.is_on_curve());
             assert!(proof.delta.is_on_curve());
-    
-            // TODO check if it verifies correctly
+
+            // Now check that the proof verifies correctly.
+            let mut transcript_v = Transcript::new(label);
+            assert!(proof.verify(&mut transcript_v, &cx.comm, &cy.comm, &cxy.comm));
+
+            // Now check that a commitment, that is not the product
+            // of x*y would fail.
+            // Alternatively, check that a different proof would fail.
+            let mut transcript_f = Transcript::new(label);
+            // check that x*x != x*y
+            assert!(!proof.verify(&mut transcript_f, &cx.comm, &cx.comm, &cxy.comm));
         }
     };
 }
@@ -1557,10 +1558,10 @@ macro_rules! test_pedersen {
                 non_zero_protocol::NonZeroProof as NZP,
                 opening_protocol::OpeningProof as OP,
                 opening_protocol::OpeningProofMulti as OPM,
-                product_protocol::ProductProof as PP,
                 pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
                 point_add::PointAddProtocol,
+                product_protocol::ProductProof as PP,
                 scalar_mul::ScalarMulProtocol,
                 scalar_mul_protocol::{
                     ECScalarMulProof as ECSMP, ECScalarMulProofIntermediate as ECSMPI,
