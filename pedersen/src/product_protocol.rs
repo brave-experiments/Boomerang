@@ -379,19 +379,31 @@ impl<P: PedersenConfig> ProductProof<P> {
         cxy: &PedersenComm<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> Self {
-        /*let (z1, z2) = if *chal == P::CM1 {
-            (inter.t1 - *x, inter.t2 - c1.r)
+        let (z1, z2, z3, z4, z5) = if *chal == P::CM1 {
+            (
+                inter.b1 - (*x),
+                inter.b2 - cx.r,
+                inter.b3 - (*y),
+                inter.b4 - cy.r,
+                inter.b5 - (cxy.r - cx.r * (*y)),
+            )
         } else if *chal == P::CP1 {
-            (inter.t1 + *x, inter.t2 + c1.r)
+            (
+                inter.b1 + (*x),
+                inter.b2 + cx.r,
+                inter.b3 + (*y),
+                inter.b4 + cy.r,
+                inter.b5 + (cxy.r - cx.r * (*y)),
+            )
         } else {
-            (*x * (*chal) + inter.t1, c1.r * (*chal) + inter.t2)
-        };*/
-
-        let z1 = inter.b1 + (*chal) * (*x);
-        let z2 = inter.b2 + (*chal) * cx.r;
-        let z3 = inter.b3 + (*chal) * (*y);
-        let z4 = inter.b4 + (*chal) * cy.r;
-        let z5 = inter.b5 + (*chal) * (cxy.r - cx.r * (*y));
+            (
+                inter.b1 + (*chal) * (*x),
+                inter.b2 + (*chal) * cx.r,
+                inter.b3 + (*chal) * (*y),
+                inter.b4 + (*chal) * cy.r,
+                inter.b5 + (*chal) * (cxy.r - cx.r * (*y)),
+            )
+        };
 
         Self {
             alpha: inter.alpha,
@@ -493,23 +505,21 @@ impl<P: PedersenConfig> ProductProof<P> {
         cxy: &sw::Affine<P>,
         chal: &<P as CurveConfig>::ScalarField,
     ) -> bool {
-        /*let rhs = if *chal == P::CM1 {
-            self.alpha - c1
+        let (lhs_alpha, lhs_beta, lhs_delta) = if *chal == P::CM1 {
+            (self.alpha - cx, self.beta - cy, self.delta - cxy)
         } else if *chal == P::CP1 {
-            self.alpha + c1
+            (self.alpha + cx, self.beta + cy, self.delta + cxy)
         } else {
-            c1.mul(*chal) + self.alpha
-        };*/
+            (
+                self.alpha + cx.mul(*chal),
+                self.beta + cy.mul(*chal),
+                self.delta + cxy.mul(*chal),
+            )
+        };
 
-        let lhs_alpha = self.alpha + cx.mul(*chal);
-        let lhs_beta = self.beta + cy.mul(*chal);
-        let lhs_delta = self.delta + cxy.mul(*chal);
-
-        let check1 = lhs_alpha == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2);
-        let check2 = lhs_beta == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4);
-        let check3 = lhs_delta == cx.mul(self.z3) + P::GENERATOR2.mul(self.z5);
-
-        check1 && check2 && check3
+        (lhs_alpha == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2))
+            && (lhs_beta == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4))
+            && (lhs_delta == cx.mul(self.z3) + P::GENERATOR2.mul(self.z5))
     }
 }
 
