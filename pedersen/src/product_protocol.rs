@@ -1,13 +1,12 @@
 //! Defines a Product protocol for various PedersenConfig types.
-//! 
-//! TODO
-//! That is, this protocol proves knowledge of a value x such that
-//! C_0 = g^{x}h^{r} for a Pedersen Commitment C_0 with known generators `g`, `h` and
-//! randomness `r`.
-//! TODO
 //!
-//! The proof used here follows the same notation as 
-//! https://eprint.iacr.org/2017/1132.pdf, Appendix A1 (the "Proving a product 
+//! That is, this protocol proves knowledge of value x and y with a product
+//! relationship, i.e. x*y, such that C_X = g^{x}h^{r_x}, C_Y = g^{y}h^{r_y},
+//! and C_XY = g^{x*y}h^{r_xy}, for Pedersen Commitments C_X, C_Y, and C_XY with
+//! known generators `g`, `h` and randomness `r_x`, `r_y` and `r_xy`.
+//!
+//! The proof used here follows the same notation as
+//! https://eprint.iacr.org/2017/1132.pdf, Appendix A1 (the "Proving a product
 //! relationship").
 
 use ark_ec::{
@@ -21,8 +20,7 @@ use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 
 use crate::{
-    pedersen_config::PedersenComm, 
-    pedersen_config::PedersenConfig, transcript::OpeningTranscript,
+    pedersen_config::PedersenComm, pedersen_config::PedersenConfig, transcript::OpeningTranscript,
 };
 
 /// ProductProof. This struct acts as a container for a ProductProof.
@@ -49,7 +47,7 @@ pub struct ProductProof<P: PedersenConfig> {
 
 /// ProductProofIntermediate. This struct provides a convenient wrapper
 /// for building all of the random values _before_ the challenge is generated.
-/// This struct should only be used if the transcript needs to modified in some 
+/// This struct should only be used if the transcript needs to modified in some
 /// way before the proof is generated.
 pub struct ProductProofIntermediate<P: PedersenConfig> {
     /// alpha. The first random value that is used as a challenge.
@@ -79,7 +77,7 @@ impl<P: PedersenConfig> Clone for ProductProofIntermediate<P> {
 }
 
 /// ProductProofIntermediateTranscript. This struct provides a wrapper for every
-/// input into the transcript i.e everything that's in 
+/// input into the transcript i.e everything that's in
 /// `ProductProofIntermediate` except from the randomness values.
 pub struct ProductProofIntermediateTranscript<P: PedersenConfig> {
     /// alpha. The first random value that is used as a challenge.
@@ -90,13 +88,13 @@ pub struct ProductProofIntermediateTranscript<P: PedersenConfig> {
     pub delta: sw::Affine<P>,
 }
 
-/// ProductProofTranscriptable. This trait provides a notion of 
-/// `Transcriptable`, which implies that the particular struct can be, in some 
+/// ProductProofTranscriptable. This trait provides a notion of
+/// `Transcriptable`, which implies that the particular struct can be, in some
 /// sense, added to the transcript for a product proof.
 pub trait ProductProofTranscriptable {
     /// Affine: the type of random point.
     type Affine;
-    /// add_to_transcript. This function simply adds self.alpha and the 
+    /// add_to_transcript. This function simply adds self.alpha and the
     /// commitment `cx`, `cy`, and `cxy` to the `transcript`
     /// object.
     /// # Arguments
@@ -106,7 +104,8 @@ pub trait ProductProofTranscriptable {
     /// * `cy` - the commitment to Y that is being added to the transcript.
     /// * `cxy` - the commitment to XY that is being added to the transcript.
     fn add_to_transcript(
-        &self, transcript: &mut Transcript,
+        &self,
+        transcript: &mut Transcript,
         cx: &Self::Affine,
         cy: &Self::Affine,
         cxy: &Self::Affine,
@@ -121,12 +120,11 @@ impl<P: PedersenConfig> ProductProofTranscriptable for ProductProof<P> {
         cx: &Self::Affine,
         cy: &Self::Affine,
         cxy: &Self::Affine,
-    )
-    {
+    ) {
         ProductProof::make_transcript(
-            transcript, 
-            cx, 
-            cy, 
+            transcript,
+            cx,
+            cy,
             cxy,
             &self.alpha,
             &self.beta,
@@ -146,7 +144,7 @@ impl<P: PedersenConfig> ProductProofTranscriptable for ProductProofIntermediate<
     ) {
         ProductProof::make_transcript(
             transcript,
-            cx, 
+            cx,
             cy,
             cxy,
             &self.alpha,
@@ -164,29 +162,29 @@ impl<P: PedersenConfig> ProductProofTranscriptable for ProductProofIntermediateT
         cx: &Self::Affine,
         cy: &Self::Affine,
         cxy: &Self::Affine,
-        ) {
-            ProductProof::make_transcript(
-                transcript,
-                cx, 
-                cy,
-                cxy,
-                &self.alpha,
-                &self.beta,
-                &self.delta,
-            );
+    ) {
+        ProductProof::make_transcript(
+            transcript,
+            cx,
+            cy,
+            cxy,
+            &self.alpha,
+            &self.beta,
+            &self.delta,
+        );
     }
 }
 
 impl<P: PedersenConfig> ProductProof<P> {
-    /// make_intermediate_transcript. This function accepts a set of 
-    /// intermediates and builds an intermediate transcript from those 
+    /// make_intermediate_transcript. This function accepts a set of
+    /// intermediates and builds an intermediate transcript from those
     /// intermediates.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
     pub fn make_intermediate_transcript(
         inter: ProductProofIntermediate<P>,
     ) -> ProductProofIntermediateTranscript<P> {
-        ProductProofIntermediateTranscript { 
+        ProductProofIntermediateTranscript {
             alpha: inter.alpha,
             beta: inter.beta,
             delta: inter.delta,
@@ -212,8 +210,8 @@ impl<P: PedersenConfig> ProductProof<P> {
         beta: &sw::Affine<P>,
         delta: &sw::Affine<P>,
     ) {
-        // This function just builds the transcript out of the various input 
-        // values. N.B Because of how we define the serialisation API to handle 
+        // This function just builds the transcript out of the various input
+        // values. N.B Because of how we define the serialisation API to handle
         // different numbers, we use a temporary buffer here.
         transcript.domain_sep();
         let mut compressed_bytes = Vec::new();
@@ -236,11 +234,11 @@ impl<P: PedersenConfig> ProductProof<P> {
         transcript.append_point(b"delta", &compressed_bytes[..]);
     }
 
-    /// create. This function returns a new product proof for `x`, `y` against 
+    /// create. This function returns a new product proof for `x`, `y` against
     /// `cx`, `cy` and `cxy`.
     /// # Arguments
     /// * `transcript` - the transcript object that is modified.
-    /// * `rng` - the RNG that is used to produce the random values. Must be 
+    /// * `rng` - the RNG that is used to produce the random values. Must be
     /// cryptographically secure.
     /// * `x` - the value that is used to show an opening of `cx`.
     /// * `y` - the value that is used to show an opening of `cy`.
@@ -256,18 +254,12 @@ impl<P: PedersenConfig> ProductProof<P> {
         cy: &PedersenComm<P>,
         cxy: &PedersenComm<P>,
     ) -> Self {
-        // This function just creates the intermediary objects and makes the 
+        // This function just creates the intermediary objects and makes the
         // proof from those.
-        let inter = Self::create_intermediates(
-            transcript,
-            rng,
-            cx,
-            cy,
-            cxy,
-        );
+        let inter = Self::create_intermediates(transcript, rng, cx, cy, cxy);
 
         // Now call the routine that returns the "challenged" version.
-        // N.B For the sake of compatibility, here we just pass the buffer 
+        // N.B For the sake of compatibility, here we just pass the buffer
         // itself.
         let chal_buf = transcript.challenge_scalar(b"c");
         Self::create_proof(x, y, &inter, cx, cy, cxy, &chal_buf)
@@ -277,7 +269,7 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// for a new product proof for `x`, `y` against `cx`, `cy` and `cxy`.
     /// # Arguments
     /// * `transcript` - the transcript object that is modified.
-    /// * `rng` - the RNG that is used to produce the random values. Must be 
+    /// * `rng` - the RNG that is used to produce the random values. Must be
     /// cryptographically secure.
     /// * `cx` - the commitment to x that is opened.
     /// * `cy` - the commitment to y that is opened.
@@ -297,27 +289,30 @@ impl<P: PedersenConfig> ProductProof<P> {
 
         let alpha = (P::GENERATOR.mul(b1) + P::GENERATOR2.mul(b2)).into_affine();
         let beta = (P::GENERATOR.mul(b3) + P::GENERATOR2.mul(b4)).into_affine();
-        let delta = (P::GENERATOR.mul(b3) + P::GENERATOR2.mul(b5)).into_affine();
+        let delta = ((cx.comm).mul(b3) + P::GENERATOR2.mul(b5)).into_affine();
 
         Self::make_transcript(
-            transcript,
-            &cx.comm,
-            &cy.comm,
-            &cxy.comm,
-            &alpha,
-            &beta,
-            &delta,
+            transcript, &cx.comm, &cy.comm, &cxy.comm, &alpha, &beta, &delta,
         );
 
-        ProductProofIntermediate { b1, b2, b3, b4, b5, alpha, beta, delta }
+        ProductProofIntermediate {
+            b1,
+            b2,
+            b3,
+            b4,
+            b5,
+            alpha,
+            beta,
+            delta,
+        }
     }
 
-    /// create_proof. This function accepts a set of intermediaries (`inter`) 
+    /// create_proof. This function accepts a set of intermediaries (`inter`)
     /// and proves that `x` acts as a valid opening for `c1` using an existing buffer of challenge bytes (`chal_buf`).
     /// # Arguments
     /// * `x` - the value that is used to show an opening of `cx`.
     /// * `y` - the value that is used to show an opening of `cy`.
-    /// * `inter` - the intermediaries. These should have been produced by a 
+    /// * `inter` - the intermediaries. These should have been produced by a
     /// call to `create_intermediaries`.
     /// * `cx` - the commitment to x that is opened.
     /// * `cy` - the commitment to y that is opened.
@@ -337,11 +332,11 @@ impl<P: PedersenConfig> ProductProof<P> {
         Self::create_proof_with_challenge(x, y, inter, cx, cy, cxy, &chal)
     }
 
-    /// create_proof. This function accepts a set of intermediaries (`inter`) 
+    /// create_proof. This function accepts a set of intermediaries (`inter`)
     /// and proves that `x` acts as a valid opening for `cx`, y` acts as a valid
-    /// opening for `cy`, and `x*y` is a valid opening for `cxy` using a 
+    /// opening for `cy`, and `x*y` is a valid opening for `cxy` using a
     /// challenge generated from the `transcript`
-    /// Notably, this function should be used when a challenge needs to be 
+    /// Notably, this function should be used when a challenge needs to be
     /// extracted from a completed transcript.
     /// # Arguments
     /// * `transcript` - the transcript object.
@@ -364,12 +359,16 @@ impl<P: PedersenConfig> ProductProof<P> {
         Self::create_proof(x, y, inter, cx, cy, cxy, &chal_buf)
     }
 
-    /// create_proof_with_challenge. This function accepts a set of intermediaries (`inter`) and proves
-    /// that `x` acts as a valid opening for `c1` using an existing challenge `chal`.
+    /// create_proof_with_challenge. This function accepts a set of intermediaries (`inter`)
+    /// and proves that `x` acts as a valid opening for `cx`, y` acts as a valid
+    /// opening for `cy`, and `x*y` is a valid opening for `cxy` using an existing challenge `chal`.
     /// # Arguments
-    /// * `x` - the value that is used to show an opening of  `c1`.
+    /// * `x` - the value that is used to show an opening of `cx`.
+    /// * `y` - the value that is used to show an opening of `cy`.
     /// * `inter` - the intermediaries. These should have been produced by a call to `create_intermediaries`.
-    /// * `c1` - the commitment that is opened.
+    /// * `cx` - the commitment to x that is opened.
+    /// * `cy` - the commitment to y that is opened.
+    /// * `cxy` - the commitment to xy that is opened.
     /// * `chal` - the challenge.
     pub fn create_proof_with_challenge(
         x: &<P as CurveConfig>::ScalarField,
@@ -388,11 +387,11 @@ impl<P: PedersenConfig> ProductProof<P> {
             (*x * (*chal) + inter.t1, c1.r * (*chal) + inter.t2)
         };*/
 
-        let z1 = inter.b1 + *chal * *x;
-        let z2 = inter.b2 + *chal * cx.r;
-        let z3 = inter.b3 + *chal * *y;
-        let z4 = inter.b4 + *chal * cy.r;
-        let z5 = inter.b5 + *chal * (cxy.r - cx.r * *y);
+        let z1 = inter.b1 + (*chal) * (*x);
+        let z2 = inter.b2 + (*chal) * cx.r;
+        let z3 = inter.b3 + (*chal) * (*y);
+        let z4 = inter.b4 + (*chal) * cy.r;
+        let z5 = inter.b5 + (*chal) * (cxy.r - cx.r * (*y));
 
         Self {
             alpha: inter.alpha,
@@ -406,20 +405,19 @@ impl<P: PedersenConfig> ProductProof<P> {
         }
     }
 
-    
     /// verify. This function returns true if the proof held by `self` is valid,
     /// and false otherwise.
     /// # Arguments
     /// * `self` - the proof that is being verified.
     /// * `transcript` - the transcript object that's used.
-    /// * `cx` - the commitment to x whose opening is being proved by this 
+    /// * `cx` - the commitment to x whose opening is being proved by this
     /// function.
-    /// * `cy` - the commitment to y whose opening is being proved by this 
+    /// * `cy` - the commitment to y whose opening is being proved by this
     /// function.
-    /// * `cxy` - the commitment to x*y whose opening is being proved by this 
+    /// * `cxy` - the commitment to x*y whose opening is being proved by this
     /// function.
     pub fn verify(
-        &self, 
+        &self,
         transcript: &mut Transcript,
         cx: &sw::Affine<P>,
         cy: &sw::Affine<P>,
@@ -437,11 +435,11 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// # Arguments
     /// * `self` - the proof that is being verified.
     /// * `transcript` - the transcript object that's used.
-    /// * `cx` - the commitment to x whose opening is being proved by this 
+    /// * `cx` - the commitment to x whose opening is being proved by this
     /// function.
-    /// * `cy` - the commitment to y whose opening is being proved by this 
+    /// * `cy` - the commitment to y whose opening is being proved by this
     /// function.
-    /// * `cxy` - the commitment to x*y whose opening is being proved by this 
+    /// * `cxy` - the commitment to x*y whose opening is being proved by this
     /// function.
     pub fn verify_proof_own_challenge(
         &self,
@@ -450,23 +448,18 @@ impl<P: PedersenConfig> ProductProof<P> {
         cy: &sw::Affine<P>,
         cxy: &sw::Affine<P>,
     ) -> bool {
-        self.verify_proof(
-            cx,
-            cy,
-            cxy,
-            &transcript.challenge_scalar(b"c")[..]
-        )
+        self.verify_proof(cx, cy, cxy, &transcript.challenge_scalar(b"c")[..])
     }
 
     /// verify_proof. This function verifies that `c1` is a valid opening of the
     /// proof held by `self`, but with a pre-existing challenge `chal_buf`.
     /// # Arguments
     /// * `self` - the proof that is being verified.
-    /// * `cx` - the commitment to x whose opening is being proved by this 
+    /// * `cx` - the commitment to x whose opening is being proved by this
     /// function.
-    /// * `cy` - the commitment to y whose opening is being proved by this 
+    /// * `cy` - the commitment to y whose opening is being proved by this
     /// function.
-    /// * `cxy` - the commitment to x*y whose opening is being proved by this 
+    /// * `cxy` - the commitment to x*y whose opening is being proved by this
     /// function.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn verify_proof(
@@ -474,23 +467,23 @@ impl<P: PedersenConfig> ProductProof<P> {
         cx: &sw::Affine<P>,
         cy: &sw::Affine<P>,
         cxy: &sw::Affine<P>,
-        chal_buf: &[u8]
+        chal_buf: &[u8],
     ) -> bool {
         // Make the challenge and check.
         let chal = <P as PedersenConfig>::make_challenge_from_buffer(chal_buf);
         self.verify_with_challenge(cx, cy, cxy, &chal)
     }
 
-    /// verify_with_challenge. This function verifies that `cx`, `cy` and `cxy` 
+    /// verify_with_challenge. This function verifies that `cx`, `cy` and `cxy`
     /// are a valid opening of the proof held by `self`, but with a pre-existing
     /// challenge `chal`.
     /// # Arguments
     /// * `self` - the proof that is being verified.
-    /// * `cx` - the commitment to x whose opening is being proved by this 
+    /// * `cx` - the commitment to x whose opening is being proved by this
     /// function.
-    /// * `cy` - the commitment to y whose opening is being proved by this 
+    /// * `cy` - the commitment to y whose opening is being proved by this
     /// function.
-    /// * `cxy` - the commitment to x*y whose opening is being proved by this 
+    /// * `cxy` - the commitment to x*y whose opening is being proved by this
     /// function.
     /// * `chal` - the challenge.
     pub fn verify_with_challenge(
@@ -506,12 +499,17 @@ impl<P: PedersenConfig> ProductProof<P> {
             self.alpha + c1
         } else {
             c1.mul(*chal) + self.alpha
-        };
+        };*/
 
-        let rhs = true;
+        let lhs_alpha = self.alpha + cx.mul(*chal);
+        let lhs_beta = self.beta + cy.mul(*chal);
+        let lhs_delta = self.delta + cxy.mul(*chal);
 
-        P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2) == rhs*/
-        true
+        let check1 = lhs_alpha == P::GENERATOR.mul(self.z1) + P::GENERATOR2.mul(self.z2);
+        let check2 = lhs_beta == P::GENERATOR.mul(self.z3) + P::GENERATOR2.mul(self.z4);
+        let check3 = lhs_delta == cx.mul(self.z3) + P::GENERATOR2.mul(self.z5);
+
+        check1 && check2 && check3
     }
 }
 
@@ -540,7 +538,7 @@ mod tests {
         let cxy = PedersenComm::new(x*y, &mut OsRng);
 
         let proof = ProductProof::create(
-            &mut transcript, 
+            &mut transcript,
             &mut OsRng,
             &x,
             &y,
