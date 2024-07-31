@@ -1496,6 +1496,34 @@ macro_rules! __test_pedersen {
                 assert!(coeffs[1] == coeffs[3] && coeffs[3] == SF::ZERO);
             }
         }
+
+        #[test]
+        fn test_product_proof() {
+            let label = b"ProductProof";
+            let mut transcript = Transcript::new(label);
+    
+            let x: SF = SF::rand(&mut OsRng);
+            let y: SF = SF::rand(&mut OsRng);
+    
+            let cx: PC = PC::new(x, &mut OsRng);
+            let cy: PC = PC::new(y, &mut OsRng);
+            let cxy: PC = PC::new(x*y, &mut OsRng);
+    
+            let proof = PP::create(
+                &mut transcript, 
+                &mut OsRng,
+                &x,
+                &y,
+                &cx,
+                &cy,
+                &cxy,
+            );
+            assert!(proof.alpha.is_on_curve());
+            assert!(proof.beta.is_on_curve());
+            assert!(proof.delta.is_on_curve());
+    
+            // TODO check if it verifies correctly
+        }
     };
 }
 
@@ -1529,6 +1557,7 @@ macro_rules! test_pedersen {
                 non_zero_protocol::NonZeroProof as NZP,
                 opening_protocol::OpeningProof as OP,
                 opening_protocol::OpeningProofMulti as OPM,
+                product_protocol::ProductProof as PP,
                 pedersen_config::PedersenComm,
                 pedersen_config::PedersenConfig,
                 point_add::PointAddProtocol,
