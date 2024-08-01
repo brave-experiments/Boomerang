@@ -6,10 +6,14 @@ include = ["Cargo.toml", "src"]
 edition = "2021"
 
 [dependencies]
+ark-ff = { version = "0.4.2"}
 ark-ec = { version = "0.4.2", default-features = false }
 ark-std = { version = "0.4.0", default-features = false }
+ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
+ark-ff-macros =  { version = "0.4.2", default-features = false }
+
+ark-secp256r1 = {default-features = false, git = "https://github.com/arkworks-rs/curves" }
 rand = { version = "0.8.5" }
-ark-ff = { version = "0.4.2"}
 ark-serialize = { version = "0.4.2"}
 merlin = { version = "3.0.0"}
 num-bigint = { version = "0.4", default-features = false }
