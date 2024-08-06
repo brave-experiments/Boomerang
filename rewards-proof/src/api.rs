@@ -10,7 +10,6 @@ use std::vec;
 #[derive(Debug)]
 pub enum RewardsProofError {
     /// This error occurs when the commitments cannot be deserialized.
-    #[cfg_attr(feature = "std", error("Commitments cannot be deserialized."))]
     CommitmentsDeserializationError,
 }
 

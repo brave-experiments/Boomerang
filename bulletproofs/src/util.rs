@@ -220,9 +220,10 @@ fn sum_of_powers_slow<G: AffineRepr>(x: &G::ScalarField, n: usize) -> G::ScalarF
     exp_iter::<G>(*x).take(n).sum()
 }
 
-/// Raises `x` to the power `n` using binary exponentiation,
-/// with (1 to 2)*lg(n) scalar multiplications.
-/// TODO: a consttime version of this would be awfully similar to a Montgomery ladder.
+/// Raises `x` to the power `n` using binary exponentiation
+///
+/// Uses (1 to 2)*lg(n) scalar multiplications.
+/// TODO: a consttime version of this would be similar to a Montgomery ladder.
 pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::ScalarField {
     let mut result = G::ScalarField::one();
     let mut aux = *x; // x, x^2, x^4, x^8, ...
@@ -238,6 +239,9 @@ pub fn scalar_exp_vartime<G: AffineRepr>(x: &G::ScalarField, mut n: u64) -> G::S
 }
 
 /// Raises `x` to the power `n`.
+///
+/// Naive implementation for verifying correctness.
+#[cfg(test)]
 fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::ScalarField {
     let mut result = G::ScalarField::one();
     for _ in 0..n {
@@ -246,16 +250,19 @@ fn scalar_exp_vartime_slow<G: AffineRepr>(x: &G::ScalarField, n: u64) -> G::Scal
     result
 }
 
-pub fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
-    if a.len() != b.len() {
-        // throw some error
-        //println!("lengths of vectors don't match for vector addition");
-    }
-    let mut out = vec![G::ScalarField::zero(); b.len()];
-    for i in 0..a.len() {
-        out[i] = a[i] + b[i];
-    }
-    out
+/// Vector addition where components are field scalars
+///
+/// Adds two slices of scalar values element-by-element, producing a
+/// third vector of scalars.
+///
+/// Panics if the slices are of different length.
+fn add_vec<G: AffineRepr>(a: &[G::ScalarField], b: &[G::ScalarField]) -> Vec<G::ScalarField> {
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "argument length must match for vector addition"
+    );
+    a.iter().zip(b).map(|(a, b)| *a + *b).collect()
 }
 
 #[cfg(test)]
@@ -304,5 +311,52 @@ mod tests {
         assert_eq!(flat_slice(&v), &[0u8; 64][..]);
         assert_eq!(v[0], F::zero());
         assert_eq!(v[1], F::zero());
+    }
+
+    #[test]
+    /// Confirm different implementations give identical results
+    fn scalar_exp_variants() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+        // This can be made deterministic by setting
+        // DETERMINISTIC_TEST_RNG=1 in the environment
+        let a = F::from(42u64);
+        let n = 12;
+        let v = scalar_exp_vartime::<G>(&a, n);
+
+        assert_eq!(v, scalar_exp_vartime_slow::<G>(&a, n));
+    }
+
+    #[test]
+    fn vector_addition() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+
+        let a = vec![F::from(24u64), F::from(42u64), F::from(17)];
+        let b = vec![F::from(7u64), F::from(8u64), F::from(0)];
+        let c = vec![F::from(31u64), F::from(50u64), F::from(17)];
+        assert_eq!(add_vec::<G>(&a, &b), c);
+    }
+
+    #[test]
+    #[should_panic]
+    fn vector_addition_lengths() {
+        type G = ark_secq256k1::Affine;
+        type F = ark_secq256k1::Fr;
+
+        // Several different-length vectors
+        let zero = vec![];
+        let one = vec![F::from(1u64)];
+        let two = vec![F::from(2u64), F::from(0)];
+
+        // Same length addition should succeed
+        let _ = add_vec::<G>(&zero, &zero);
+        let _ = add_vec::<G>(&one, &one);
+        let _ = add_vec::<G>(&two, &two);
+
+        // Mismatched length addition should fail
+        let _ = add_vec::<G>(&one, &two);
+        let _ = add_vec::<G>(&two, &zero);
+        let _ = add_vec::<G>(&zero, &one);
     }
 }

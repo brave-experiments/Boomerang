@@ -229,6 +229,7 @@ fn example_gadget<CS: ConstraintSystem<Fr>>(
 }
 
 // Prover's scope
+#[allow(clippy::too_many_arguments)]
 fn example_gadget_proof(
     pc_gens: &PedersenGens<EdwardsAffine>,
     bp_gens: &BulletproofGens<EdwardsAffine>,
