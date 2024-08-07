@@ -1,5 +1,5 @@
 #[allow(clippy::doc_lazy_continuation)]
-#![forbid(unsafe_code)]
+#[forbid(unsafe_code)]
 pub mod add_mul_protocol;
 pub mod collective;
 pub mod ec_collective;
