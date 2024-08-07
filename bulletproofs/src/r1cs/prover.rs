@@ -353,6 +353,7 @@ impl<'g, G: AffineRepr, T: BorrowMut<Transcript>> Prover<'g, G, T> {
     /// (wL, wR, wO, wV)
     /// ```
     /// where `w{L,R,O}` is \\( z \cdot z^Q \cdot W_{L,R,O} \\).
+    #[allow(clippy::complexity)]
     fn flattened_constraints(
         &mut self,
         z: &G::ScalarField,

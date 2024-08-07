@@ -23,6 +23,9 @@ use crate::generators::{BulletproofGens, PedersenGens};
 use crate::inner_product_proof::VerificationScalars;
 use crate::transcript::TranscriptProtocol;
 
+type DeferredConstraint<G, T> =
+    Box<dyn Fn(&mut RandomizingVerifier<G, T>) -> Result<(), R1CSError>>;
+
 /// A [`ConstraintSystem`] implementation for use by the verifier.
 ///
 /// The verifier adds high-level variable commitments to the transcript,
@@ -50,7 +53,7 @@ pub struct Verifier<G: AffineRepr, T: BorrowMut<Transcript>> {
     /// when non-randomized variables are committed.
     /// After that, the option will flip to None and additional calls to `randomize_constraints`
     /// will invoke closures immediately.
-    deferred_constraints: Vec<Box<dyn Fn(&mut RandomizingVerifier<G, T>) -> Result<(), R1CSError>>>,
+    deferred_constraints: Vec<DeferredConstraint<G, T>>,
 
     /// Index of a pending multiplier that's not fully assigned yet.
     pending_multiplier: Option<usize>,
@@ -302,6 +305,7 @@ impl<G: AffineRepr, T: BorrowMut<Transcript>> Verifier<G, T> {
     /// This has the same logic as `ProverCS::flattened_constraints()`
     /// but also computes the constant terms (which the prover skips
     /// because they're not needed to construct the proof).
+    #[allow(clippy::complexity)]
     fn flattened_constraints(
         &mut self,
         z: &G::ScalarField,
