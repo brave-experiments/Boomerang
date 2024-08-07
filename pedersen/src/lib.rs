@@ -14,6 +14,7 @@ pub mod non_zero_protocol;
 pub mod opening_protocol;
 pub mod pedersen_config;
 pub mod point_add;
+pub mod product_protocol;
 pub mod scalar_mul;
 pub mod scalar_mul_protocol;
 pub mod transcript;
