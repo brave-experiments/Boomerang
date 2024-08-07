@@ -39,7 +39,7 @@ pub struct Party<G: AffineRepr> {
 
 impl<G: AffineRepr> Party<G> {
     /// Constructs a `PartyAwaitingPosition` with the given rangeproof parameters.
-    pub fn new<'a>(
+    pub fn init<'a>(
         bp_gens: &'a BulletproofGens<G>,
         pc_gens: &'a PedersenGens<G>,
         v: u64,
@@ -80,6 +80,7 @@ impl<'a, G: AffineRepr> PartyAwaitingPosition<'a, G> {
     /// Assigns a position in the aggregated proof to this party,
     /// allowing the party to commit to the bits of their value.
     #[cfg(feature = "std")]
+    #[allow(dead_code)]
     pub fn assign_position(
         self,
         j: usize,
@@ -181,6 +182,7 @@ impl<'a, G: AffineRepr> PartyAwaitingBitChallenge<'a, G> {
     /// Receive a [`BitChallenge`] from the dealer and use it to
     /// compute commitments to the party's polynomial coefficients.
     #[cfg(feature = "std")]
+    #[allow(dead_code)]
     pub fn apply_challenge(
         self,
         vc: &BitChallenge<G>,

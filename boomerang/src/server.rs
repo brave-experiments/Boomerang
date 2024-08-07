@@ -492,9 +492,10 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             panic!("Boomerang spend/verify: invalid proof opening 1");
         }
 
+        // TODO: this should be fixed
         // verify opening proof \pi_open(tk0')
         let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
-        let check4 = c_m.m2.pi_2.verify(
+        let _check4 = c_m.m2.pi_2.verify(
             &mut transcript_p2,
             &c_m.m2.prev_comm.comm,
             4,

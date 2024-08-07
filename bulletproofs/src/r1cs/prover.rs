@@ -18,6 +18,9 @@ use crate::generators::{BulletproofGens, PedersenGens};
 use crate::inner_product_proof::InnerProductProof;
 use crate::transcript::TranscriptProtocol;
 
+type DeferredConstraintFn<'g, G, T> =
+    Box<dyn Fn(&mut RandomizingProver<'g, G, T>) -> Result<(), R1CSError>>;
+
 /// A [`ConstraintSystem`] implementation for use by the prover.
 ///
 /// The prover commits high-level variables and their blinding factors `(v, v_blinding)`,
@@ -37,8 +40,7 @@ pub struct Prover<'g, G: AffineRepr, T: BorrowMut<Transcript>> {
 
     /// This list holds closures that will be called in the second phase of the protocol,
     /// when non-randomized variables are committed.
-    deferred_constraints:
-        Vec<Box<dyn Fn(&mut RandomizingProver<'g, G, T>) -> Result<(), R1CSError>>>,
+    deferred_constraints: Vec<DeferredConstraintFn<'g, G, T>>,
 
     /// Index of a pending multiplier that's not fully assigned yet.
     pending_multiplier: Option<usize>,

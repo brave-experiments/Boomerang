@@ -27,8 +27,12 @@ pub trait PedersenConfig: SWCurveConfig {
     /// |p|/2 bits of security.
     const SECPARAM: usize;
 
+    /// Converts an element from OCurve's ScalarField to the current curve's ScalarField.
+    ///
     /// This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
+    ///
+    /// # Arguments
     ///
     /// * `x` - the element ∈ OCurve's ScalarField.
     ///
@@ -106,11 +110,12 @@ pub trait PedersenConfig: SWCurveConfig {
         PedersenComm::new(Self::from_ob_to_sf(val), rng)
     }
 
-    /// This function accepts a single bit value `v` and returns:
+    /// make_single_bit_challenge. This function accepts a single bit value `v` and returns:
+    ///
     /// * -1 (in the ScalarField) if `v == 0`.
     /// *  1 (in the ScalarField) if `v == 1`.
     ///
-    /// For any other value of `v` this function panics.
+    /// For any other value of `v`, this function panics.
     ///
     /// # Arguments
     /// * `v` - the single bit challenge.

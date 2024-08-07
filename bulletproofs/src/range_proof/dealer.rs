@@ -35,7 +35,7 @@ pub struct Dealer<G: AffineRepr> {
 
 impl<G: AffineRepr> Dealer<G> {
     /// Creates a new dealer coordinating `m` parties proving `n`-bit ranges.
-    pub fn new<'a, 'b>(
+    pub fn init<'a, 'b>(
         bp_gens: &'b BulletproofGens<G>,
         pc_gens: &'b PedersenGens<G>,
         transcript: &'a mut Transcript,
@@ -218,6 +218,7 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingPolyCommitments<'a, 'b, G> {
 /// A dealer which has sent the [`PolyChallenge`] to the parties and
 /// is waiting to aggregate their [`ProofShare`]s into a
 /// [`RangeProof`].
+#[allow(dead_code)]
 pub struct DealerAwaitingProofShares<'a, 'b, G: AffineRepr> {
     n: usize,
     m: usize,
@@ -331,6 +332,7 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
     /// This is a convenience wrapper around receive_shares_with_rng
     ///
     #[cfg(feature = "std")]
+    #[allow(dead_code)]
     pub fn receive_shares(self, proof_shares: &[ProofShare<G>]) -> Result<RangeProof<G>, MPCError> {
         self.receive_shares_with_rng(proof_shares, &mut thread_rng())
     }
@@ -348,6 +350,7 @@ impl<'a, 'b, G: AffineRepr> DealerAwaitingProofShares<'a, 'b, G> {
     /// performing local aggregation,
     /// [`receive_trusted_shares`](DealerAwaitingProofShares::receive_trusted_shares)
     /// saves time by skipping verification of the aggregated proof.
+    #[allow(dead_code)]
     pub fn receive_shares_with_rng<T: RngCore + CryptoRng>(
         mut self,
         proof_shares: &[ProofShare<G>],
