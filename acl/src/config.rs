@@ -6,9 +6,9 @@ use ark_ec::{
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
-use digest::{ExtendableOutputDirty, Update, XofReader};
 use rand::{CryptoRng, RngCore};
 use sha3::Shake256;
+use sha3::digest::{ExtendableOutput, Update, XofReader};
 
 pub trait ACLConfig: SWCurveConfig {
     /// The curve type that maps to this Config.
@@ -75,8 +75,8 @@ impl<A: ACLConfig> KeyPair<A> {
         let label = [b'G', 0, 0, 0, 0];
         let mut shake = Shake256::default();
         shake.update(b"Tag Public Key");
-        shake.update(label);
-        let mut reader = shake.finalize_xof_dirty();
+        shake.update(&label);
+        let mut reader = shake.finalize_xof();
 
         let mut uniform_bytes = [0u8; 64];
         reader.read(&mut uniform_bytes);

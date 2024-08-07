@@ -9,8 +9,9 @@ use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 use std::ops;
 
-use digest::{ExtendableOutputDirty, Update, XofReader};
 use sha3::Shake256;
+use sha3::digest::{Update, ExtendableOutput, XofReader};
+
 
 pub trait PedersenConfig: SWCurveConfig {
     /// Second generator that's used in Pedersen commitments. Corresponds to H.
@@ -537,8 +538,9 @@ impl<P: PedersenConfig> PedersenComm<P> {
         let label = [b'G', 0, 0, 0, 0];
         let mut shake = Shake256::default();
         shake.update(b"GeneratorsChain"); // This needs to be new every time
-        shake.update(label);
-        let mut reader = shake.finalize_xof_dirty();
+        shake.update(b"GeneratorsChain");
+        shake.update(&label);
+        let mut reader = shake.finalize_xof();
 
         let mut gens: Vec<sw::Affine<P>> = Vec::with_capacity(vals.len() + 1);
         gens.push(*g);
@@ -598,8 +600,8 @@ impl<P: PedersenConfig> PedersenComm<P> {
         let label = [b'G', 0, 0, 0, 0];
         let mut shake = Shake256::default();
         shake.update(b"GeneratorsChain");
-        shake.update(label);
-        let mut reader = shake.finalize_xof_dirty();
+        shake.update(&label);
+        let mut reader = shake.finalize_xof();
 
         let mut gens: Vec<sw::Affine<P>> = Vec::with_capacity(vals.len() + 1);
         gens.push(<P as SWCurveConfig>::GENERATOR);
