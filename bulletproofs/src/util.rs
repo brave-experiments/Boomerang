@@ -1,3 +1,4 @@
+#![allow(clippy::doc_markdown)]
 #![deny(missing_docs)]
 #![allow(non_snake_case)]
 
