@@ -27,9 +27,17 @@ pub trait PedersenConfig: SWCurveConfig {
     /// |p|/2 bits of security.
     const SECPARAM: usize;
 
-    /// from_oc. This function takes an `x` in OCurve's ScalarField and converts it
+    /// Converts an element from OCurve's ScalarField to the current curve's ScalarField.
+    ///
+    /// This function takes an `x` in OCurve's ScalarField and converts it
     /// into an element of the ScalarField of the current curve.
+    ///
+    /// # Arguments
+    ///
     /// * `x` - the element ∈ OCurve's ScalarField.
+    ///
+    /// # Returns
+    ///
     /// Returns `x` as an element of Self::ScalarField.
     fn from_oc(
         x: <Self::OCurve as CurveConfig>::ScalarField,
