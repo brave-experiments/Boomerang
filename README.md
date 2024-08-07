@@ -1,5 +1,13 @@
 # Boomerang
 
+Boomerang uses cryptographic black-box accumulators to implement a
+privacy-preserving, distributed, participation incentive system.
+Using this protocol, clients can efficiently prove participation
+in a set of online events without revealing specific information
+about when and with whom.
+
+## Quick Start
+
 In order to build, run either:
 
     make
@@ -28,3 +36,17 @@ cargo run --bin client
 
 These end2end examples are also run automatically after the unit tests
 as part of `make test`.
+
+## Components
+
+The implementation is broken down into a number of crates handling
+specific parts of the protocol, tests, and demonstration code.
+
+- `boomerang` Overall protocol implementation with separate representations for the client and server sides.
+- `pedersen` Commitment scheme after **Pedersen,** “[Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing](https://doi.org/10.1007/3-540-46766-1_9).” *Advances in Cryptology* CRYPTO ’91, LNCS 576, pp. 129-140, 1992. Based on [code](https://github.com/brave-experiments/CDLS) from the [CDLS paper](https://eprint.iacr.org/2023/1595).
+- `t256` and `t384` Elliptic curve implementations using the [arkworks](https://arkworks.rs) framework. These are also from CDLS.
+- `acl` [Anonymous Credentials Light](https://eprint.iacr.org/2012/298) blind signature system after **Baldimtsi and Lysyanskaya**, 2012.
+- `bulletproofs` Zero-knowledge proof scheme from [Short proofs for Confidential Transactions](https://eprint.iacr.org/2017/1066.pdf), 2017. This implementation is derived from the one by [dalek cryptography](https://github.com/dalek-cryptography/bulletproofs) with some borrowing from the [curve tree](https://github.com/simonkamp/curve-trees/tree/main/bulletproofs) fork and [Alex Ozdemir's](https://github.com/alex-ozdemir/bulletproofs) arkworks version. Used under the MIT license.
+- `rewards-proof` Credit redemption for participation incentive schemes. Also based on bulletproofs.
+- `macros` Various utilities for generating test boilerplate. Also from CDLS.
+- `end2end_example` Demonstrates using the protocol between a simple http server and clients.
