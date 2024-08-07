@@ -36,8 +36,6 @@ pub trait PedersenConfig: SWCurveConfig {
     ///
     /// * `x` - the element ∈ OCurve's ScalarField.
     ///
-    /// # Returns
-    ///
     /// Returns `x` as an element of Self::ScalarField.
     fn from_oc(
         x: <Self::OCurve as CurveConfig>::ScalarField,
@@ -46,69 +44,65 @@ pub trait PedersenConfig: SWCurveConfig {
         <Self as CurveConfig>::ScalarField::from(x_bt)
     }
 
-    /// from_ob_to_os. This function takes an `x` in the OCurve's BaseField and converts
+    /// This function takes an `x` in the OCurve's BaseField and converts
     /// it into an element of the Scalar field of the OCurve.
-    /// * `x` - the element ∈ OCurve's BaseField.
     ///
-    /// # Returns
+    /// * `x` - the element ∈ OCurve's BaseField.
     ///
     /// Returns `y` ∈ OCurve's ScalarField.
     fn from_ob_to_os(
         x: <Self::OCurve as CurveConfig>::BaseField,
     ) -> <Self::OCurve as CurveConfig>::ScalarField;
 
-    /// from_ob_to_sf. This function takes an `x` in the OCurve's BaseField and converts
+    /// This function takes an `x` in the OCurve's BaseField and converts
     /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ OCurve's BaseField.
     ///
-    /// # Returns
+    /// * `x` - the element ∈ OCurve's BaseField.
     ///
     /// Returns `x` as an element of Self::ScalarField.
     fn from_ob_to_sf(
         x: <Self::OCurve as CurveConfig>::BaseField,
     ) -> <Self as CurveConfig>::ScalarField;
 
-    /// from_ob_to_sf. This function takes an `x` in the OCurve's ScalarField and converts
+    /// This function takes an `x` in the OCurve's ScalarField and converts
     /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ OCurve's ScalarField.
     ///
-    /// # Returns
+    /// * `x` - the element ∈ OCurve's ScalarField.
     ///
     /// Returns `x` as an element of Self::ScalarField.
     fn from_os_to_sf(
         x: <Self::OCurve as CurveConfig>::ScalarField,
     ) -> <Self as CurveConfig>::ScalarField;
 
-    /// from_bf_to_sf. This function takes an `x` in  Self::BaseField and converts
+    /// This function takes an `x` in  Self::BaseField and converts
     /// it into an element of the ScalarField of the current curve.
-    /// * `x` - the element ∈ Self::BaseField.
     ///
-    /// # Returns
+    /// * `x` - the element ∈ Self::BaseField.
     ///
     /// Returns `x` as an element of Self::ScalarField.
     fn from_bf_to_sf(x: <Self as CurveConfig>::BaseField) -> <Self as CurveConfig>::ScalarField;
 
     fn from_u64_to_sf(x: u64) -> <Self as CurveConfig>::ScalarField;
 
-    /// make_challenge_from_buffer. This function accepts a challenge slice (ideally produced by a transcript)
+    /// This function accepts a challenge slice (ideally produced by a transcript)
     /// and converts it into an element of Self::ScalarField.
     /// This function exists primarily to circumvent an API issue with Merlin.
-    /// * `chal_buf` - a slice of bytes (representing a serialised curve point), to be used to
-    ///                make a element of the ScalarField.
     ///
-    /// # Returns
+    /// * `chal_buf` - a slice of bytes (representing a serialised curve point),
+    ///   to be used to make a element of the ScalarField.
     ///
     /// Returns a scalar field element.
     fn make_challenge_from_buffer(chal_buf: &[u8]) -> <Self as CurveConfig>::ScalarField {
         <Self as CurveConfig>::ScalarField::deserialize_compressed(chal_buf).unwrap()
     }
 
-    /// make_commitment_from_other. This function accepts an element `val` of OCurve::BaseField and
+    /// This function accepts an element `val` of OCurve::BaseField and
     /// forms a commitment C = val * g + r*h, where `g` and `h` are generators of the Self::Curve.
     /// This function uses the supplied rng to produce the random value `r`.
     /// # Arguments
     /// * `val` - the value to which we are committing.
-    /// * `rng` - the random number generator that is being used. This must be a cryptographically secure RNG.
+    /// * `rng` - the random number generator that is being used.
+    ///   This must be a cryptographically secure RNG.
     fn make_commitment_from_other<T: RngCore + CryptoRng>(
         val: <<Self as PedersenConfig>::OCurve as CurveConfig>::BaseField,
         rng: &mut T,
@@ -127,19 +121,20 @@ pub trait PedersenConfig: SWCurveConfig {
     /// * `v` - the single bit challenge.
     fn make_single_bit_challenge(v: u8) -> <Self as CurveConfig>::ScalarField;
 
-    /// OGENERATOR2. This acts as a second generator for OCurve. The reason why this
+    /// This acts as a second generator for OCurve. The reason why this
     /// exists is to allow Pedersen Commitments over OCurve to be easy to form.
     const OGENERATOR2: sw::Affine<Self::OCurve>;
 
-    /// CP1. This constant is the representation of "1" in the ScalarField of `Self`.
+    /// This constant is the representation of "1" in the ScalarField of `Self`.
     const CP1: Self::ScalarField;
 
-    /// CM1. This constant is the representation of "-1" in the ScalarField of `Self`.
+    /// This constant is the representation of "-1" in the ScalarField of `Self`.
     const CM1: Self::ScalarField;
 
-    /// create_commitments_to_coords. This function accepts a series of affine points (from the underyling OCurve)
+    /// This function accepts a series of affine points (from the underyling OCurve)
     /// and creates commitments to each co-ordinate of each point, returning the results as a tuple.
     /// The formed commitments are commitments over the relevant T Curve.
+    ///
     /// # Arguments
     /// * `a`: one of the summands.
     /// * `b`: the other summand.
@@ -169,11 +164,12 @@ pub trait PedersenConfig: SWCurveConfig {
         )
     }
 
-    /// get_random_p. This function is a helper function for returning a random value from
+    /// This function is a helper function for returning a random value from
     /// the scalar field of the OCurve.
+    ///
     /// # Arguments
-    /// * `rng` - the random number generator used to produce the random value. Must be a cryptographically
-    /// secure RNG.
+    /// * `rng` - the random number generator used to produce the random value.
+    ///   Must be a cryptographically secure RNG.
     ///
     /// Returns a random scalar value from OCurve::ScalarField.
     fn get_random_p<T: RngCore + CryptoRng>(
@@ -182,13 +178,14 @@ pub trait PedersenConfig: SWCurveConfig {
         <Self::OCurve as CurveConfig>::ScalarField::rand(rng)
     }
 
-    /// create_commit_other. This function accepts a value (`val` ∈ OCurve::ScalarField)
+    /// This function accepts a value (`val` ∈ OCurve::ScalarField)
     /// and produces a new Pedersen Commitment C = val*g + r*h, where `g`, `h` are public
     /// generators of OCurve and `r` is a random element of OCurve::ScalarField.
+    ///
     /// # Arguments
     /// * `val - the value that is being committed to.
-    /// * `rng` - the random number generator used to produce the random value. Must be a cryptographically
-    /// secure RNG.
+    /// * `rng` - the random number generator used to produce the random value.
+    ///   Must be a cryptographically secure RNG.
     ///
     /// Returns a new commitment to `val` as a tuple.
     fn create_commit_other<T: RngCore + CryptoRng>(
@@ -201,13 +198,14 @@ pub trait PedersenConfig: SWCurveConfig {
         Self::create_commit_other_with_both(val, &Self::get_random_p(rng))
     }
 
-    /// create_multi_commit_other. This function accepts a values (`vals` ∈ OCurve::ScalarField)
+    /// This function accepts a values (`vals` ∈ OCurve::ScalarField)
     /// and produces a new Pedersen Commitment C = (vals)*g + r*h, where `g`, `h` are public
     /// generators of OCurve and `r` is a random element of OCurve::ScalarField.
+    ///
     /// # Arguments
     /// * `vals - the values that is being committed to.
-    /// * `rng` - the random number generator used to produce the random value. Must be a cryptographically
-    /// secure RNG.
+    /// * `rng` - the random number generator used to produce the random value.
+    ///   Must be a cryptographically secure RNG.
     ///
     /// Returns a new commitment to `val` as a tuple.
     fn create_multi_commit_other<T: RngCore + CryptoRng>(
@@ -220,9 +218,10 @@ pub trait PedersenConfig: SWCurveConfig {
         Self::create_multi_commit_other_with_both(vals, &Self::get_random_p(rng))
     }
 
-    /// create_commit_other_with_both. This function accepts a value (`val` ∈ OCurve::ScalarField)
+    /// This function accepts a value (`val` ∈ OCurve::ScalarField)
     /// and some randomness (`r` ∈ OCurve::ScalarField) and returns a new Pedersen Commitment C =
     /// val*g + r*h, where `g`, `h` are public generators of OCurve.
+    ///
     /// # Arguments
     /// * `val - the value that is being committed to.
     /// * `r` - the randomness value.
@@ -242,9 +241,10 @@ pub trait PedersenConfig: SWCurveConfig {
         )
     }
 
-    /// create_multi_commit_other_with_both. This function accepts a list of values (`vals` ∈ OCurve::ScalarField)
+    /// This function accepts a list of values (`vals` ∈ OCurve::ScalarField)
     /// and some randomness (`r` ∈ OCurve::ScalarField) and returns a new Pedersen Commitment C =
     /// (vals_i*g) + r*h, where `g`, `h` are public generators of OCurve.
+    ///
     /// # Arguments
     /// * `vals - the values that are being committed to.
     /// * `r` - the randomness value.
@@ -432,26 +432,30 @@ impl<P: PedersenConfig> PedersenComm<P> {
         <P as SWCurveConfig>::GENERATOR
     }
 
-    /// new. This function accepts a ScalarField element `x` and an rng, returning a Pedersen Commitment
-    /// to `x`.
+    /// This function creates a new Pedersen Commitment to a scalar value.
+    ///
+    /// This uses the default generators of the `CurveConfig`.
+    ///
     /// # Arguments
     /// * `x` - the value that is committed to.
-    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
-    /// secure.
+    /// * `rng` - the random number generator used to produce the randomness.
+    ///   Must be cryptographically secure.
     ///
     /// Returns a new Pedersen Commitment to `x`.
     pub fn new<T: RngCore + CryptoRng>(x: <P as CurveConfig>::ScalarField, rng: &mut T) -> Self {
         Self::new_with_generators(x, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
     }
 
-    /// new_multi. This function accepts various ScalarField elements `val` and an rng, returning a Pedersen Commitment
-    /// to `vals`.
+    /// Creates a new Pedersen Commitment to a vector of values.
+    ///
+    /// This uses the default generators of the `CurveConfig`.
+    ///
     /// # Arguments
     /// * `vals` - the values that are committed to.
-    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
-    /// secure.
+    /// * `rng` - the random number generator used to produce the randomness.
+    ///   Must be cryptographically secure.
     ///
-    /// Returns a new Pedersen Commitment to `x`.
+    /// Returns a new Pedersen Commitment to `vals`.
     pub fn new_multi<T: RngCore + CryptoRng>(
         vals: &[<P as CurveConfig>::ScalarField],
         rng: &mut T,
@@ -459,13 +463,16 @@ impl<P: PedersenConfig> PedersenComm<P> {
         Self::new_multi_with_generators(vals, rng, &<P as SWCurveConfig>::GENERATOR, &P::GENERATOR2)
     }
 
-    /// new_with_generator. This function accepts a ScalarField element `x`, an `rng`,
-    /// and two generators (`g`, `q`) and returns a Pedersen Commitment C = xg + rq. Here `r` is
-    /// the produced randomness.
+    /// Creates a new scalar Pedersen Commitment with specific generators.
+    ///
+    /// This function accepts a ScalarField element `x`,
+    /// two generators (`g`, `q`), and returns a Pedersen Commitment
+    /// C = xg + rq, where `r` is a random value.
+    ///
     /// # Arguments
     /// * `x` - the value that is committed to.
-    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
-    /// secure.
+    /// * `rng` - the random number generator used to produce the random value.
+    ///   Must be cryptographically secure.
     /// * `g` - a generator of `P`'s scalar field.
     /// * `q` - a distinct generator of `P`'s scalar field.
     ///
@@ -501,15 +508,20 @@ impl<P: PedersenConfig> PedersenComm<P> {
         }
         panic!()
     }
-    /// new_multi_with_generators. This function accepts a list of ScalarField elements `val`, an `rng`,
-    /// and two generators (`g`, `q`) and returns a Pedersen Commitment C = valsg + rq. Here `r` is
-    /// the produced randomness.
+
+    /// Creates a new vector Pedersen Commitment with specific generators.
+    ///
+    /// This function accepts a slice of ScalarField elements `vals`,
+    /// two generators (`g`, `q`), and returns a Pedersen Commitment
+    /// C = valsg + rq, where `r` is a random value.
+    ///
     /// # Arguments
     /// * `vals` - the values that are committed to.
-    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
-    /// secure.
+    /// * `rng` - the random number generator used to produce the randomness.
+    ///   Must be cryptographically secure.
     /// * `g` - a generator of `P`'s scalar field.
     /// * `q` - a distinct generator of `P`'s scalar field.
+    ///
     /// Returns a new commitment to `x`.
     pub fn new_multi_with_generators<T: RngCore + CryptoRng>(
         vals: &[<P as CurveConfig>::ScalarField],
@@ -553,11 +565,13 @@ impl<P: PedersenConfig> PedersenComm<P> {
         )
     }
 
-    /// new_with_both. This function returns a new Pedersen Commitment to `x` with randomness
+    /// This function returns a new Pedersen Commitment to `x` with randomness
     /// `r` (i.e the commitment is C = xg + rq, where `g` and `q` are pre-defined generators.
     /// # Arguments
+    ///
     /// * `x` - the value that is being committed to.
     /// * `r` - the randomness to use.
+    ///
     /// Returns a new commitment to `x`.
     pub fn new_with_both(
         x: <P as CurveConfig>::ScalarField,
@@ -569,11 +583,13 @@ impl<P: PedersenConfig> PedersenComm<P> {
         }
     }
 
-    /// new_multi_with_both. This function returns a new Pedersen Commitment to `vals` with randomness
+    /// This function returns a new Pedersen Commitment to `vals` with randomness
     /// `r` (i.e the commitment is C = valsg + rq, where `g` and `q` are pre-defined generators.
+    ///
     /// # Arguments
     /// * `vals` - the values that are being committed to.
     /// * `r` - the randomness to use.
+    ///
     /// Returns a new commitment to `x`.
     pub fn new_multi_with_both(
         vals: &[<P as CurveConfig>::ScalarField],
@@ -610,13 +626,15 @@ impl<P: PedersenConfig> PedersenComm<P> {
         )
     }
 
-    /// new_multi_with_all_generators. This function accepts a list of ScalarField elements `val`, an `rng`,
+    /// This function accepts a list of ScalarField elements `val`, an `rng`,
     /// and a list of generators, and returns a multi Pedersen Commitment C. Here `r` is
     /// the produced randomness.
+    ///
     /// # Arguments
     /// * `vals` - the values that are committed to.
-    /// * `rng` - the random number generator used to produce the randomness. Must be cryptographically
-    /// secure.
+    /// * `rng` - the random number generator used to produce the randomness.
+    ///   Must be cryptographically secure.
+    ///
     /// Returns a new commitment to `x`.
     pub fn new_multi_with_all_generators<T: RngCore + CryptoRng>(
         vals: &[<P as CurveConfig>::ScalarField],

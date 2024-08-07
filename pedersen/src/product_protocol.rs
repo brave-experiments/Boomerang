@@ -238,8 +238,8 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// `cx`, `cy` and `cxy`.
     /// # Arguments
     /// * `transcript` - the transcript object that is modified.
-    /// * `rng` - the RNG that is used to produce the random values. Must be
-    /// cryptographically secure.
+    /// * `rng` - the RNG that is used to produce the random values.
+    ///   Must be cryptographically secure.
     /// * `x` - the value that is used to show an opening of `cx`.
     /// * `y` - the value that is used to show an opening of `cy`.
     /// * `cx` - the commitment to x that is opened.
@@ -269,8 +269,8 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// for a new product proof for `x`, `y` against `cx`, `cy` and `cxy`.
     /// # Arguments
     /// * `transcript` - the transcript object that is modified.
-    /// * `rng` - the RNG that is used to produce the random values. Must be
-    /// cryptographically secure.
+    /// * `rng` - the RNG that is used to produce the random values.
+    ///   Must be cryptographically secure.
     /// * `cx` - the commitment to x that is opened.
     /// * `cy` - the commitment to y that is opened.
     /// * `cxy` - the commitment to xy that is opened.
@@ -313,7 +313,7 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// * `x` - the value that is used to show an opening of `cx`.
     /// * `y` - the value that is used to show an opening of `cy`.
     /// * `inter` - the intermediaries. These should have been produced by a
-    /// call to `create_intermediaries`.
+    ///   call to `create_intermediaries`.
     /// * `cx` - the commitment to x that is opened.
     /// * `cy` - the commitment to y that is opened.
     /// * `cxy` - the commitment to xy that is opened.
@@ -423,11 +423,11 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// * `self` - the proof that is being verified.
     /// * `transcript` - the transcript object that's used.
     /// * `cx` - the commitment to x whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cy` - the commitment to y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cxy` - the commitment to x*y whose opening is being proved by this
-    /// function.
+    ///   function.
     pub fn verify(
         &self,
         transcript: &mut Transcript,
@@ -448,11 +448,11 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// * `self` - the proof that is being verified.
     /// * `transcript` - the transcript object that's used.
     /// * `cx` - the commitment to x whose opening is being proved by this
-    /// function.
+    ///    function.
     /// * `cy` - the commitment to y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cxy` - the commitment to x*y whose opening is being proved by this
-    /// function.
+    ///   function.
     pub fn verify_proof_own_challenge(
         &self,
         transcript: &mut Transcript,
@@ -468,11 +468,11 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// # Arguments
     /// * `self` - the proof that is being verified.
     /// * `cx` - the commitment to x whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cy` - the commitment to y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cxy` - the commitment to x*y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `chal_buf` - the buffer that contains the challenge bytes.
     pub fn verify_proof(
         &self,
@@ -492,11 +492,11 @@ impl<P: PedersenConfig> ProductProof<P> {
     /// # Arguments
     /// * `self` - the proof that is being verified.
     /// * `cx` - the commitment to x whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cy` - the commitment to y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `cxy` - the commitment to x*y whose opening is being proved by this
-    /// function.
+    ///   function.
     /// * `chal` - the challenge.
     pub fn verify_with_challenge(
         &self,

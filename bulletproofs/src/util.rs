@@ -113,6 +113,7 @@ impl<G: AffineRepr> VecPoly3<G> {
     }
 
     /// Compute an inner product of `lhs`, `rhs` which have the property that:
+    ///
     /// - `lhs.0` is zero;
     /// - `rhs.2` is zero;
     ///
