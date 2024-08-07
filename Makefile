@@ -1,19 +1,30 @@
+all: build
+
+.PHONY: all help build check test bench clean
+
+help:
+	@echo "usage: make {build|test|clean|bench}"
+
 build:
 	cargo build
 
-all: build
+check: test
 
-help:
-	@echo "usage: make $(prog) [debug=1]"
-
-run:
-	cargo build
-	cargo run
+clean:
+	cargo clean
 
 test:
-	cargo build
-	cargo test
+	cargo test --release
+	cargo run --release --example example_proofs
+	@echo "Starting end2end example server and client..."
+	# Build the server explicitly so it doesn't race the client
+	cargo build --release --bin server
+	# Run the server in the background, terminate it after the client
+	cargo run --release --bin server & \
+		export SERVER_PID=$$!; \
+		cargo run --release --bin client; \
+		kill -s HUP $$SERVER_PID
+	@echo "Ok"
 
 bench:
-	cargo build
 	cargo bench
