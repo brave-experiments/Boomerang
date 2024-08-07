@@ -4,6 +4,8 @@ use super::{LinearCombination, R1CSError, Variable};
 use ark_ff::PrimeField;
 use merlin::Transcript;
 
+type MultiplierResult<F> = Result<(Variable<F>, Variable<F>, Variable<F>), R1CSError>;
+
 /// The interface for a constraint system, abstracting over the prover
 /// and verifier's roles.
 ///
@@ -61,10 +63,7 @@ pub trait ConstraintSystem<F: PrimeField> {
     /// ```
     ///
     /// Returns `(left, right, out)` for use in further constraints.
-    fn allocate_multiplier(
-        &mut self,
-        input_assignments: Option<(F, F)>,
-    ) -> Result<(Variable<F>, Variable<F>, Variable<F>), R1CSError>;
+    fn allocate_multiplier(&mut self, input_assignments: Option<(F, F)>) -> MultiplierResult<F>;
 
     /// Counts the amount of allocated multipliers.
     fn multipliers_len(&self) -> usize;

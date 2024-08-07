@@ -31,6 +31,12 @@ pub struct LinearProof<G: AffineRepr> {
     pub(crate) r: G::ScalarField,
 }
 
+// Alias types for the verification_scalars func.
+type ScalarFields<G> = Vec<<G as AffineRepr>::ScalarField>;
+type ScalarField<G> = <G as AffineRepr>::ScalarField;
+type VerificationScalarsResult<G> =
+    Result<(ScalarFields<G>, ScalarFields<G>, ScalarField<G>), ProofError>;
+
 impl<G: AffineRepr> LinearProof<G> {
     /// Create a linear proof, a lightweight variant of a Bulletproofs inner-product proof.
     /// This proves that <a, b> = c where a is secret and b is public.
@@ -237,7 +243,7 @@ impl<G: AffineRepr> LinearProof<G> {
         n: usize,
         transcript: &mut Transcript,
         mut b_vec: Vec<G::ScalarField>,
-    ) -> Result<(Vec<G::ScalarField>, Vec<G::ScalarField>, G::ScalarField), ProofError> {
+    ) -> VerificationScalarsResult<G> {
         let lg_n = self.L_vec.len();
         if lg_n >= 32 {
             // 4 billion multiplications should be enough for anyone

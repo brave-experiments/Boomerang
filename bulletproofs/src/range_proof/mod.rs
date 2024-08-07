@@ -135,12 +135,12 @@ impl<G: AffineRepr> RangeProof<G> {
             return Err(ProofError::WrongNumBlindingFactors);
         }
 
-        let dealer = Dealer::new(bp_gens, pc_gens, transcript, n, values.len())?;
+        let dealer = Dealer::init(bp_gens, pc_gens, transcript, n, values.len())?;
 
         let parties: Vec<_> = values
             .iter()
             .zip(blindings.iter())
-            .map(|(&v, &v_blinding)| Party::new(bp_gens, pc_gens, v, v_blinding, n))
+            .map(|(&v, &v_blinding)| Party::init(bp_gens, pc_gens, v, v_blinding, n))
             // Collect the iterator of Results into a Result<Vec>, then unwrap it
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -742,22 +742,22 @@ mod tests {
         // Parties 0, 2 are honest and use a 32-bit value
         let v0 = rng.gen::<u32>() as u64;
         let v0_blinding = Fr::rand(&mut rng);
-        let party0 = Party::new(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
+        let party0 = Party::init(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
 
         let v2 = rng.gen::<u32>() as u64;
         let v2_blinding = Fr::rand(&mut rng);
-        let party2 = Party::new(&bp_gens, &pc_gens, v2, v2_blinding, n).unwrap();
+        let party2 = Party::init(&bp_gens, &pc_gens, v2, v2_blinding, n).unwrap();
 
         // Parties 1, 3 are dishonest and use a 64-bit value
         let v1 = rng.gen::<u64>();
         let v1_blinding = Fr::rand(&mut rng);
-        let party1 = Party::new(&bp_gens, &pc_gens, v1, v1_blinding, n).unwrap();
+        let party1 = Party::init(&bp_gens, &pc_gens, v1, v1_blinding, n).unwrap();
 
         let v3 = rng.gen::<u64>();
         let v3_blinding = Fr::rand(&mut rng);
-        let party3 = Party::new(&bp_gens, &pc_gens, v3, v3_blinding, n).unwrap();
+        let party3 = Party::init(&bp_gens, &pc_gens, v3, v3_blinding, n).unwrap();
 
-        let dealer = Dealer::new(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
+        let dealer = Dealer::init(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
 
         let (party0, bit_com0) = party0.assign_position(0).unwrap();
         let (party1, bit_com1) = party1.assign_position(1).unwrap();
@@ -813,9 +813,9 @@ mod tests {
 
         let v0 = rng.gen::<u32>() as u64;
         let v0_blinding = Fr::rand(&mut rng);
-        let party0 = Party::new(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
+        let party0 = Party::init(&bp_gens, &pc_gens, v0, v0_blinding, n).unwrap();
 
-        let dealer = Dealer::new(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
+        let dealer = Dealer::init(&bp_gens, &pc_gens, &mut transcript, n, m).unwrap();
 
         // Now do the protocol flow as normal....
 

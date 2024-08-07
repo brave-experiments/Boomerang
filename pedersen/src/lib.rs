@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![allow(clippy::doc_markdown)]
 pub mod add_mul_protocol;
 pub mod collective;
 pub mod ec_collective;
