@@ -67,7 +67,6 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
     let spending_m2 =
         SpendVerifyC::<Config>::deserialize_compressed(spending_m2_bytes.as_slice()).unwrap();
 
-    let v: SF = SF::one();
     let state_vector = &parameters[2];
     let policy_vector = &parameters[3];
 
@@ -76,7 +75,6 @@ async fn boomerang_spending_m3(data: web::Data<AppState>, req_body: String) -> i
         spending_m2,
         spending_m1,
         &data.skp,
-        v,
         state_vector.to_vec(),
         policy_vector.to_vec(),
     );

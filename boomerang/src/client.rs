@@ -109,21 +109,22 @@ pub struct IssuanceC<B: BoomerangConfig> {
 impl<B: BoomerangConfig> IssuanceC<B> {
     /// generate_issuance_m1. This function generates the first message of the Issuance Protocol.
     /// # Arguments
-    /// * `inter` - the intermediate values to use.
+    /// * `key_pair` - the client's keypair.
+    /// * `rng` - the source of randomness.
     pub fn generate_issuance_m1<T: RngCore + CryptoRng>(
         key_pair: UKeyPair<B>,
         rng: &mut T,
     ) -> IssuanceC<B> {
         let id_0 = <B as CurveConfig>::ScalarField::rand(rng);
-        let v = <B as CurveConfig>::ScalarField::zero();
+        let v = <B as CurveConfig>::ScalarField::zero(); // the token starts with 0
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
+        // TODO: the j value should be set
 
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_0, v, key_pair.x, r_0];
         let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
-
         let proof = IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let m1 = IssuanceM1 {
@@ -144,6 +145,11 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         }
     }
 
+    /// generate_issuance_m2. This function generates the second message of the Issuance Protocol.
+    /// # Arguments
+    /// * `c_m` - the client message.
+    /// * `s_m` - the received server message.
+    /// * `rng` - the source of randomness.
     pub fn generate_issuance_m3<T: RngCore + CryptoRng>(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
@@ -170,6 +176,12 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         }
     }
 
+    /// populate_state. This function populates the local state for the client.
+    /// # Arguments
+    /// * `c_m` - the client message.
+    /// * `s_m` - the received server message.
+    /// * `s_key_pair` - the server's keypair.
+    /// * `c_key_pair` - the client's keypair.
     pub fn populate_state(
         c_m: IssuanceC<B>,
         s_m: IssuanceS<B>,
@@ -184,8 +196,11 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             "message",
         );
 
+        // The comm_state
         let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        // The sig_state
         let sigs: Vec<SigSign<B>> = vec![sig];
+        // The state: which contains the tokens
         let token = Token {
             id: c_m.id.unwrap(),
             v: <B as CurveConfig>::ScalarField::zero(),
@@ -235,6 +250,8 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub tag_commits: Vec<PedersenComm<B>>,
     /// r: the random double-spending tag value.
     r: <B as CurveConfig>::ScalarField,
+    /// val: the underlying value of the token.
+    val: <B as CurveConfig>::ScalarField,
 }
 
 /// CollectionM4. This struct acts as a container for the fourth message of
@@ -256,13 +273,18 @@ pub struct CollectionC<B: BoomerangConfig> {
     c: Option<PedersenComm<B>>,
     /// id: the serial number value.
     id: Option<<B as CurveConfig>::ScalarField>,
+    /// val: the underlying value.
+    val: Option<<B as CurveConfig>::ScalarField>,
 }
 
 impl<B: BoomerangConfig> CollectionC<B> {
     /// generate_collection_m2. This function generates the second message of
     /// the Collection Protocol.
     /// # Arguments
-    /// * `inter` - the intermediate values to use.
+    /// * `rng` - the source of randomness.
+    /// * `state` - the local client state.
+    /// * `s_m` - the received server message.
+    /// * `s_key_pair` - the server's keypair.
     pub fn generate_collection_m2<T: RngCore + CryptoRng>(
         rng: &mut T,
         state: State<B>,
@@ -286,12 +308,10 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
-
         let proof_1 = OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
         let label1 = b"BoomerangCollectionM2O2";
         let mut transcript1 = Transcript::new(label1);
-
         let proof_2 = OpeningProofMulti::create(
             &mut transcript1,
             rng,
@@ -311,7 +331,6 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let label2 = b"BoomerangCollectionM2AM2";
         let mut transcript2 = Transcript::new(label2);
-
         let proof_3 = AddMulProof::create(
             &mut transcript2,
             rng,
@@ -346,11 +365,13 @@ impl<B: BoomerangConfig> CollectionC<B> {
             pi_2: proof_2,
             pi_3: proof_3,
             tag,
-            id: state.token_state[0].id,
+            //id: state.token_state[0].id,
+            id: id1,
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
             tag_commits,
             r: r1,
+            val: state.token_state[0].v,
         };
 
         Self {
@@ -358,9 +379,16 @@ impl<B: BoomerangConfig> CollectionC<B> {
             m4: None,
             c: None,
             id: None,
+            val: None,
         }
     }
 
+    /// generate_collection_m4. This function generates the fourth message of
+    /// the Collection Protocol.
+    /// # Arguments
+    /// * `rng` - the source of randomness.
+    /// * `c_m` - the client message.
+    /// * `s_m` - the received server message.
     pub fn generate_collection_m4<T: RngCore + CryptoRng>(
         rng: &mut T,
         c_m: CollectionC<B>,
@@ -370,6 +398,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
 
         let c = m3.comm + c_m.m2.comm;
         let id = m3.id_1 + c_m.m2.id;
+        let val = m3.val + c_m.m2.val;
 
         let sig_chall =
             SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
@@ -381,9 +410,16 @@ impl<B: BoomerangConfig> CollectionC<B> {
             m4: Some(m4),
             c: Some(c),
             id: Some(id),
+            val: Some(val),
         }
     }
 
+    /// populate_state. This function re-populates the local state for the client.
+    /// # Arguments
+    /// * `c_m` - the client message.
+    /// * `s_m` - the received server message.
+    /// * `s_key_pair` - the server's keypair.
+    /// * `c_key_pair` - the client's keypair.
     pub fn populate_state(
         c_m: CollectionC<B>,
         s_m: CollectionS<B>,
@@ -402,11 +438,12 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let sigs: Vec<SigSign<B>> = vec![sig];
         let token = Token {
             id: c_m.id.unwrap(),
-            v: <B as CurveConfig>::ScalarField::zero(),
+            v: c_m.val.unwrap(),
             sk: c_key_pair.x,
             r: c_m.m2.r,
             gens: c_m.m2.gens,
         };
+
         let tokens: Vec<Token<B>> = vec![token];
 
         State {
@@ -423,26 +460,6 @@ impl<B: BoomerangConfig> CollectionC<B> {
 /// the spendverify protocol.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM2<B: BoomerangConfig> {
-    /// tag: the tag value.
-    pub tag: <B as CurveConfig>::ScalarField,
-    /// id: the serial number value. -> tk0.ID
-    pub id: <B as CurveConfig>::ScalarField,
-
-    /// pi_1: the proof value of the tk0
-    pub pi_1: OpeningProofMulti<B>,
-    /// pi_2: the proof value of the tk0'
-    pub pi_2: OpeningProofMulti<B>,
-    /// pi_3: the proof value of the tag
-    pub pi_3: AddMulProof<B>,
-    /// pi_4: the proof of membership -> TODO curvetrees
-
-    /// sig: the signature
-    pub sig: SigSign<B>,
-    /// s_proof: the proof of the commitments under the signature
-    pub s_proof: SigProof<B>,
-    /// tag_commits: the commits for the tag proof
-    pub tag_commits: Vec<PedersenComm<B>>,
-
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
     /// gens: the generators of the commitment value.
@@ -451,8 +468,28 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     pub prev_comm: PedersenComm<B>,
     /// prev_gens: the generators of the commitment value.
     pub prev_gens: Generators<B>,
+    /// pi_1: the proof value of the generated commitment.
+    pub pi_1: OpeningProofMulti<B>,
+    /// pi_2: the proof value of the previous commitment.
+    pub pi_2: OpeningProofMulti<B>,
+    /// pi_3: the proof of the tag.
+    pub pi_3: AddMulProof<B>,
+    /// pi_4: the membership proof.
+    /// pi_5: the sub proof.
+    /// tag: the tag value.
+    pub tag: <B as CurveConfig>::ScalarField,
+    /// id: the serial number value.
+    pub id: <B as CurveConfig>::ScalarField,
+    /// sig: the signature
+    pub sig: SigSign<B>,
+    /// s_proof: the proof of the commitments under the signature
+    pub s_proof: SigProof<B>,
+    /// tag_commits: the commits for the tag proof
+    pub tag_commits: Vec<PedersenComm<B>>,
     /// r: the random double-spending tag value.
     r: <B as CurveConfig>::ScalarField,
+    /// val: the underlying value of the token.
+    val: <B as CurveConfig>::ScalarField,
 }
 
 /// SpendVerifyM4. This struct acts as a container for the fourth message of
@@ -474,28 +511,30 @@ pub struct SpendVerifyC<B: BoomerangConfig> {
     c: Option<PedersenComm<B>>,
     /// id: the serial number value.
     id: Option<<B as CurveConfig>::ScalarField>,
+    /// val: the underlying value.
+    val: Option<<B as CurveConfig>::ScalarField>,
 }
 
 impl<B: BoomerangConfig> SpendVerifyC<B> {
     /// generate_spendverify_m2. This function generates the second message of
-    /// the SpendVerify Protocol.
+    /// the Spend/Verify Protocol.
     /// # Arguments
-    /// * `inter` - the intermediate values to use.
+    /// * `rng` - the source of randomness.
+    /// * `state` - the local client state.
+    /// * `s_m` - the received server message.
+    /// * `s_key_pair` - the server's keypair.
     pub fn generate_spendverify_m2<T: RngCore + CryptoRng>(
         rng: &mut T,
         state: State<B>,
         s_m: SpendVerifyS<B>,
         s_key_pair: &ServerKeyPair<B>,
     ) -> SpendVerifyC<B> {
-        // Generate r1, ID_0'
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
 
-        // tk0 = (ID_0', tk0.v, sku, r1)
         let vals: Vec<<B as CurveConfig>::ScalarField> =
             vec![id1, state.token_state[0].v, state.c_key_pair.x, r1];
 
-        // tk? = (ID, tk?.v, sku, r?)
         let prev_vals: Vec<<B as CurveConfig>::ScalarField> = vec![
             state.token_state[0].id,
             state.token_state[0].v,
@@ -503,24 +542,22 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             state.token_state[0].r,
         ];
 
-        // pedersen commitment
         let (c1, gens) = PedersenComm::new_multi(&vals, rng);
 
-        // pi_open tk0 (token)
-        let mut transcript_p1 = Transcript::new(b"BoomerangSpendVerifyM2O1");
-        let proof_1 = OpeningProofMulti::create(&mut transcript_p1, rng, &vals, &c1, &gens);
+        let label = b"BoomerangSpendVerifyM2O1";
+        let mut transcript = Transcript::new(label);
+        let proof_1 = OpeningProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
-        // pi_open tk? (previous token?)
-        let mut transcript_p2 = Transcript::new(b"BoomerangSpendVerifyM2O2");
+        let label1 = b"BoomerangSpendVerifyM2O2";
+        let mut transcript1 = Transcript::new(label1);
         let proof_2 = OpeningProofMulti::create(
-            &mut transcript_p2,
+            &mut transcript1,
             rng,
             &prev_vals,
             &state.comm_state[0],
             &state.token_state[0].gens,
         );
 
-        // tag = (sk_u * tk0.r1) + r2
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
         let tag = t_tag + s_m.m1.r2;
 
@@ -530,10 +567,10 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
 
-        // pi tag
-        let mut transcript_p3 = Transcript::new(b"BoomerangSpendVerifyM2O3");
+        let label2 = b"BoomerangSpendVerifyM2AM2";
+        let mut transcript2 = Transcript::new(label2);
         let proof_3 = AddMulProof::create(
-            &mut transcript_p3,
+            &mut transcript2,
             rng,
             &state.c_key_pair.x,
             &state.token_state[0].id,
@@ -544,14 +581,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             &d,
             &e,
         );
+
         let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
-
         // TODO: add membership proof
-        //let mut transcript_p4 = Transcript::new(b"BoomerangSpendVerifyM2O4");
-        //let proof_4 = todo!();
+        // TODO: add sub proof
 
-        // create signature proof
-        // P = BSA.ShowGen()
         let sig_proof = SigProof::prove(
             rng,
             s_key_pair.s_key_pair.tag_key,
@@ -561,23 +595,21 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             state.comm_state[0].r,
         );
 
-        // construct message 2
-        // m2 = (C0, tag, tk0.ID, )
         let m2 = SpendVerifyM2 {
-            tag,                         // tag
-            id: state.token_state[0].id, // tk0.ID
-            pi_1: proof_1,               // \pi_open(tk0)
-            pi_2: proof_2,               // \pi_open(tk0')
-            pi_3: proof_3,               // \pi_open(tag)
-            // pi_4: membership proof from curvetrees
-            sig: state.sig_state[0].clone(), // \sigma_0
-            s_proof: sig_proof,              // P
-            tag_commits,                     // commits for the tag proof
             comm: c1,
             gens,
             prev_comm: state.comm_state[0],
             prev_gens: state.token_state[0].gens.clone(),
+            pi_1: proof_1,
+            pi_2: proof_2,
+            pi_3: proof_3,
+            tag,
+            id: id1,
+            sig: state.sig_state[0].clone(),
+            s_proof: sig_proof,
+            tag_commits,
             r: r1,
+            val: state.token_state[0].v,
         };
 
         Self {
@@ -585,6 +617,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             m4: None,
             c: None,
             id: None,
+            val: None,
         }
     }
 
@@ -626,6 +659,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             m4: Some(m4),
             c: Some(c),
             id: Some(id),
+            val: None,
         }
     }
 

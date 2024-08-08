@@ -536,7 +536,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
 
         let label = [b'G', 0, 0, 0, 0];
         let mut shake = Shake256::default();
-        shake.update(b"GeneratorsChain");
+        shake.update(b"GeneratorsChain"); // This needs to be new every time
         shake.update(label);
         let mut reader = shake.finalize_xof_dirty();
 
@@ -635,7 +635,7 @@ impl<P: PedersenConfig> PedersenComm<P> {
     /// * `rng` - the random number generator used to produce the randomness.
     ///   Must be cryptographically secure.
     ///
-    /// Returns a new commitment to `x`.
+    /// Returns a new commitment to `vals`.
     pub fn new_multi_with_all_generators<T: RngCore + CryptoRng>(
         vals: &[<P as CurveConfig>::ScalarField],
         rng: &mut T,
@@ -653,6 +653,32 @@ impl<P: PedersenConfig> PedersenComm<P> {
             comm: (total + P::GENERATOR2.mul(r)).into_affine(),
             r,
         }
+    }
+
+    /// This function verifies that the commitment was created using the provided
+    /// values `vals` and randomness `r`. It recomputes the commitment using the
+    /// same generators and checks if it matches the original commitment.
+    ///
+    /// # Arguments
+    /// * `vals` - the values that were originally committed to.
+    /// * `r` - the randomness used during the commitment.
+    /// * `gens` - the generators used to create the commitment.
+    ///
+    /// Returns `true` if the commitment opens correctly, `false` otherwise.
+    pub fn open_multi_with_all_generators(
+        &self,
+        vals: &[<P as CurveConfig>::ScalarField],
+        r: <P as CurveConfig>::ScalarField,
+        gens: &Generators<P>,
+    ) -> bool {
+        let mut total: sw::Affine<P> = sw::Affine::identity();
+
+        for (i, item) in vals.iter().enumerate() {
+            total = (total + gens.generators[i].mul(item)).into();
+        }
+
+        let recomputed_commitment = (total + P::GENERATOR2.mul(r)).into_affine();
+        recomputed_commitment == self.comm
     }
 
     pub const fn commitment(&self) -> sw::Affine<P> {
