@@ -9,9 +9,8 @@ use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
 use std::ops;
 
+use sha3::digest::{ExtendableOutput, Update, XofReader};
 use sha3::Shake256;
-use sha3::digest::{Update, ExtendableOutput, XofReader};
-
 
 pub trait PedersenConfig: SWCurveConfig {
     /// Second generator that's used in Pedersen commitments. Corresponds to H.

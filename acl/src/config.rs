@@ -7,8 +7,8 @@ use ark_ec::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
-use sha3::Shake256;
 use sha3::digest::{ExtendableOutput, Update, XofReader};
+use sha3::Shake256;
 
 pub trait ACLConfig: SWCurveConfig {
     /// The curve type that maps to this Config.
