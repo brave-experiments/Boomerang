@@ -572,11 +572,13 @@ macro_rules! __test_boomerang {
             // Start Spend/Verify protocol
             let spendverify_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
 
+            let spend_state: Vec<SF> = vec![SF::one()];
             let spendverify_m2 = SVBCM::generate_spendverify_m2(
                 &mut OsRng,
                 collection_state,
                 spendverify_m1.clone(),
                 &skp,
+                spend_state,
             );
             assert!(spendverify_m2.m2.comm.comm.is_on_curve());
         }
@@ -671,23 +673,23 @@ macro_rules! __test_boomerang {
             // Start Spend/Verify protocol
             let spendverify_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
 
+            let spend_state: Vec<SF> = vec![SF::one()];
             let spendverify_m2 = SVBCM::generate_spendverify_m2(
                 &mut OsRng,
                 collection_state,
                 spendverify_m1.clone(),
                 &skp,
+                spend_state.clone(),
             );
             assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 
             // Create reward proof - server side
-            let spend_state: Vec<SF> = vec![SF::one()];
             let policy_state: Vec<SF> = vec![SF::from(2)];
             let spendverify_m3 = SVBSM::generate_spendverify_m3(
                 &mut OsRng,
                 spendverify_m2.clone(),
                 spendverify_m1.clone(),
                 &skp,
-                spend_state,
                 policy_state.clone(),
             );
             assert!(spendverify_m3.m3.clone().unwrap().comm.comm.is_on_curve());
@@ -696,7 +698,6 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 spendverify_m2.clone(),
                 spendverify_m3.clone(),
-                policy_state.clone(),
             );
         }
 
@@ -790,23 +791,23 @@ macro_rules! __test_boomerang {
             // Start Spend/Verify protocol
             let spendverify_m1 = SVBSM::generate_spendverify_m1(&mut OsRng);
 
+            let spend_state: Vec<SF> = vec![SF::one()];
             let spendverify_m2 = SVBCM::generate_spendverify_m2(
                 &mut OsRng,
                 collection_state,
                 spendverify_m1.clone(),
                 &skp,
+                spend_state.clone(),
             );
             assert!(spendverify_m2.m2.comm.comm.is_on_curve());
 
             // Create reward proof - server side
-            let spend_state: Vec<SF> = vec![SF::one()];
             let policy_state: Vec<SF> = vec![SF::from(2)];
             let spendverify_m3 = SVBSM::generate_spendverify_m3(
                 &mut OsRng,
                 spendverify_m2.clone(),
                 spendverify_m1.clone(),
                 &skp,
-                spend_state,
                 policy_state.clone(),
             );
             assert!(spendverify_m3.m3.clone().unwrap().comm.comm.is_on_curve());
@@ -815,7 +816,6 @@ macro_rules! __test_boomerang {
                 &mut OsRng,
                 spendverify_m2.clone(),
                 spendverify_m3.clone(),
-                policy_state.clone(),
             );
 
             let spendverify_m5 = SVBSM::generate_spendverify_m5(

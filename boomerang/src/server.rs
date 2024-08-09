@@ -514,7 +514,6 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
         key_pair: &ServerKeyPair<B>,
-        spend_state: Vec<<B as CurveConfig>::ScalarField>,
         policy_state: Vec<<B as CurveConfig>::ScalarField>,
     ) -> SpendVerifyS<B> {
         let check = SigVerify::verify(
@@ -570,8 +569,23 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             panic!("Boomerang spend-verify: invalid proof of tag");
         }
 
+        // Verify the sub proof
+        let sub_proof = c_m.m2.pi_4;
+
+        let mut transcript_s = Transcript::new(b"Boomerang verify sub proof");
+        let max_sub = 64; // TODO: should be app specific
+        let check6 = sub_proof.range_proof.verify_single(
+            &sub_proof.range_gensb_r,
+            &sub_proof.range_gensp_r,
+            &mut transcript_s,
+            &sub_proof.r_comms,
+            max_sub,
+        );
+        if check6.is_err() {
+            panic!("Boomerang verification: reward range proof verification failed")
+        }
+
         // TODO: verify the membership proof
-        // TODO: verify the sub proof
 
         #[allow(unused_variables)]
         let dtag: ServerTag<B> = ServerTag {
@@ -583,22 +597,15 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
         let v2 = <B as CurveConfig>::ScalarField::zero();
         let v3 = <B as CurveConfig>::ScalarField::zero();
-        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, spend_state[0], v2, v3];
+        let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, c_m.m2.spend_state[0], v2, v3];
 
         let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
         // Compute rewards
-        let rewards: Vec<<B as CurveConfig>::ScalarField> = spend_state
-            .iter()
-            .zip(policy_state.iter())
-            .map(|(s, p)| *s * *p) // Multiply corresponding elements
-            .collect();
+        let c = inner_product(&c_m.m2.spend_state, &policy_state);
 
         // TODO: too hacky
         let mut compressed_bytes = Vec::new();
-        rewards[0]
-            .serialize_compressed(&mut compressed_bytes)
-            .unwrap();
-
+        c.serialize_compressed(&mut compressed_bytes).unwrap();
         let reward_bytes = compressed_bytes
             .as_slice()
             .get(0..8) // Take the first 8 bytes
@@ -634,17 +641,17 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         let g: Vec<_> = bp_gens_l
             .share(0)
-            .G(1) // this is app specific
+            .G(c_m.m2.spend_state.len())
             .cloned()
             .collect::<Vec<sw::Affine<B>>>();
 
         let f = pc_gens_l.B;
         let b = pc_gens_l.B_blinding;
-        let c = inner_product(&spend_state, &policy_state);
 
-        // C = <a, G> + l * B + <a, b> * F
+        // c_t = <a, g> + blind_l * b + c * f
+        // the policy_state is the witness and it is private
         let blind_l = <B as CurveConfig>::ScalarField::rand(rng);
-        let combined_scalars: Vec<B::ScalarField> = spend_state
+        let combined_scalars: Vec<B::ScalarField> = policy_state
             .iter()
             .cloned()
             .chain(Some(blind_l))
@@ -661,8 +668,8 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             rng,
             &c_t,
             blind_l,
-            spend_state.clone(),
             policy_state.clone(),
+            c_m.m2.spend_state.clone(),
             g.clone(),
             &f,
             &b,
@@ -686,7 +693,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         let m3 = SpendVerifyM3 {
             id_1,
-            val: spend_state[0],
+            val: c_m.m2.spend_state[0],
             comm: c1,
             sig_commit: sig_comm,
             verifying_key: key_pair.s_key_pair.verifying_key,
