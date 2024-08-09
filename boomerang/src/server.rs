@@ -2,9 +2,11 @@
 //! Module containing the definition of the server side of the algorithm
 //!
 
+use ark_ec::AffineRepr;
 use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw},
+    CurveGroup, VariableBaseMSM,
 };
 use rand::{CryptoRng, RngCore};
 
@@ -17,10 +19,9 @@ use acl::{
 use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
+use ark_bulletproofs::{inner_product, BulletproofGens, LinearProof, PedersenGens, RangeProof};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
-
-use rewards_proof::{RewardsGenerators, RewardsProof};
 
 /// Server keypair.
 ///
@@ -386,7 +387,6 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
 
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -401,7 +401,7 @@ pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// Tag public key
     pub tag_key: sw::Affine<B>,
     /// Rewards proof
-    pub pi_reward: RewardsProof<B>,
+    pub pi_reward: BRewardsProof<B>,
 }
 
 impl<B: BoomerangConfig> Clone for SpendVerifyM3<B> {
@@ -432,8 +432,34 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
     }
 }
 
+// Rewards proof
+pub struct BRewardsProof<B: BoomerangConfig> {
+    /// the range proof
+    pub range_proof: RangeProof<sw::Affine<B>>,
+    ///// the linear proof
+    pub linear_proof: LinearProof<sw::Affine<B>>,
+    ///// the range proof commitments
+    //pub range_comm: Vec<u8>,
+    ///// the linear proof commitments
+    //pub linear_comm: Vec<u8>,
+    ///// the rewards generators
+    //pub rewards_gens: RewardsGenerators<C>,
+}
+
+impl<B: BoomerangConfig> Clone for BRewardsProof<B> {
+    fn clone(&self) -> Self {
+        BRewardsProof {
+            range_proof: self.range_proof.clone(),
+            linear_proof: self.linear_proof.clone(),
+            // Uncomment if you want to include these fields
+            // range_comm: self.range_comm.clone(),
+            // linear_comm: self.linear_comm.clone(),
+            // rewards_gens: self.rewards_gens.clone(),
+        }
+    }
+}
+
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: SpendVerifyM1<B>,
@@ -557,16 +583,18 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
 
         let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
 
-        // Compute reward
-        let reward: <B as CurveConfig>::ScalarField = spend_state
+        // Compute rewards
+        let rewards: Vec<<B as CurveConfig>::ScalarField> = spend_state
             .iter()
             .zip(policy_state.iter())
             .map(|(s, p)| *s * *p) // Multiply corresponding elements
-            .fold(<B as CurveConfig>::ScalarField::zero(), |acc, x| acc + x);
+            .collect();
 
         // TODO: too hacky
         let mut compressed_bytes = Vec::new();
-        reward.serialize_compressed(&mut compressed_bytes).unwrap();
+        rewards[0]
+            .serialize_compressed(&mut compressed_bytes)
+            .unwrap();
 
         let reward_bytes = compressed_bytes
             .as_slice()
@@ -576,13 +604,72 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
                            //let reward_bytes = reward.into_repr();
                            //let reward_array: [u8; 8] = reward_bytes[0..8].try_into();
 
-        let reward_generators = RewardsGenerators::create();
-        let reward_proof = RewardsProof::create(
-            reward_generators,
+        // We need to prove:
+        // That the reward falls between a range
+        // That is was computed correctly
+
+        // Prove that the reward falls between the range
+        let max_reward = 64; // TODO: should be app specific
+        let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
+        // We instantiate with the maximum capacity
+        let bp_gens_r = BulletproofGens::new(max_reward, 1);
+        let mut transcript_r = Transcript::new(b"Boomerang verify range proof");
+        let blind = <B as CurveConfig>::ScalarField::rand(rng);
+        let (r_proof, _) = RangeProof::prove_single(
+            &bp_gens_r,
+            &pc_gens_r,
+            &mut transcript_r,
             reward_bytes,
+            &blind,
+            max_reward,
+        )
+        .unwrap();
+
+        let pc_gens_l: PedersenGens<sw::Affine<B>> = PedersenGens::default();
+        // We instantiate with the maximum capacity
+        let bp_gens_l = BulletproofGens::new(max_reward, 1);
+
+        let g: Vec<_> = bp_gens_l
+            .share(0)
+            .G(1) // this is app specific
+            .cloned()
+            .collect::<Vec<sw::Affine<B>>>();
+
+        let f = pc_gens_l.B;
+        let b = pc_gens_l.B_blinding;
+        let c = inner_product(&spend_state, &policy_state);
+
+        // C = <a, G> + l * B + <a, b> * F
+        let blind_l = <B as CurveConfig>::ScalarField::rand(rng);
+        let combined_scalars: Vec<B::ScalarField> = spend_state
+            .iter()
+            .cloned()
+            .chain(Some(blind_l))
+            .chain(Some(c))
+            .collect();
+        let combined_points: Vec<_> = g.iter().cloned().chain(Some(b)).chain(Some(f)).collect();
+        let c_t = <sw::Affine<B> as AffineRepr>::Group::msm(&combined_points, &combined_scalars)
+            .unwrap()
+            .into_affine();
+
+        let mut transcript_l = Transcript::new(b"Boomerang verify linear proof");
+        let l_proof = LinearProof::<sw::Affine<B>>::create(
+            &mut transcript_l,
+            rng,
+            &c_t,
+            blind_l,
             spend_state.clone(),
-            policy_state,
-        );
+            policy_state.clone(),
+            g.clone(),
+            &f,
+            &b,
+        )
+        .unwrap();
+
+        let re_proof = BRewardsProof {
+            range_proof: r_proof,
+            linear_proof: l_proof,
+        };
 
         let m3 = SpendVerifyM3 {
             id_1,
@@ -591,7 +678,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
             sig_commit: sig_comm,
             verifying_key: key_pair.s_key_pair.verifying_key,
             tag_key: key_pair.s_key_pair.tag_key,
-            pi_reward: reward_proof,
+            pi_reward: re_proof,
         };
 
         Self {
@@ -601,22 +688,22 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
     }
 
-    pub fn generate_spendverify_m5(
-        c_m: SpendVerifyC<B>,
-        s_m: SpendVerifyS<B>,
-        key_pair: &ServerKeyPair<B>,
-    ) -> SpendVerifyS<B> {
-        let sig_resp = SigResp::respond(
-            key_pair.s_key_pair.clone(),
-            s_m.m3.clone().unwrap().sig_commit,
-            c_m.m4.unwrap().e,
-        );
-        let m5 = SpendVerifyM5 { s: sig_resp };
+    //pub fn generate_spendverify_m5(
+    //     c_m: SpendVerifyC<B>,
+    //     s_m: SpendVerifyS<B>,
+    //     key_pair: &ServerKeyPair<B>,
+    // ) -> SpendVerifyS<B> {
+    //     let sig_resp = SigResp::respond(
+    //         key_pair.s_key_pair.clone(),
+    //         s_m.m3.clone().unwrap().sig_commit,
+    //         c_m.m4.unwrap().e,
+    //     );
+    //     let m5 = SpendVerifyM5 { s: sig_resp };
 
-        Self {
-            m1: s_m.m1,
-            m3: s_m.m3,
-            m5: Some(m5),
-        }
-    }
+    //     Self {
+    //        m1: s_m.m1,
+    //        m3: s_m.m3,
+    //        m5: Some(m5),
+    //    }
+    //}
 }

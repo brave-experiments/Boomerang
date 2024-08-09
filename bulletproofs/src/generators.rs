@@ -23,8 +23,8 @@ use sha3::Sha3_512;
 ///
 /// The default generators are:
 ///
-/// * `B`: the `ristretto255` basepoint;
-/// * `B_blinding`: the result of `ristretto255` SHA3-512
+/// * `B`: the basepoint;
+/// * `B_blinding`: the result of SHA3-512
 ///   hash-to-group on input `B_bytes`.
 
 #[derive(Copy, Clone, CanonicalSerialize, CanonicalDeserialize)]
