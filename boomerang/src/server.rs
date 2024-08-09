@@ -701,22 +701,22 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
     }
 
-    //pub fn generate_spendverify_m5(
-    //     c_m: SpendVerifyC<B>,
-    //     s_m: SpendVerifyS<B>,
-    //     key_pair: &ServerKeyPair<B>,
-    // ) -> SpendVerifyS<B> {
-    //     let sig_resp = SigResp::respond(
-    //         key_pair.s_key_pair.clone(),
-    //         s_m.m3.clone().unwrap().sig_commit,
-    //         c_m.m4.unwrap().e,
-    //     );
-    //     let m5 = SpendVerifyM5 { s: sig_resp };
+    pub fn generate_spendverify_m5(
+        c_m: SpendVerifyC<B>,
+        s_m: SpendVerifyS<B>,
+        key_pair: &ServerKeyPair<B>,
+    ) -> SpendVerifyS<B> {
+        let sig_resp = SigResp::respond(
+            key_pair.s_key_pair.clone(),
+            s_m.m3.clone().unwrap().sig_commit,
+            c_m.m4.unwrap().e,
+        );
+        let m5 = SpendVerifyM5 { s: sig_resp };
 
-    //     Self {
-    //        m1: s_m.m1,
-    //        m3: s_m.m3,
-    //        m5: Some(m5),
-    //    }
-    //}
+        Self {
+            m1: s_m.m1,
+            m3: s_m.m3,
+            m5: Some(m5),
+        }
+    }
 }

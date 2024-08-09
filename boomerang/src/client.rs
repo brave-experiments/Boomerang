@@ -686,36 +686,36 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         }
     }
 
-    //   pub fn populate_state(
-    //       c_m: SpendVerifyC<B>,
-    //      s_m: SpendVerifyS<B>,
-    //      s_key_pair: &ServerKeyPair<B>,
-    //      c_key_pair: UKeyPair<B>,
-    //  ) -> State<B> {
-    //      let sig = SigSign::sign(
-    //          s_key_pair.s_key_pair.verifying_key,
-    //          s_key_pair.s_key_pair.tag_key,
-    //         c_m.m4.unwrap().e,
-    //         s_m.m5.unwrap().s,
-    //         "message",
-    //     );
+    pub fn populate_state(
+        c_m: SpendVerifyC<B>,
+        s_m: SpendVerifyS<B>,
+        s_key_pair: &ServerKeyPair<B>,
+        c_key_pair: UKeyPair<B>,
+    ) -> State<B> {
+        let sig = SigSign::sign(
+            s_key_pair.s_key_pair.verifying_key,
+            s_key_pair.s_key_pair.tag_key,
+            c_m.m4.unwrap().e,
+            s_m.m5.unwrap().s,
+            "message",
+        );
 
-    //        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
-    //        let sigs: Vec<SigSign<B>> = vec![sig];
-    //        let token = Token {
-    //            id: c_m.id.unwrap(),
-    //            v: <B as CurveConfig>::ScalarField::zero(),
-    //            sk: c_key_pair.x,
-    //           r: c_m.m2.r,
-    //           gens: c_m.m2.gens,
-    //       };
-    //       let tokens: Vec<Token<B>> = vec![token];
+        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let sigs: Vec<SigSign<B>> = vec![sig];
+        let token = Token {
+            id: c_m.id.unwrap(),
+            v: c_m.val.unwrap(),
+            sk: c_key_pair.x,
+            r: c_m.m2.r,
+            gens: c_m.m2.gens,
+        };
+        let tokens: Vec<Token<B>> = vec![token];
 
-    //       State {
-    //           comm_state: commits,
-    //           sig_state: sigs,
-    //           token_state: tokens,
-    //           c_key_pair,
-    //       }
-    //   }
+        State {
+            comm_state: commits,
+            sig_state: sigs,
+            token_state: tokens,
+            c_key_pair,
+        }
+    }
 }
