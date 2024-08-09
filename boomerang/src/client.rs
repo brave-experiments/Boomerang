@@ -621,47 +621,70 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         }
     }
 
-    //    pub fn generate_spendverify_m4<T: RngCore + CryptoRng>(
-    //        rng: &mut T,
-    //        c_m: SpendVerifyC<B>,
-    //        s_m: SpendVerifyS<B>,
-    //        policy_vector: Vec<u64>,
-    //    ) -> SpendVerifyC<B> {
-    //        let m3 = s_m.m3.clone().unwrap();
+    pub fn generate_spendverify_m4<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        c_m: SpendVerifyC<B>,
+        s_m: SpendVerifyS<B>,
+        policy_state: Vec<<B as CurveConfig>::ScalarField>,
+    ) -> SpendVerifyC<B> {
+        let m3 = s_m.m3.clone().unwrap();
 
-    // verify rewards proof
-    //        let reward_proof = m3.pi_reward;
-    //        let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
-    //            .clone()
-    //            .into_iter()
-    //            .map(<B as CurveConfig>::ScalarField::from)
-    //            .collect();
-    //        let check = reward_proof.verify(policy_vector_scalar);
+        // verify rewards proof
+        let reward_proof = m3.pi_reward;
 
-    //       if !check {
-    //            panic!("Boomerang verification: reward proof verification failed")
-    //        }
+        let mut transcript_r = Transcript::new(b"Boomerang verify range proof");
+        let max_reward = 64; // TODO: should be app specific
+        let check = reward_proof.range_proof.verify_single(
+            &reward_proof.range_gensb_r,
+            &reward_proof.range_gensp_r,
+            &mut transcript_r,
+            &reward_proof.r_comms,
+            max_reward,
+        );
+        if check.is_err() {
+            panic!("Boomerang verification: reward range proof verification failed")
+        }
 
-    //        // substract commitments
-    //        let c = m3.comm - c_m.m2.comm;
+        let g: Vec<_> = reward_proof
+            .range_gensb_l
+            .share(0)
+            .G(1) // this is app specific
+            .cloned()
+            .collect::<Vec<sw::Affine<B>>>();
+        let f = reward_proof.range_gensp_l.B;
+        let b = reward_proof.range_gensp_l.B_blinding;
+        let mut transcript_l = Transcript::new(b"Boomerang verify linear proof");
 
-    // add identifiers
-    //       let id = m3.id_1 + c_m.m2.id;
+        let check2 = reward_proof.linear_proof.verify(
+            &mut transcript_l,
+            &reward_proof.l_comms,
+            &g,
+            &f,
+            &b,
+            policy_state,
+        );
+        if check2.is_err() {
+            panic!("Boomerang verification: reward linear proof verification failed")
+        }
 
-    // create signature challenge value
-    //       let sig_chall =
-    //           SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
+        // The other way around to handle the negative
+        let c = c_m.m2.comm - m3.comm;
+        let id = c_m.m2.id - m3.id_1;
+        let val = c_m.m2.val - m3.val;
 
-    //       let m4 = SpendVerifyM4 { e: sig_chall };
+        let sig_chall =
+            SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
 
-    //      Self {
-    //            m2: c_m.m2,
-    //            m4: Some(m4),
-    //            c: Some(c),
-    //            id: Some(id),
-    //           val: None,
-    //       }
-    //   }
+        let m4 = SpendVerifyM4 { e: sig_chall };
+
+        Self {
+            m2: c_m.m2,
+            m4: Some(m4),
+            c: Some(c),
+            id: Some(id),
+            val: Some(val),
+        }
+    }
 
     //   pub fn populate_state(
     //       c_m: SpendVerifyC<B>,
