@@ -14,7 +14,5 @@ ark-ff = { version = "0.4.2"}
 rand = { version = "0.8.5" }
 merlin = { version = "3.0.0"}
 num-bigint = { version = "0.4", default-features = false }
-sha3 = { version = "0.9.1", default-features = false }
-digest = { version = "0.9.0", default-features = false }
 pedersen = { path="../pedersen" }
 acl = { path="../acl" }
