@@ -1,13 +1,15 @@
 [package]
-name = "cdls-macros"
+name = "boomerang-macros"
 version = "0.0.1"
-description = "The macros for cdls"
+edition = "2021"
+description = "The macros for boomerang"
 
 [dependencies]
 ark-ff = { version = "0.4.2", default-features = false }
 ark-ec = { version = "0.4.2", default-features = false }
 ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
 ark-std = { version = "0.4.0", default-features = false }
+ark-serialize = "0.4.2"
 pedersen = { path="../pedersen" }
 acl = { path="../acl" }
 boomerang = { path="../boomerang" }
@@ -17,3 +19,6 @@ merlin = { version = "3.0.0" }
 ark-ff-macros =  { version = "0.4.2", default-features = false }
 criterion = "0.5.1"
 sha2 = "0.10.8"
+hyper = { version = "0.14", features = ["client", "server"] }
+tokio = { version = "1", features = ["full"] }
+bytes = "1.2"

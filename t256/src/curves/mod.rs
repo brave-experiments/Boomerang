@@ -13,7 +13,7 @@ use ark_secp256r1::Fr as secp256r1Fr;
 // be unable to deduce that...
 use ark_secp256r1::FrConfig as secp256FrConfig;
 #[warn(unused_imports)]
-use cdls_macros::derive_conversion;
+use boomerang_macros::derive_conversion;
 
 #[cfg(test)]
 mod tests;

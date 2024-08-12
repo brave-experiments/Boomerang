@@ -851,10 +851,15 @@ macro_rules! test_boomerang {
     ($mod_name: ident; $aclconfig: ty, $config: ty, $boomerangconfig: ty, $OtherProjectiveType: ty) => {
         mod $mod_name {
             use super::*;
-            use acl::{
+            use ::acl::{
                 config::ACLConfig, config::KeyPair, sign::SigChall, sign::SigProof, sign::SigSign,
                 sign::SubVals, verify::SigComm, verify::SigResp, verify::SigVerifProof,
                 verify::SigVerify,
+            };
+            use ::boomerang::{
+                client::CollectionC, client::IssuanceC, client::SpendVerifyC, client::UKeyPair,
+                config::BoomerangConfig, server::CollectionS, server::IssuanceS,
+                server::ServerKeyPair, server::SpendVerifyS,
             };
             use ark_ec::{
                 models::CurveConfig,
@@ -866,11 +871,6 @@ macro_rules! test_boomerang {
             use ark_std::One;
             use ark_std::UniformRand;
             use ark_std::Zero;
-            use boomerang::{
-                client::CollectionC, client::IssuanceC, client::SpendVerifyC, client::UKeyPair,
-                config::BoomerangConfig, server::CollectionS, server::IssuanceS,
-                server::ServerKeyPair, server::SpendVerifyS,
-            };
             use core::ops::Mul;
             use merlin::Transcript;
             use pedersen::{pedersen_config::PedersenComm, pedersen_config::PedersenConfig};

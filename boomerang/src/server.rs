@@ -89,7 +89,6 @@ pub struct IssuanceM4<B: BoomerangConfig> {
     pub s: SigResp<B>,
 }
 
-/// IssuanceS. This struct represents the issuance protocol for the server.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceS<B: BoomerangConfig> {
     /// m2: the second message value.
@@ -387,6 +386,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM1<B> {
 
 /// SpendVerifyM3. This struct acts as a container for the third message of
 /// the spendverify protocol.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyM3<B: BoomerangConfig> {
     /// comm: the commitment value.
     pub comm: PedersenComm<B>,
@@ -433,6 +433,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
 }
 
 // Rewards proof
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct BRewardsProof<B: BoomerangConfig> {
     // the range proof
     pub range_proof: RangeProof<sw::Affine<B>>,
@@ -466,7 +467,9 @@ impl<B: BoomerangConfig> Clone for BRewardsProof<B> {
         }
     }
 }
+
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
     /// m1: the first message value.
     pub m1: SpendVerifyM1<B>,
