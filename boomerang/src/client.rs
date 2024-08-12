@@ -20,6 +20,7 @@ use pedersen::{
     pedersen_config::PedersenComm,
 };
 
+use ark_bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand, Zero};
 
@@ -456,6 +457,31 @@ impl<B: BoomerangConfig> CollectionC<B> {
 }
 
 /// Spending/Verification Protocol
+
+/// SubProof. This struct acts as a container for the sub-proof.
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
+pub struct SubProof<B: BoomerangConfig> {
+    // the range proof
+    pub range_proof: RangeProof<sw::Affine<B>>,
+    // the pc gens for range proof
+    pub range_gensp_r: PedersenGens<sw::Affine<B>>,
+    // the bp gens for range proof
+    pub range_gensb_r: BulletproofGens<sw::Affine<B>>,
+    // the commitment of range proof
+    pub r_comms: sw::Affine<B>,
+}
+
+impl<B: BoomerangConfig> Clone for SubProof<B> {
+    fn clone(&self) -> Self {
+        SubProof {
+            range_proof: self.range_proof.clone(),
+            range_gensp_r: self.range_gensp_r,
+            range_gensb_r: self.range_gensb_r.clone(),
+            r_comms: self.r_comms,
+        }
+    }
+}
+
 /// SpendVerifyM2. This struct acts as a container for the second message of
 /// the spendverify protocol.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
@@ -474,8 +500,9 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     pub pi_2: OpeningProofMulti<B>,
     /// pi_3: the proof of the tag.
     pub pi_3: AddMulProof<B>,
-    /// pi_4: the membership proof.
-    /// pi_5: the sub proof.
+    /// pi_4: the sub proof.
+    pub pi_4: SubProof<B>,
+    /// pi_5: the membership proof.
     /// tag: the tag value.
     pub tag: <B as CurveConfig>::ScalarField,
     /// id: the serial number value.
@@ -486,6 +513,8 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     pub s_proof: SigProof<B>,
     /// tag_commits: the commits for the tag proof
     pub tag_commits: Vec<PedersenComm<B>>,
+    /// spend_state: the values to spend
+    pub spend_state: Vec<<B as CurveConfig>::ScalarField>,
     /// r: the random double-spending tag value.
     r: <B as CurveConfig>::ScalarField,
     /// val: the underlying value of the token.
@@ -523,11 +552,13 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
     /// * `state` - the local client state.
     /// * `s_m` - the received server message.
     /// * `s_key_pair` - the server's keypair.
+    /// * `spend_state` - the values to spend.
     pub fn generate_spendverify_m2<T: RngCore + CryptoRng>(
         rng: &mut T,
         state: State<B>,
         s_m: SpendVerifyS<B>,
         s_key_pair: &ServerKeyPair<B>,
+        spend_state: Vec<<B as CurveConfig>::ScalarField>,
     ) -> SpendVerifyC<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -582,9 +613,43 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             &e,
         );
 
+        // Calculate the sub_proof
+        let spend = state.token_state[0].v - spend_state[0];
+        // TODO: too hacky
+        let mut compressed_bytes = Vec::new();
+        spend.serialize_compressed(&mut compressed_bytes).unwrap();
+        let spend_bytes = compressed_bytes
+            .as_slice()
+            .get(0..8) // Take the first 8 bytes
+            .map(|bytes| u64::from_le_bytes(bytes.try_into().unwrap())) // Convert to u64
+            .unwrap_or(0); // Default to 0 if not enough bytes
+                           //let reward_bytes = reward.into_repr();
+                           //let reward_array: [u8; 8] = reward_bytes[0..8].try_into();
+        let max_spend = 64; // TODO: should be app specific
+        let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
+        // We instantiate with the maximum capacity
+        let bp_gens_r = BulletproofGens::new(max_spend, 1);
+        let mut transcript_r = Transcript::new(b"Boomerang verify sub proof");
+        let blind = <B as CurveConfig>::ScalarField::rand(rng);
+        let (r_proof, r_comms) = RangeProof::prove_single(
+            &bp_gens_r,
+            &pc_gens_r,
+            &mut transcript_r,
+            spend_bytes,
+            &blind,
+            max_spend,
+        )
+        .unwrap();
+
+        let sub_proof = SubProof {
+            range_proof: r_proof,
+            range_gensp_r: pc_gens_r,
+            range_gensb_r: bp_gens_r,
+            r_comms,
+        };
+
         let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
         // TODO: add membership proof
-        // TODO: add sub proof
 
         let sig_proof = SigProof::prove(
             rng,
@@ -603,11 +668,13 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             pi_1: proof_1,
             pi_2: proof_2,
             pi_3: proof_3,
+            pi_4: sub_proof,
             tag,
             id: id1,
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
             tag_commits,
+            spend_state,
             r: r1,
             val: state.token_state[0].v,
         };
@@ -625,30 +692,52 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         rng: &mut T,
         c_m: SpendVerifyC<B>,
         s_m: SpendVerifyS<B>,
-        policy_vector: Vec<u64>,
     ) -> SpendVerifyC<B> {
         let m3 = s_m.m3.clone().unwrap();
 
         // verify rewards proof
         let reward_proof = m3.pi_reward;
-        let policy_vector_scalar: Vec<<B as CurveConfig>::ScalarField> = policy_vector
-            .clone()
-            .into_iter()
-            .map(<B as CurveConfig>::ScalarField::from)
-            .collect();
-        let check = reward_proof.verify(policy_vector_scalar);
 
-        if !check {
-            panic!("Boomerang verification: reward proof verification failed")
+        let mut transcript_r = Transcript::new(b"Boomerang verify range proof");
+        let max_reward = 64; // TODO: should be app specific
+        let check = reward_proof.range_proof.verify_single(
+            &reward_proof.range_gensb_r,
+            &reward_proof.range_gensp_r,
+            &mut transcript_r,
+            &reward_proof.r_comms,
+            max_reward,
+        );
+        if check.is_err() {
+            panic!("Boomerang verification: reward range proof verification failed")
         }
 
-        // substract commitments
-        let c = m3.comm - c_m.m2.comm;
+        let g: Vec<_> = reward_proof
+            .range_gensb_l
+            .share(0)
+            .G(1) // this is app specific
+            .cloned()
+            .collect::<Vec<sw::Affine<B>>>();
+        let f = reward_proof.range_gensp_l.B;
+        let b = reward_proof.range_gensp_l.B_blinding;
+        let mut transcript_l = Transcript::new(b"Boomerang verify linear proof");
 
-        // add identifiers
-        let id = m3.id_1 + c_m.m2.id;
+        let check2 = reward_proof.linear_proof.verify(
+            &mut transcript_l,
+            &reward_proof.l_comms,
+            &g,
+            &f,
+            &b,
+            c_m.m2.spend_state.clone(),
+        );
+        if check2.is_err() {
+            panic!("Boomerang verification: reward linear proof verification failed")
+        }
 
-        // create signature challenge value
+        // The other way around to handle the negative
+        let c = c_m.m2.comm - m3.comm;
+        let id = c_m.m2.id - m3.id_1;
+        let val = c_m.m2.val - m3.val;
+
         let sig_chall =
             SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
 
@@ -659,7 +748,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             m4: Some(m4),
             c: Some(c),
             id: Some(id),
-            val: None,
+            val: Some(val),
         }
     }
 
@@ -681,7 +770,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let sigs: Vec<SigSign<B>> = vec![sig];
         let token = Token {
             id: c_m.id.unwrap(),
-            v: <B as CurveConfig>::ScalarField::zero(),
+            v: c_m.val.unwrap(),
             sk: c_key_pair.x,
             r: c_m.m2.r,
             gens: c_m.m2.gens,
