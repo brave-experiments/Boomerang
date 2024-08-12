@@ -291,7 +291,7 @@ macro_rules! test_acl {
     ($mod_name: ident; $aclconfig: ty, $config: ty, $OtherProjectiveType: ty) => {
         mod $mod_name {
             use super::*;
-            use acl::{
+            use ::acl::{
                 config::ACLConfig, config::KeyPair, sign::SigChall, sign::SigProof, sign::SigSign,
                 sign::SubVals, verify::SigComm, verify::SigResp, verify::SigVerifProof,
                 verify::SigVerify,
