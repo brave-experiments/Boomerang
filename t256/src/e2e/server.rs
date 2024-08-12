@@ -141,7 +141,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
                 .expect("Failed to deserialize compressed Issuance M3");
 
             let m2_bytes_c = M2_BYTES_C.lock().unwrap();
-            let m2: IBSM = IBSM::deserialize_compressed::<&[u8]>(&mut m2_bytes_c.as_ref())
+            let m2: IBSM = IBSM::deserialize_compressed::<&[u8]>(m2_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
             let m4 = IssuanceS::<Config>::generate_issuance_m4(m3.clone(), m2.clone(), skp);

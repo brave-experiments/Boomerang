@@ -135,7 +135,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .expect("Failed to deserialize Issuance M4");
             println!("Successfully received m4 from the server.");
 
-            let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(&mut m3_bytes_c.as_ref())
+            let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
             //let skp = SBKP::generate(&mut rng); // FIX
