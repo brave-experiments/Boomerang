@@ -15,9 +15,9 @@ clean:
 
 test:
 	cargo test --release
-	cargo run --release --example example_proofs
 	@echo "Starting end2end example server and client..."
-	# Build the server explicitly so it doesn't race the client
+
+e2e:
 	cargo build --release --bin server
 	# Run the server in the background, terminate it after the client
 	cargo run --release --bin server & \

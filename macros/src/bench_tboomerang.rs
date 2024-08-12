@@ -584,11 +584,6 @@ macro_rules! bench_tboomerang_spending_m6_time {
 #[macro_export]
 macro_rules! bench_tboomerang_import_everything {
     () => {
-        use acl::{
-            config::ACLConfig, config::KeyPair as ACLKP, sign::SigChall as ACLCH,
-            sign::SigProof as ACLSP, sign::SigSign as ACLSG, verify::SigComm as ACLSC,
-            verify::SigResp as ACLSR, verify::SigVerifProof as ACLSPV, verify::SigVerify as ACLSV,
-        };
         use ark_ec::{
             models::CurveConfig,
             short_weierstrass::{self as sw, SWCurveConfig},
@@ -607,11 +602,6 @@ macro_rules! bench_tboomerang_import_everything {
         use core::ops::Mul;
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
         use merlin::Transcript;
-        use pedersen::{
-            issuance_protocol::IssuanceProofMulti as IPM, opening_protocol::OpeningProof as OP,
-            opening_protocol::OpeningProofMulti as OPM, pedersen_config::PedersenComm,
-            pedersen_config::PedersenConfig,
-        };
         use rand_core::OsRng;
         use sha2::{Digest, Sha512};
         use std::time::Duration;

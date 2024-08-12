@@ -4,5 +4,6 @@ pub mod bench_tacl;
 pub mod bench_tboomerang;
 pub mod bench_tcurve;
 pub mod derive_conversion;
+pub mod e2e_boomerang;
 pub mod test_acl;
 pub mod test_boomerang;
