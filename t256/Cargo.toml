@@ -20,16 +20,6 @@ rand = { version = "0.8.5" }
 rand_core = { version = "0.6.4" }
 merlin = { version = "3.0.0" }
 ark-ff-macros =  { version = "0.4.2", default-features = false }
-sha2 = "0.10.8"
-axum = "0.7"  # or the latest version
-axum-server = { version = "0.6", features = ["tls-rustls"] }
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"  # Ensure you have tracing
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-reqwest = { version = "0.12", features = ["rustls-tls", "json"] }
-serde = { version = "1", features = ["derive"] }
-bincode = "1.3"
-lazy_static = "1.4.0"
 
 [dev-dependencies]
 ark-relations = { version = "0.4.0", default-features = false }
