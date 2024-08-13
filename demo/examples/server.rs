@@ -72,7 +72,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     // Use a self-signed cert for easier demonstration
     let cert = rcgen::generate_simple_self_signed(subject_alt_names)?;
-    let cert_pem = cert.cert.pem().into_bytes();
+    let cert_pem = cert.cert.pem();
+    tracing::info!("using self-signed tls certificate\n{cert_pem}");
+    let cert_pem = cert_pem.into_bytes();
     let key_pem = cert.key_pair.serialize_pem().into_bytes();
     let config = RustlsConfig::from_pem(cert_pem, key_pem).await?;
 
@@ -185,7 +187,7 @@ async fn redirect_http_to_https(ports: Ports) {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    tracing::info!("listening for  http on {}", listener.local_addr().unwrap());
+    tracing::info!("listening for http on {}", listener.local_addr().unwrap());
     axum::serve(listener, redirect.into_make_service())
         .await
         .unwrap();
