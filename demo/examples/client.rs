@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::await_holding_lock)]
 
@@ -87,7 +86,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent m3 to the server.");
 
             let m4_bytes = m3_response.bytes().await?;
-            let _m4: IBSM = IBSM::deserialize_compressed(&mut m4_bytes.as_ref())
+            let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
                 .expect("Failed to deserialize Issuance M4");
             println!("Successfully received m4 from the server.");
         } else {
@@ -131,15 +130,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent m3 to the server.");
 
             let m4_bytes = m3_response.bytes().await?;
-            let _m4: IBSM = IBSM::deserialize_compressed(&mut m4_bytes.as_ref())
+            let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
                 .expect("Failed to deserialize Issuance M4");
             println!("Successfully received m4 from the server.");
 
             let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
-            //let skp = SBKP::generate(&mut rng); // FIX
-            //let state = IBCM::populate_state(m3.clone(), m4.clone(), &skp, kp.clone());
+            let _skp = SBKP::generate(&mut rng); // FIX
+            //let _state = IBCM::populate_state(m3, m4, &skp, kp);
 
             println!("Issuance state fullfilled!");
         } else {

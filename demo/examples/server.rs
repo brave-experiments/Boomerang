@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::await_holding_lock)]
 
@@ -28,7 +27,6 @@ use t256::Config;
 
 use rand_core::OsRng;
 
-#[allow(dead_code)]
 #[derive(Clone, Copy)]
 struct Ports {
     http: u16,
@@ -85,7 +83,6 @@ async fn main() {
         .unwrap();
 }
 
-#[allow(dead_code)]
 async fn handler() -> &'static str {
     "Hello, Client!"
 }
@@ -154,7 +151,6 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
 }
 
 // Function to redirect HTTP requests to HTTPS
-#[allow(dead_code)]
 async fn redirect_http_to_https(ports: Ports) {
     fn make_https(host: String, uri: Uri, ports: Ports) -> Result<Uri, BoxError> {
         let mut parts = uri.into_parts();
