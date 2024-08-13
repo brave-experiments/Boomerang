@@ -20,6 +20,9 @@ type SBKP = ServerKeyPair<Config>;
 type IBCM = IssuanceC<Config>;
 type IBSM = IssuanceS<Config>;
 
+/// Boomerang server url
+const BASE_URL: &'static str = "https://127.0.0.1:3000";
+
 #[derive(Serialize, Deserialize)]
 enum MessageType {
     M1,
@@ -40,6 +43,7 @@ lazy_static! {
 async fn main() -> Result<(), Box<dyn Error>> {
     // Create a Reqwest client
     let client = Client::builder()
+        .https_only(true)
         .danger_accept_invalid_certs(true) // Accept self-signed certificates
         .build()?;
 
@@ -56,7 +60,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let m1_message_bytes = bincode::serialize(&m1_message).unwrap();
 
     let http_response = client
-        .post("http://127.0.0.1:7878")
+        .post(BASE_URL)
         .body(m1_message_bytes.clone())
         .send()
         .await?;
@@ -77,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
 
         let m3_response = client
-            .post("http://127.0.0.1:7878")
+            .post(BASE_URL)
             .body(m3_message_bytes)
             .send()
             .await?;
@@ -97,7 +101,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     let https_response = client
-        .post("https://127.0.0.1:3000")
+        .post(BASE_URL)
         .body(m1_message_bytes.clone())
         .send()
         .await?;
@@ -121,7 +125,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
 
         let m3_response = client
-            .post("http://127.0.0.1:7878")
+            .post(BASE_URL)
             .body(m3_message_bytes)
             .send()
             .await?;
