@@ -19,6 +19,6 @@ merlin = { version = "3.0.0" }
 ark-ff-macros =  { version = "0.4.2", default-features = false }
 criterion = "0.5.1"
 sha2 = "0.10.8"
-hyper = { version = "0.14", features = ["client", "server"] }
+hyper = { version = "1.0", features = ["client", "server"] }
 tokio = { version = "1", features = ["full"] }
 bytes = "1.2"
