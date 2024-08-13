@@ -54,7 +54,7 @@ async fn main() {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "example_tls_rustls=debug".into()),
+                .unwrap_or_else(|_| "server=info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -65,6 +65,8 @@ async fn main() {
     };
     tokio::spawn(redirect_http_to_https(ports));
 
+
+    tracing::debug!("generating tls config");
     let config = RustlsConfig::from_pem_file(
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem"),
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem"),
@@ -76,7 +78,7 @@ async fn main() {
 
     // run https server
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.https));
-    tracing::debug!("listening on {}", addr);
+    tracing::info!("listening for https on {}", addr);
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await
@@ -179,7 +181,7 @@ async fn redirect_http_to_https(ports: Ports) {
 
     let addr = SocketAddr::from(([127, 0, 0, 1], ports.http));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
+    tracing::info!("listening for  http on {}", listener.local_addr().unwrap());
     axum::serve(listener, redirect.into_make_service())
         .await
         .unwrap();
