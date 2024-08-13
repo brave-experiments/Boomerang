@@ -46,5 +46,4 @@ specific parts of the protocol, tests, and demonstration code.
 - `t256` and `t384` Elliptic curve implementations using the [arkworks](https://arkworks.rs) framework. These are also from CDLS.
 - `acl` [Anonymous Credentials Light](https://eprint.iacr.org/2012/298) blind signature system after **Baldimtsi and Lysyanskaya**, 2012.
 - `bulletproofs` Zero-knowledge proof scheme from [Short proofs for Confidential Transactions](https://eprint.iacr.org/2017/1066.pdf), 2017. This implementation is derived from the one by [dalek cryptography](https://github.com/dalek-cryptography/bulletproofs) with some borrowing from the [curve tree](https://github.com/simonkamp/curve-trees/tree/main/bulletproofs) fork and [Alex Ozdemir's](https://github.com/alex-ozdemir/bulletproofs) arkworks version. Used under the MIT license.
-- `macros` Various utilities for generating test boilerplate. Also from CDLS.
-- `end2end_example` Demonstrates using the protocol between a simple http server and clients.
+- `macros` Various utilities for generating test boilerplate. Also from CDLS, but heavily modified.
