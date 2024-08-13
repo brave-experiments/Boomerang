@@ -23,14 +23,14 @@ To benchmark:
 
     cargo bench
 
-To see the the protocol in action, run the end2end example client and server
+To see the the protocol in action, run the example client and server
 programs in separate terminals:
 ```sh
-cargo run --bin server
+cargo run --example server
 ```
 and then
 ```sh
-cargo run --bin client
+cargo run --example client
 ```
 
 These end2end examples are also run automatically after the unit tests
@@ -42,6 +42,7 @@ The implementation is broken down into a number of crates handling
 specific parts of the protocol, tests, and demonstration code.
 
 - `boomerang` Overall protocol implementation with separate representations for the client and server sides.
+- `demo` Example client and server applications demonstrating the protocol over https.
 - `pedersen` Commitment scheme after **Pedersen,** “[Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing](https://doi.org/10.1007/3-540-46766-1_9).” *Advances in Cryptology* CRYPTO ’91, LNCS 576, pp. 129-140, 1992. Based on [code](https://github.com/brave-experiments/CDLS) from the [CDLS paper](https://eprint.iacr.org/2023/1595).
 - `t256` and `t384` Elliptic curve implementations using the [arkworks](https://arkworks.rs) framework. These are also from CDLS.
 - `acl` [Anonymous Credentials Light](https://eprint.iacr.org/2012/298) blind signature system after **Baldimtsi and Lysyanskaya**, 2012.

@@ -15,14 +15,14 @@ clean:
 
 test:
 	cargo test --release
-	@echo "Starting end2end example server and client..."
 
 e2e:
-	cargo build --release --bin server
+	@echo "Starting end2end example server and client..."
+	cargo build --release --example server
 	# Run the server in the background, terminate it after the client
-	cargo run --release --bin server & \
+	cargo run --release --example server & \
 		export SERVER_PID=$$!; \
-		cargo run --release --bin client; \
+		cargo run --release --example client; \
 		kill -s HUP $$SERVER_PID
 	@echo "Ok"
 

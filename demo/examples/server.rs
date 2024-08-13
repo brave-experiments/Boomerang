@@ -68,14 +68,8 @@ async fn main() {
     tokio::spawn(redirect_http_to_https(ports));
 
     let config = RustlsConfig::from_pem_file(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("e2e")
-            .join("cert.pem"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("e2e")
-            .join("key.pem"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem"),
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem"),
     )
     .await
     .unwrap();
