@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn handler() -> &'static str {
-    "Hello, Client!"
+    "Boomerang protocol server. Try POST /\n"
 }
 
 lazy_static! {
