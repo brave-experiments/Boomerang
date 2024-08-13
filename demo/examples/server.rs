@@ -15,7 +15,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Mutex;
-use std::{net::SocketAddr, path::PathBuf};
+use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -50,7 +50,7 @@ struct Message {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -65,14 +65,16 @@ async fn main() {
     };
     tokio::spawn(redirect_http_to_https(ports));
 
-
     tracing::debug!("generating tls config");
-    let config = RustlsConfig::from_pem_file(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("cert.pem"),
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("key.pem"),
-    )
-    .await
-    .unwrap();
+    let subject_alt_names = vec![
+        "boomerang.example".to_string(),
+        "localhost".to_string(),
+    ];
+    // Use a self-signed cert for easier demonstration
+    let cert = rcgen::generate_simple_self_signed(subject_alt_names)?;
+    let cert_pem = cert.cert.pem().into_bytes();
+    let key_pem = cert.key_pair.serialize_pem().into_bytes();
+    let config = RustlsConfig::from_pem(cert_pem, key_pem).await?;
 
     let app = Router::new().route("/", get(handler).post(post_handler));
 
@@ -83,6 +85,8 @@ async fn main() {
         .serve(app.into_make_service())
         .await
         .unwrap();
+
+    Ok(())
 }
 
 async fn handler() -> &'static str {
