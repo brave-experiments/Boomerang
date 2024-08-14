@@ -21,7 +21,7 @@ type IBCM = IssuanceC<Config>;
 type IBSM = IssuanceS<Config>;
 
 /// Boomerang server url
-const BASE_URL: &'static str = "https://127.0.0.1:3000";
+const BASE_URL: &str = "https://127.0.0.1:3000";
 
 #[derive(Serialize, Deserialize)]
 enum MessageType {
