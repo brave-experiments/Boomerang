@@ -1,6 +1,6 @@
 # Boomerang
 
-This is an implementation of "Boomerang", a novel decentralised privacy-preserving incentive protocol that leverages cryptographic black box
+This is an implementation of "[Boomerang](https://arxiv.org/abs/2401.01353)", a novel decentralised privacy-preserving incentive protocol that leverages cryptographic black box
 accumulators to securely store user interactions within incentive systems.
 The protocol employs black-box accumulators, zero-knowledge proofs, the ACL signature scheme and Pedersen commitments for issuance, accumulation and redemption.
 In this way, systems can transparently compute rewards for users, ensuring verifiability while  preserving their privacy.
