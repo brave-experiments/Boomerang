@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let m2: IBSM = IBSM::deserialize_compressed(m2_bytes.as_ref())
             .expect("Failed to deserialize compressed Issuance M2");
 
-        let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
+        let m3 = IBCM::generate_issuance_m3(m1.clone(), m2, &mut rng);
         let mut m3_bytes = Vec::new();
         m3.serialize_compressed(&mut m3_bytes)
             .expect("newly-generated issuance should serialize");
@@ -109,7 +109,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let m2: IBSM = IBSM::deserialize_compressed(m2_bytes.as_ref())
             .expect("Failed to deserialize compressed Issuance M2");
 
-        let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
+        let m3 = IBCM::generate_issuance_m3(m1.clone(), m2, &mut rng);
         let mut m3_bytes = Vec::new();
         m3.serialize_compressed(&mut m3_bytes)
             .expect("newly-generated issuance M3 should serialize");
