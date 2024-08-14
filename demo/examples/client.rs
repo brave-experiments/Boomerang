@@ -82,11 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
         let m3_message_bytes = bincode::serialize(&m3_message)?;
 
-        let m3_response = client
-            .post(BASE_URL)
-            .body(m3_message_bytes)
-            .send()
-            .await?;
+        let m3_response = client.post(BASE_URL).body(m3_message_bytes).send().await?;
 
         if m3_response.status().is_success() {
             println!("Successfully sent m3 to the server.");
@@ -127,11 +123,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
         let m3_message_bytes = bincode::serialize(&m3_message)?;
 
-        let m3_response = client
-            .post(BASE_URL)
-            .body(m3_message_bytes)
-            .send()
-            .await?;
+        let m3_response = client.post(BASE_URL).body(m3_message_bytes).send().await?;
 
         if m3_response.status().is_success() {
             println!("Successfully sent m3 to the server.");
@@ -144,7 +136,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
-            let _skp = SBKP::generate(&mut rng); // FIX
+            // FIXME: state generation fails acl signature
+            let _skp = SBKP::generate(&mut rng);
             //let _state = IBCM::populate_state(m3, m4, &skp, kp);
 
             println!("Issuance state fullfilled!");

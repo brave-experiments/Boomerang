@@ -14,8 +14,8 @@ use axum_server::tls_rustls::RustlsConfig;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
-use std::sync::Mutex;
 use std::net::SocketAddr;
+use std::sync::Mutex;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -66,10 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(redirect_http_to_https(ports));
 
     tracing::debug!("generating tls config");
-    let subject_alt_names = vec![
-        "boomerang.example".to_string(),
-        "localhost".to_string(),
-    ];
+    let subject_alt_names = vec!["boomerang.example".to_string(), "localhost".to_string()];
     // Use a self-signed cert for easier demonstration
     let cert = rcgen::generate_simple_self_signed(subject_alt_names)?;
     let cert_pem = cert.cert.pem();
