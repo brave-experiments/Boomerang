@@ -41,7 +41,7 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Create a Reqwest client
+    // Create a Reqwest HTTPS client
     let client = Client::builder()
         .https_only(true)
         .danger_accept_invalid_certs(true) // Accept self-signed certificates
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if http_response.status().is_success() {
         let m2_bytes = http_response.bytes().await?;
-        let m2: IBSM = IBSM::deserialize_compressed(&mut m2_bytes.as_ref())
+        let m2: IBSM = IBSM::deserialize_compressed(m2_bytes.as_ref())
             .expect("Failed to deserialize compressed Issuance M2");
 
         let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent m3 to the server.");
 
             let m4_bytes = m3_response.bytes().await?;
-            let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
+            let _m4: IBSM = IBSM::deserialize_compressed(m4_bytes.as_ref())
                 .expect("Failed to deserialize Issuance M4 from server");
             println!("Successfully received m4 from the server.");
         } else {
@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if https_response.status().is_success() {
         let m2_bytes = https_response.bytes().await?;
-        let m2: IBSM = IBSM::deserialize_compressed(&mut m2_bytes.as_ref())
+        let m2: IBSM = IBSM::deserialize_compressed(m2_bytes.as_ref())
             .expect("Failed to deserialize compressed Issuance M2");
 
         let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
@@ -129,11 +129,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent m3 to the server.");
 
             let m4_bytes = m3_response.bytes().await?;
-            let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
+            let _m4: IBSM = IBSM::deserialize_compressed(m4_bytes.as_ref())
                 .expect("Failed to deserialize Issuance M4 from server");
             println!("Successfully received m4 from the server.");
 
-            let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
+            let _m3: IBCM = IBCM::deserialize_compressed(m3_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
             // FIXME: state generation fails acl signature

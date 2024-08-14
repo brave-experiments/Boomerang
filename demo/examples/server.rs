@@ -114,7 +114,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
     match message.msg_type {
         MessageType::M1 => {
             println!("Received m1 message, processing...");
-            let m1: IBCM = IBCM::deserialize_compressed(&mut message.data.as_slice())
+            let m1: IBCM = IBCM::deserialize_compressed(message.data.as_ref())
                 .expect("Failed to deserialize compressed Issuance M1");
 
             let m2 = IssuanceS::<Config>::generate_issuance_m2(m1, skp, &mut rng);
@@ -133,11 +133,11 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
         MessageType::M3 => {
             println!("Received m3 message, processing...");
 
-            let m3: IBCM = IBCM::deserialize_compressed(&mut message.data.as_slice())
+            let m3: IBCM = IBCM::deserialize_compressed(message.data.as_ref())
                 .expect("Failed to deserialize compressed Issuance M3");
 
             let m2_bytes_c = M2_BYTES_C.lock().unwrap();
-            let m2: IBSM = IBSM::deserialize_compressed::<&[u8]>(m2_bytes_c.as_ref())
+            let m2: IBSM = IBSM::deserialize_compressed(m2_bytes_c.as_ref())
                 .expect("Failed to deserialize compressed Issuance M2");
 
             let m4 = IssuanceS::<Config>::generate_issuance_m4(m3.clone(), m2.clone(), skp);
