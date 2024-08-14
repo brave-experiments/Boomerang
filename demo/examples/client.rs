@@ -51,13 +51,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let kp = CBKP::generate(&mut rng);
     let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut rng);
     let mut m1_bytes = Vec::new();
-    m1.serialize_compressed(&mut m1_bytes).unwrap();
+    m1.serialize_compressed(&mut m1_bytes)
+        .expect("newly-generated issuance should serialize");
 
     let m1_message = Message {
         msg_type: MessageType::M1,
         data: m1_bytes,
     };
-    let m1_message_bytes = bincode::serialize(&m1_message).unwrap();
+    let m1_message_bytes = bincode::serialize(&m1_message)?;
 
     let http_response = client
         .post(BASE_URL)
@@ -72,13 +73,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
         let mut m3_bytes = Vec::new();
-        m3.serialize_compressed(&mut m3_bytes).unwrap();
+        m3.serialize_compressed(&mut m3_bytes)
+            .expect("newly-generated issuance should serialize");
 
         let m3_message = Message {
             msg_type: MessageType::M3,
             data: m3_bytes,
         };
-        let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
+        let m3_message_bytes = bincode::serialize(&m3_message)?;
 
         let m3_response = client
             .post(BASE_URL)
@@ -91,7 +93,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let m4_bytes = m3_response.bytes().await?;
             let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
-                .expect("Failed to deserialize Issuance M4");
+                .expect("Failed to deserialize Issuance M4 from server");
             println!("Successfully received m4 from the server.");
         } else {
             println!("Failed to send m3. Status: {}", m3_response.status());
@@ -113,16 +115,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut rng);
         let mut m3_bytes = Vec::new();
-        m3.serialize_compressed(&mut m3_bytes).unwrap();
+        m3.serialize_compressed(&mut m3_bytes)
+            .expect("newly-generated issuance M3 should serialize");
 
-        let mut m3_bytes_c = M3_BYTES_C.lock().unwrap();
+        let mut m3_bytes_c = M3_BYTES_C.lock()?;
         m3_bytes_c.clone_from(&m3_bytes);
 
         let m3_message = Message {
             msg_type: MessageType::M3,
             data: m3_bytes,
         };
-        let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
+        let m3_message_bytes = bincode::serialize(&m3_message)?;
 
         let m3_response = client
             .post(BASE_URL)
@@ -135,7 +138,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let m4_bytes = m3_response.bytes().await?;
             let _m4: IBSM = IBSM::deserialize_compressed::<&[u8]>(&m4_bytes)
-                .expect("Failed to deserialize Issuance M4");
+                .expect("Failed to deserialize Issuance M4 from server");
             println!("Successfully received m4 from the server.");
 
             let _m3: IBCM = IBCM::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
