@@ -111,7 +111,7 @@ macro_rules! __test_acl {
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
             // Test the third message of the signature scheme.
-            let m3 = ACLSR::respond(kp.clone(), m1.clone(), m2);
+            let m3 = ACLSR::respond(&kp, &m1, &m2);
         }
 
         #[test]
@@ -143,9 +143,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
+            let m3 = ACLSR::respond(&kp, &m1, &m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, &m2, &m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
         }
@@ -179,9 +179,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
+            let m3 = ACLSR::respond(&kp, &m1, &m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, &m2, &m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
@@ -218,9 +218,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
+            let m3 = ACLSR::respond(&kp, &m1, &m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, &m2, &m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
@@ -264,9 +264,9 @@ macro_rules! __test_acl {
 
             let m2 = ACLCH::challenge(kp.tag_key, kp.verifying_key, &mut OsRng, m1, "message");
 
-            let m3 = ACLSR::respond(kp.clone(), m1, m2.clone());
+            let m3 = ACLSR::respond(&kp, &m1, &m2);
 
-            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, m2, m3, "message");
+            let m4 = ACLSG::sign(kp.verifying_key, kp.tag_key, &m2, &m3, "message");
             assert!(m4.sigma.zeta.is_on_curve());
             assert!(m4.sigma.zeta1.is_on_curve());
 
@@ -280,7 +280,7 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
 
-            let check = ACLSPV::verify(proof, kp.tag_key, &m4);
+            let check = ACLSPV::verify(&proof, kp.tag_key, &m4);
             assert!(check == true);
         }
     };

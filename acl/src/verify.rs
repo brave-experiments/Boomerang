@@ -106,7 +106,7 @@ impl<A: ACLConfig> SigResp<A> {
     /// respond. This function creates the third signature message.
     /// # Arguments
     /// * `inter` - the intermediate values to use.
-    pub fn respond(keys: KeyPair<A>, comm_m: SigComm<A>, chall_m: SigChall<A>) -> SigResp<A> {
+    pub fn respond(keys: &KeyPair<A>, comm_m: &SigComm<A>, chall_m: &SigChall<A>) -> SigResp<A> {
         let c = chall_m.e - comm_m.c;
         let r = comm_m.u - c * keys.signing_key();
 
@@ -225,7 +225,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         transcript.append_message(b"c1", &compressed_bytes[..]);
     }
 
-    pub fn verify(proof: SigProof<A>, tag_key: sw::Affine<A>, sig_m: &SigSign<A>) -> bool {
+    pub fn verify(proof: &SigProof<A>, tag_key: sw::Affine<A>, sig_m: &SigSign<A>) -> bool {
         // Equality proof of zeta = b_gamma
         let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
         let rhs2 = (A::GENERATOR.mul(proof.pi1.a1)).into_affine();

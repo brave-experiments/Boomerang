@@ -192,8 +192,8 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            c_m.m3.unwrap().e,
-            s_m.m4.unwrap().s,
+            &c_m.m3.unwrap().e,
+            &s_m.m4.unwrap().s,
             "message",
         );
 
@@ -430,8 +430,8 @@ impl<B: BoomerangConfig> CollectionC<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            c_m.m4.unwrap().e,
-            s_m.m5.unwrap().s,
+            &c_m.m4.unwrap().e,
+            &s_m.m5.unwrap().s,
             "message",
         );
 
@@ -761,8 +761,8 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            c_m.m4.unwrap().e,
-            s_m.m5.unwrap().s,
+            &c_m.m4.unwrap().e,
+            &s_m.m5.unwrap().s,
             "message",
         );
 

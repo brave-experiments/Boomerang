@@ -153,11 +153,8 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         s_m: IssuanceS<B>,
         key_pair: &ServerKeyPair<B>,
     ) -> IssuanceS<B> {
-        let sig_resp = SigResp::respond(
-            key_pair.s_key_pair.clone(),
-            s_m.m2.sig_commit,
-            c_m.m3.unwrap().e,
-        );
+        let sig_resp =
+            SigResp::respond(&key_pair.s_key_pair, &s_m.m2.sig_commit, &c_m.m3.unwrap().e);
         let m4 = IssuanceM4 { s: sig_resp };
 
         Self {
@@ -267,7 +264,7 @@ impl<B: BoomerangConfig> CollectionS<B> {
         }
 
         let check2 =
-            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
+            SigVerifProof::verify(&c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
         if !check2 {
             panic!("Boomerang collection: invalid proof sig");
         }
@@ -355,9 +352,9 @@ impl<B: BoomerangConfig> CollectionS<B> {
         key_pair: &ServerKeyPair<B>,
     ) -> CollectionS<B> {
         let sig_resp = SigResp::respond(
-            key_pair.s_key_pair.clone(),
-            s_m.m3.clone().unwrap().sig_commit,
-            c_m.m4.unwrap().e,
+            &key_pair.s_key_pair,
+            &s_m.m3.clone().unwrap().sig_commit,
+            &c_m.m4.unwrap().e,
         );
         let m5 = CollectionM5 { s: sig_resp };
 
@@ -530,7 +527,7 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         }
 
         let check2 =
-            SigVerifProof::verify(c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
+            SigVerifProof::verify(&c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
         if !check2 {
             panic!("Boomerang spend-verify: invalid proof sig");
         }
@@ -717,9 +714,9 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         key_pair: &ServerKeyPair<B>,
     ) -> SpendVerifyS<B> {
         let sig_resp = SigResp::respond(
-            key_pair.s_key_pair.clone(),
-            s_m.m3.clone().unwrap().sig_commit,
-            c_m.m4.unwrap().e,
+            &key_pair.s_key_pair,
+            &s_m.m3.as_ref().unwrap().sig_commit,
+            &c_m.m4.unwrap().e,
         );
         let m5 = SpendVerifyM5 { s: sig_resp };
 

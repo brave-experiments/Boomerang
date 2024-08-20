@@ -260,8 +260,8 @@ impl<A: ACLConfig> SigSign<A> {
     pub fn sign(
         pub_key: sw::Affine<A>,
         tag_key: sw::Affine<A>,
-        chall_m: SigChall<A>,
-        resp_m: SigResp<A>,
+        chall_m: &SigChall<A>,
+        resp_m: &SigResp<A>,
         message: &str,
     ) -> SigSign<A> {
         let rho = resp_m.r + chall_m.t1;
