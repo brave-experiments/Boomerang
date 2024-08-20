@@ -113,7 +113,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     /// * `key_pair` - the client's keypair.
     /// * `rng` - the source of randomness.
     pub fn generate_issuance_m1<T: RngCore + CryptoRng>(
-        key_pair: UKeyPair<B>,
+        key_pair: &UKeyPair<B>,
         rng: &mut T,
     ) -> IssuanceC<B> {
         let id_0 = <B as CurveConfig>::ScalarField::rand(rng);

@@ -8,7 +8,7 @@ macro_rules! bench_tboomerang_issuance_m1_time {
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m1 time"), |b| {
                 b.iter(|| {
-                    IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+                    IBCM::generate_issuance_m1(&kp, &mut OsRng);
                 });
             });
         }
@@ -22,7 +22,7 @@ macro_rules! bench_tboomerang_issuance_m2_time {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
 
             // Now we can just benchmark how long it takes for the first message.
             c.bench_function(concat!($curve_name, " issuance m2 time"), |b| {
@@ -41,7 +41,7 @@ macro_rules! bench_tboomerang_issuance_m3_time {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
 
             // Now we can just benchmark how long it takes for the first message.
@@ -61,7 +61,7 @@ macro_rules! bench_tboomerang_issuance_m4_time {
             // Bench the first message of the boomerang scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
 
@@ -82,7 +82,7 @@ macro_rules! bench_tboomerang_issuance_m5_time {
             // Bench the first message of the boomerang issuance scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -104,7 +104,7 @@ macro_rules! bench_tboomerang_collection_m1_time {
             // Bench the first message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -127,7 +127,7 @@ macro_rules! bench_tboomerang_collection_m2_time {
             // Bench the second message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -151,7 +151,7 @@ macro_rules! bench_tboomerang_collection_m3_time {
             // Bench the third message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -178,7 +178,7 @@ macro_rules! bench_tboomerang_collection_m4_time {
             // Bench the fourth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -208,7 +208,7 @@ macro_rules! bench_tboomerang_collection_m5_time {
             // Bench the fifth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -240,7 +240,7 @@ macro_rules! bench_tboomerang_collection_m6_time {
             // Bench the sixth message of the boomerang collection scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -272,7 +272,7 @@ macro_rules! bench_tboomerang_spending_m1_time {
             // Bench the first message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -305,7 +305,7 @@ macro_rules! bench_tboomerang_spending_m2_time {
             // Bench the second message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -348,7 +348,7 @@ macro_rules! bench_tboomerang_spending_m3_time {
             // Bench the third message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -406,7 +406,7 @@ macro_rules! bench_tboomerang_spending_m4_time {
             // Bench the forth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -465,7 +465,7 @@ macro_rules! bench_tboomerang_spending_m5_time {
             // Bench the fifth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);
@@ -526,7 +526,7 @@ macro_rules! bench_tboomerang_spending_m6_time {
             // Bench the sixth message of the boomerang spending scheme.
             let kp = CBKP::<$config>::generate(&mut OsRng);
             let skp = SBKP::generate(&mut OsRng);
-            let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut OsRng);
+            let m1 = IBCM::generate_issuance_m1(&kp, &mut OsRng);
             let m2 = IBSM::generate_issuance_m2(m1.clone(), &skp, &mut OsRng);
             let m3 = IBCM::generate_issuance_m3(m1.clone(), m2.clone(), &mut OsRng);
             let m4 = IBSM::generate_issuance_m4(m3.clone(), m2.clone(), &skp);

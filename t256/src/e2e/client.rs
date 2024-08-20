@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut rng = OsRng;
     let kp = CBKP::generate(&mut rng);
-    let m1 = IBCM::generate_issuance_m1(kp.clone(), &mut rng);
+    let m1 = IBCM::generate_issuance_m1(&kp, &mut rng);
     let mut m1_bytes = Vec::new();
     m1.serialize_compressed(&mut m1_bytes).unwrap();
 
