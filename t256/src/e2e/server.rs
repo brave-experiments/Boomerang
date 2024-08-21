@@ -132,6 +132,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             let mut m2_bytes = Vec::new();
             m2.serialize_compressed(&mut m2_bytes)
                 .expect("Failed to serialize Issuance M2");
+            println!("Bytes sent (m2_message_bytes): {}", m2_bytes.len());
 
             Ok(Response::builder()
                 .status(StatusCode::OK)
@@ -148,6 +149,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             let mut m4_bytes = Vec::new();
             m4.serialize_compressed(&mut m4_bytes)
                 .expect("Failed to serialize Issuance M4");
+            println!("Bytes sent (m4_message_bytes): {}", m4_bytes.len());
 
             // Serialize SKP
             let mut skp_bytes = Vec::new();
@@ -159,7 +161,6 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             response_bytes.extend_from_slice(&skp_bytes);
             println!("Sending M4...");
 
-            println!("client m4 {:?}", response_bytes);
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(response_bytes))

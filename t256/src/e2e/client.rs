@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         data: m1_bytes,
     };
     let m1_message_bytes = bincode::serialize(&m1_message).unwrap();
+    println!("Bytes sent (m1_message_bytes): {}", m1_message_bytes.len());
 
     let http_response = client
         .post("http://127.0.0.1:7878")
@@ -74,6 +75,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             data: m3_bytes,
         };
         let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
+        println!("Bytes sent (m3_message_bytes): {}", m3_message_bytes.len());
 
         let m3_response = client
             .post("http://127.0.0.1:7878")
