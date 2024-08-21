@@ -623,8 +623,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             .get(0..8) // Take the first 8 bytes
             .map(|bytes| u64::from_le_bytes(bytes.try_into().unwrap())) // Convert to u64
             .unwrap_or(0); // Default to 0 if not enough bytes
-                           //let reward_bytes = reward.into_repr();
-                           //let reward_array: [u8; 8] = reward_bytes[0..8].try_into();
+
         let max_spend = 64; // TODO: should be app specific
         let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
         // We instantiate with the maximum capacity
@@ -695,42 +694,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
     ) -> SpendVerifyC<B> {
         let m3 = s_m.m3.clone().unwrap();
 
-        // verify rewards proof
+        // Verify rewards proof
         let reward_proof = m3.pi_reward;
-
-        let mut transcript_r = Transcript::new(b"Boomerang verify range proof");
-        let max_reward = 64; // TODO: should be app specific
-        let check = reward_proof.range_proof.verify_single(
-            &reward_proof.range_gensb_r,
-            &reward_proof.range_gensp_r,
-            &mut transcript_r,
-            &reward_proof.r_comms,
-            max_reward,
-        );
+        let check = reward_proof.verify(&c_m.m2.spend_state);
         if check.is_err() {
-            panic!("Boomerang verification: reward range proof verification failed")
-        }
-
-        let g: Vec<_> = reward_proof
-            .range_gensb_l
-            .share(0)
-            .G(1) // this is app specific
-            .cloned()
-            .collect::<Vec<sw::Affine<B>>>();
-        let f = reward_proof.range_gensp_l.B;
-        let b = reward_proof.range_gensp_l.B_blinding;
-        let mut transcript_l = Transcript::new(b"Boomerang verify linear proof");
-
-        let check2 = reward_proof.linear_proof.verify(
-            &mut transcript_l,
-            &reward_proof.l_comms,
-            &g,
-            &f,
-            &b,
-            c_m.m2.spend_state.clone(),
-        );
-        if check2.is_err() {
-            panic!("Boomerang verification: reward linear proof verification failed")
+            panic!("Boomerang verification: reward proof verification failed")
         }
 
         // The other way around to handle the negative

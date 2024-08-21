@@ -2,11 +2,9 @@
 //! Module containing the definition of the server side of the algorithm
 //!
 
-use ark_ec::AffineRepr;
 use ark_ec::{
     models::CurveConfig,
     short_weierstrass::{self as sw},
-    CurveGroup, VariableBaseMSM,
 };
 use rand::{CryptoRng, RngCore};
 
@@ -19,7 +17,8 @@ use acl::{
 use merlin::Transcript;
 use pedersen::pedersen_config::PedersenComm;
 
-use ark_bulletproofs::{inner_product, BulletproofGens, LinearProof, PedersenGens, RangeProof};
+use crate::utils::rewards::*;
+
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
 
@@ -429,42 +428,6 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
     }
 }
 
-// Rewards proof
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
-pub struct BRewardsProof<B: BoomerangConfig> {
-    // the range proof
-    pub range_proof: RangeProof<sw::Affine<B>>,
-    // the pc gens for range proof
-    pub range_gensp_r: PedersenGens<sw::Affine<B>>,
-    // the bp gens for range proof
-    pub range_gensb_r: BulletproofGens<sw::Affine<B>>,
-    // the commitment of range proof
-    pub r_comms: sw::Affine<B>,
-    // the linear proof
-    pub linear_proof: LinearProof<sw::Affine<B>>,
-    // the pc gens for linear proof
-    pub range_gensp_l: PedersenGens<sw::Affine<B>>,
-    // the bp gens for linear proof
-    pub range_gensb_l: BulletproofGens<sw::Affine<B>>,
-    // the commitment of linear proof
-    pub l_comms: sw::Affine<B>,
-}
-
-impl<B: BoomerangConfig> Clone for BRewardsProof<B> {
-    fn clone(&self) -> Self {
-        BRewardsProof {
-            range_proof: self.range_proof.clone(),
-            range_gensp_r: self.range_gensp_r,
-            range_gensb_r: self.range_gensb_r.clone(),
-            r_comms: self.r_comms,
-            linear_proof: self.linear_proof.clone(),
-            range_gensp_l: self.range_gensp_r,
-            range_gensb_l: self.range_gensb_r.clone(),
-            l_comms: self.l_comms,
-        }
-    }
-}
-
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyS<B: BoomerangConfig> {
@@ -600,92 +563,24 @@ impl<B: BoomerangConfig> SpendVerifyS<B> {
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, c_m.m2.spend_state[0], v2, v3];
 
         let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
+
         // Compute rewards
-        let c = inner_product(&c_m.m2.spend_state, &policy_state);
+        let (reward_u64, reward) =
+            match inner_product_to_u64::<B>(&c_m.m2.spend_state, &policy_state) {
+                Ok(reward_u64) => reward_u64,
+                Err(_e) => {
+                    panic!("Boomerang verification: failed to compute reward")
+                }
+            };
 
-        // TODO: too hacky
-        let mut compressed_bytes = Vec::new();
-        c.serialize_compressed(&mut compressed_bytes).unwrap();
-        let reward_bytes = compressed_bytes
-            .as_slice()
-            .get(0..8) // Take the first 8 bytes
-            .map(|bytes| u64::from_le_bytes(bytes.try_into().unwrap())) // Convert to u64
-            .unwrap_or(0); // Default to 0 if not enough bytes
-                           //let reward_bytes = reward.into_repr();
-                           //let reward_array: [u8; 8] = reward_bytes[0..8].try_into();
-
-        // We need to prove:
-        // That the reward falls between a range
-        // That is was computed correctly
-
-        // Prove that the reward falls between the range
-        let max_reward = 64; // TODO: should be app specific
-        let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
-        // We instantiate with the maximum capacity
-        let bp_gens_r = BulletproofGens::new(max_reward, 1);
-        let mut transcript_r = Transcript::new(b"Boomerang verify range proof");
-        let blind = <B as CurveConfig>::ScalarField::rand(rng);
-        let (r_proof, r_comms) = RangeProof::prove_single(
-            &bp_gens_r,
-            &pc_gens_r,
-            &mut transcript_r,
-            reward_bytes,
-            &blind,
-            max_reward,
-        )
-        .unwrap();
-
-        let pc_gens_l: PedersenGens<sw::Affine<B>> = PedersenGens::default();
-        // We instantiate with the maximum capacity
-        let bp_gens_l = BulletproofGens::new(max_reward, 1);
-
-        let g: Vec<_> = bp_gens_l
-            .share(0)
-            .G(c_m.m2.spend_state.len())
-            .cloned()
-            .collect::<Vec<sw::Affine<B>>>();
-
-        let f = pc_gens_l.B;
-        let b = pc_gens_l.B_blinding;
-
-        // c_t = <a, g> + blind_l * b + c * f
-        // the policy_state is the witness and it is private
-        let blind_l = <B as CurveConfig>::ScalarField::rand(rng);
-        let combined_scalars: Vec<B::ScalarField> = policy_state
-            .iter()
-            .cloned()
-            .chain(Some(blind_l))
-            .chain(Some(c))
-            .collect();
-        let combined_points: Vec<_> = g.iter().cloned().chain(Some(b)).chain(Some(f)).collect();
-        let c_t = <sw::Affine<B> as AffineRepr>::Group::msm(&combined_points, &combined_scalars)
-            .unwrap()
-            .into_affine();
-
-        let mut transcript_l = Transcript::new(b"Boomerang verify linear proof");
-        let l_proof = LinearProof::<sw::Affine<B>>::create(
-            &mut transcript_l,
-            rng,
-            &c_t,
-            blind_l,
-            policy_state.clone(),
-            c_m.m2.spend_state.clone(),
-            g.clone(),
-            &f,
-            &b,
-        )
-        .unwrap();
-
-        let re_proof = BRewardsProof {
-            range_proof: r_proof,
-            range_gensp_r: pc_gens_r,
-            range_gensb_r: bp_gens_r,
-            r_comms,
-            linear_proof: l_proof,
-            range_gensp_l: pc_gens_l,
-            range_gensb_l: bp_gens_l,
-            l_comms: c_t,
-        };
+        let re_proof =
+            match BRewardsProof::prove(&c_m.m2.spend_state, &policy_state, reward_u64, reward, rng)
+            {
+                Ok(proof) => proof,
+                Err(_e) => {
+                    panic!("Boomerang verification: failed to create rewards proof")
+                }
+            };
 
         // Only if the rewards proof was successfully done
         let c = c_m.m2.comm - c1; // The other way around to handle the negative
