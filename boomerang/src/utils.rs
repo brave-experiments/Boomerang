@@ -26,8 +26,8 @@ pub mod rewards {
     }
 
     pub fn inner_product_to_u64<B: CurveConfig>(
-        a: &Vec<<B as CurveConfig>::ScalarField>,
-        b: &Vec<<B as CurveConfig>::ScalarField>,
+        a: &[<B as CurveConfig>::ScalarField],
+        b: &[<B as CurveConfig>::ScalarField],
     ) -> Result<(u64, B::ScalarField), String> {
         let res = inner_product(a, b);
 
@@ -78,8 +78,8 @@ pub mod rewards {
 
     impl<B: BoomerangConfig> BRewardsProof<B> {
         pub fn prove(
-            spend_state: &Vec<<B as CurveConfig>::ScalarField>,
-            policy_state: &Vec<<B as CurveConfig>::ScalarField>,
+            spend_state: &[<B as CurveConfig>::ScalarField],
+            policy_state: &[<B as CurveConfig>::ScalarField],
             reward_u64: u64,
             reward: <B as CurveConfig>::ScalarField,
             rng: &mut impl Rng,
@@ -155,7 +155,7 @@ pub mod rewards {
 
         pub fn verify(
             &self,
-            spend_state: &Vec<<B as CurveConfig>::ScalarField>,
+            spend_state: &[<B as CurveConfig>::ScalarField],
         ) -> Result<(), String> {
             let max_reward = 64;
 
