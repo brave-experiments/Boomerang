@@ -21,9 +21,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-use boomerang::client::IssuanceC;
-use boomerang::server::IssuanceS;
+use boomerang::client::{IssuanceM1, IssuanceM3, IssuanceStateC};
 use boomerang::server::ServerKeyPair;
+use boomerang::server::{IssuanceM2, IssuanceStateS};
 use t256::Config;
 
 use rand_core::OsRng;
@@ -36,8 +36,11 @@ struct Ports {
 }
 
 type SBKP = ServerKeyPair<Config>;
-type IBCM = IssuanceC<Config>;
-type IBSM = IssuanceS<Config>;
+type IBCM = IssuanceStateC<Config>;
+type IBSM = IssuanceStateS<Config>;
+type IBCM1 = IssuanceM1<Config>;
+type IBSM2 = IssuanceM2<Config>;
+type IBCM3 = IssuanceM3<Config>;
 
 #[derive(Serialize, Deserialize)]
 enum MessageType {
@@ -97,37 +100,38 @@ async fn handler() -> &'static str {
 }
 
 lazy_static! {
-    static ref M2_BYTES_C: Mutex<Vec<u8>> = Mutex::new(Vec::new());
-    static ref SKP: Mutex<Option<SBKP>> = Mutex::new(None);
+    static ref SKP: Mutex<Option<SBKP>> = Mutex::new({
+        let mut rng = OsRng;
+        Some(SBKP::generate(&mut rng))
+    });
+    static ref IBSM_DEFAULT: Mutex<IBSM> = Mutex::new(IBSM::default());
 }
 
 async fn post_handler(body: Body) -> Result<Response, Infallible> {
     let bytes = body::to_bytes(body, usize::MAX).await.unwrap();
     let message: Message = bincode::deserialize(&bytes).expect("Failed to deserialize message");
-    let mut rng = OsRng;
-    {
-        let mut skp_lock = SKP.lock().unwrap();
-        if skp_lock.is_none() {
-            *skp_lock = Some(SBKP::generate(&mut rng));
-        }
-    }
 
+    let mut rng = OsRng;
+    // Access shared SKP and IBSM instances
     let skp_lock = SKP.lock().unwrap();
-    let skp = skp_lock.as_ref().unwrap();
+    let skp = skp_lock
+        .as_ref()
+        .expect("ServerKeyPair should be initialized");
+
+    let ibsm_lock = IBSM_DEFAULT.lock().unwrap();
+    let mut s_state = ibsm_lock.clone();
 
     match message.msg_type {
         MessageType::M1 => {
             println!("Received m1 message, processing...");
-            let m1: IBCM = IBCM::deserialize_compressed(&mut message.data.as_slice())
+            let m1: IBCM1 = IBCM1::deserialize_compressed(&mut message.data.as_slice())
                 .expect("Failed to deserialize compressed Issuance M1");
 
-            let m2 = IssuanceS::<Config>::generate_issuance_m2(m1, skp, &mut rng);
+            let m2 =
+                IssuanceStateS::<Config>::generate_issuance_m2(&m1, skp, &mut s_state, &mut rng);
             let mut m2_bytes = Vec::new();
             m2.serialize_compressed(&mut m2_bytes)
                 .expect("Failed to serialize Issuance M2");
-
-            let mut m2_bytes_c = M2_BYTES_C.lock().unwrap();
-            m2_bytes_c.clone_from(&m2_bytes);
 
             Ok(Response::builder()
                 .status(StatusCode::OK)
@@ -137,14 +141,10 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
         MessageType::M3 => {
             println!("Received m3 message, processing...");
 
-            let m3: IBCM = IBCM::deserialize_compressed(&mut message.data.as_slice())
+            let m3: IBCM3 = IBCM3::deserialize_compressed(&mut message.data.as_slice())
                 .expect("Failed to deserialize compressed Issuance M3");
 
-            let m2_bytes_c = M2_BYTES_C.lock().unwrap();
-            let m2: IBSM = IBSM::deserialize_compressed::<&[u8]>(m2_bytes_c.as_ref())
-                .expect("Failed to deserialize compressed Issuance M2");
-
-            let m4 = IssuanceS::<Config>::generate_issuance_m4(m3.clone(), m2.clone(), skp);
+            let m4 = IssuanceStateS::<Config>::generate_issuance_m4(&m3, &mut s_state, skp);
             let mut m4_bytes = Vec::new();
             m4.serialize_compressed(&mut m4_bytes)
                 .expect("Failed to serialize Issuance M4");

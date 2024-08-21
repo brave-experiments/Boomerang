@@ -8,7 +8,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::client::{CollectionC, IssuanceC, SpendVerifyC};
+use crate::client::{CollectionC, IssuanceM1, IssuanceM3, SpendVerifyC};
 use crate::config::BoomerangConfig;
 
 use acl::{
@@ -21,6 +21,8 @@ use crate::utils::rewards::*;
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
+
+use std::default::Default;
 
 /// Server keypair.
 ///
@@ -89,32 +91,39 @@ pub struct IssuanceM4<B: BoomerangConfig> {
 }
 
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IssuanceS<B: BoomerangConfig> {
-    /// m2: the second message value.
-    pub m2: IssuanceM2<B>,
-    /// m4: the fourth message value.
-    pub m4: Option<IssuanceM4<B>>,
+pub struct IssuanceStateS<B: BoomerangConfig> {
+    /// sig_commit: the first signature value.
+    pub sig_commit: SigComm<B>,
 }
 
-impl<B: BoomerangConfig> IssuanceS<B> {
+impl<B: BoomerangConfig> Default for IssuanceStateS<B> {
+    fn default() -> Self {
+        Self {
+            sig_commit: SigComm::<B>::default(), // Default value for `sig_commit`
+        }
+    }
+}
+
+impl<B: BoomerangConfig> IssuanceStateS<B> {
     /// generate_issuance_m2. This function generates the second message of the Issuance Protocol.
     /// # Arguments
     /// * `c_m` - the received client message.
     /// * `key_pair` - the server keypair.
     /// * `rng` - the source of randomness.
     pub fn generate_issuance_m2<T: RngCore + CryptoRng>(
-        c_m: IssuanceC<B>,
+        c_m: &IssuanceM1<B>,
         key_pair: &ServerKeyPair<B>,
+        state: &mut IssuanceStateS<B>,
         rng: &mut T,
-    ) -> IssuanceS<B> {
+    ) -> IssuanceM2<B> {
         let label = b"BoomerangM1";
         let mut transcript = Transcript::new(label);
-        let check = c_m.m1.pi_issuance.verify(
+        let check = c_m.pi_issuance.verify(
             &mut transcript,
-            &c_m.m1.comm.comm,
-            &c_m.m1.u_pk,
-            c_m.m1.len,
-            &c_m.m1.gens,
+            &c_m.comm.comm,
+            &c_m.u_pk,
+            c_m.len,
+            &c_m.gens,
         );
 
         if !check {
@@ -127,8 +136,8 @@ impl<B: BoomerangConfig> IssuanceS<B> {
         let v2 = <B as CurveConfig>::ScalarField::zero();
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v1, v2, v3];
-        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m1.gens);
-        let c = c1 + c_m.m1.comm;
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.gens);
+        let c = c1 + c_m.comm;
 
         let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
         let m2 = IssuanceM2 {
@@ -139,7 +148,9 @@ impl<B: BoomerangConfig> IssuanceS<B> {
             tag_key: key_pair.s_key_pair.tag_key,
         };
 
-        Self { m2, m4: None }
+        state.sig_commit = sig_comm;
+
+        m2
     }
 
     /// generate_issuance_m4. This function generates the fourth message of the Issuance Protocol.
@@ -148,18 +159,14 @@ impl<B: BoomerangConfig> IssuanceS<B> {
     /// * `s_m` - the received server message.
     /// * `key_pair` - the server's keypair.
     pub fn generate_issuance_m4(
-        c_m: IssuanceC<B>,
-        s_m: IssuanceS<B>,
+        c_m: &IssuanceM3<B>,
+        state: &mut IssuanceStateS<B>,
         key_pair: &ServerKeyPair<B>,
-    ) -> IssuanceS<B> {
-        let sig_resp =
-            SigResp::respond(&key_pair.s_key_pair, &s_m.m2.sig_commit, &c_m.m3.unwrap().e);
+    ) -> IssuanceM4<B> {
+        let sig_resp = SigResp::respond(&key_pair.s_key_pair, &state.sig_commit, &c_m.e);
         let m4 = IssuanceM4 { s: sig_resp };
 
-        Self {
-            m2: s_m.m2,
-            m4: Some(m4),
-        }
+        m4
     }
 }
 

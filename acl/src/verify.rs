@@ -12,8 +12,10 @@ use rand::{CryptoRng, RngCore};
 use crate::sign::{SigChall, SigProof, SigSign};
 use crate::{config::ACLConfig, config::KeyPair};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::Zero;
 use ark_std::{ops::Mul, UniformRand};
 use merlin::Transcript;
+use std::default::Default;
 use std::marker::PhantomData;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
@@ -41,6 +43,23 @@ impl<A: ACLConfig> Copy for SigComm<A> {}
 impl<A: ACLConfig> Clone for SigComm<A> {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl<A: ACLConfig> Default for SigComm<A> {
+    fn default() -> Self {
+        Self {
+            comms: sw::Affine::<A>::default(), // Default value for `comms`
+            rand: <A as CurveConfig>::ScalarField::zero(), // Default value for `rand`
+            a: sw::Affine::<A>::default(),     // Default value for `a`
+            a1: sw::Affine::<A>::default(),    // Default value for `a1`
+            a2: sw::Affine::<A>::default(),    // Default value for `a2`
+
+            c: <A as CurveConfig>::ScalarField::zero(), // Default value for `c`
+            u: <A as CurveConfig>::ScalarField::zero(), // Default value for `u`
+            r1: <A as CurveConfig>::ScalarField::zero(), // Default value for `r1`
+            r2: <A as CurveConfig>::ScalarField::zero(), // Default value for `r2`
+        }
     }
 }
 

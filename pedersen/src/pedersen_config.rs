@@ -5,8 +5,10 @@ use ark_ec::{
 };
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::Zero;
 use ark_std::{ops::Mul, UniformRand};
 use rand::{CryptoRng, RngCore};
+use std::default::Default;
 use std::ops;
 
 use sha3::digest::{ExtendableOutput, Update, XofReader};
@@ -317,6 +319,14 @@ impl<P: PedersenConfig> Clone for Generators<P> {
     }
 }
 
+impl<P: PedersenConfig> Default for Generators<P> {
+    fn default() -> Self {
+        Self {
+            generators: Vec::new(), // Default to an empty vector
+        }
+    }
+}
+
 /// PedersenComm. This struct acts as a convenient wrapper for Pedersen Commitments.
 /// At a high-level, this struct is meant to be used whilst producing Pedersen Commitments
 /// on the side of the Prover. Namely, this struct carries around the commitment (as a point, `comm`)
@@ -336,6 +346,15 @@ impl<P: PedersenConfig> Copy for PedersenComm<P> {}
 impl<P: PedersenConfig> Clone for PedersenComm<P> {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+impl<P: PedersenConfig> Default for PedersenComm<P> {
+    fn default() -> Self {
+        Self {
+            comm: sw::Affine::<P>::default(), // Default value for `comm`
+            r: <P as CurveConfig>::ScalarField::zero(), // Default value for `r`
+        }
     }
 }
 

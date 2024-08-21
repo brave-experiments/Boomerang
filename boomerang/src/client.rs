@@ -10,7 +10,7 @@ use ark_ec::{
 use rand::{CryptoRng, RngCore};
 
 use crate::config::{BoomerangConfig, State};
-use crate::server::{CollectionS, IssuanceS, ServerKeyPair, SpendVerifyS};
+use crate::server::{CollectionS, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyS};
 
 use acl::{sign::SigChall, sign::SigProof, sign::SigSign};
 use merlin::Transcript;
@@ -80,10 +80,6 @@ pub struct IssuanceM1<B: BoomerangConfig> {
     pub len: usize,
     /// gens: the generators of the committed values.
     pub gens: Generators<B>,
-    /// Serial Number
-    id_0: <B as CurveConfig>::ScalarField,
-    /// r: the random double-spending tag value.
-    r: <B as CurveConfig>::ScalarField,
 }
 
 /// IssuanceM3. This struct acts as a container for the thrid message of
@@ -94,28 +90,48 @@ pub struct IssuanceM3<B: BoomerangConfig> {
     pub e: SigChall<B>,
 }
 
-/// IssuanceC. This struct represents the issuance protocol for the client.
+/// IssuanceStateC. This struct represents the issuance protocol for the client.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct IssuanceC<B: BoomerangConfig> {
-    /// m1: the first message value.
-    pub m1: IssuanceM1<B>,
-    /// m3: the third message value.
-    pub m3: Option<IssuanceM3<B>>,
+pub struct IssuanceStateC<B: BoomerangConfig> {
+    /// Serial Number
+    id_0: <B as CurveConfig>::ScalarField,
+    /// r: the random double-spending tag value.
+    r: <B as CurveConfig>::ScalarField,
+    /// comm: the commitment value.
+    comm: PedersenComm<B>,
+    /// gens: the generators of the committed values.
+    gens: Generators<B>,
     /// c: the commit value.
-    c: Option<PedersenComm<B>>,
+    c: PedersenComm<B>,
     /// id: the serial number value.
-    id: Option<<B as CurveConfig>::ScalarField>,
+    id: <B as CurveConfig>::ScalarField,
+    /// e: the signature challenge value.
+    e: SigChall<B>,
 }
 
-impl<B: BoomerangConfig> IssuanceC<B> {
+impl<B: BoomerangConfig> IssuanceStateC<B> {
+    /// Creates a new instance of `IssuanceStateC` with default values.
+    pub fn default() -> Self {
+        Self {
+            id_0: <B as CurveConfig>::ScalarField::zero(),
+            r: <B as CurveConfig>::ScalarField::zero(),
+            comm: PedersenComm::default(),
+            gens: Generators::default(),
+            c: PedersenComm::default(),
+            id: <B as CurveConfig>::ScalarField::zero(),
+            e: SigChall::default(),
+        }
+    }
+
     /// generate_issuance_m1. This function generates the first message of the Issuance Protocol.
     /// # Arguments
     /// * `key_pair` - the client's keypair.
     /// * `rng` - the source of randomness.
     pub fn generate_issuance_m1<T: RngCore + CryptoRng>(
         key_pair: &UKeyPair<B>,
+        state: &mut IssuanceStateC<B>,
         rng: &mut T,
-    ) -> IssuanceC<B> {
+    ) -> IssuanceM1<B> {
         let id_0 = <B as CurveConfig>::ScalarField::rand(rng);
         let v = <B as CurveConfig>::ScalarField::zero(); // the token starts with 0
         let r_0 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -128,22 +144,20 @@ impl<B: BoomerangConfig> IssuanceC<B> {
         let mut transcript = Transcript::new(label);
         let proof = IssuanceProofMulti::create(&mut transcript, rng, &vals, &c1, &gens);
 
+        state.id_0 = id_0;
+        state.r = r_0;
+        state.gens = gens.clone();
+        state.comm = c1;
+
         let m1 = IssuanceM1 {
             comm: c1,
             pi_issuance: proof,
             u_pk: key_pair.public_key,
             len: vals.len(),
-            gens,
-            id_0,
-            r: r_0,
+            gens: gens,
         };
 
-        Self {
-            m1,
-            m3: None,
-            c: None,
-            id: None,
-        }
+        m1
     }
 
     /// generate_issuance_m2. This function generates the second message of the Issuance Protocol.
@@ -152,29 +166,30 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     /// * `s_m` - the received server message.
     /// * `rng` - the source of randomness.
     pub fn generate_issuance_m3<T: RngCore + CryptoRng>(
-        c_m: IssuanceC<B>,
-        s_m: IssuanceS<B>,
+        s_m: &IssuanceM2<B>,
+        state: &mut IssuanceStateC<B>,
         rng: &mut T,
-    ) -> IssuanceC<B> {
-        let c = s_m.m2.comm + c_m.m1.comm;
-        let id = s_m.m2.id_1 + c_m.m1.id_0;
+    ) -> IssuanceM3<B> {
+        let c = s_m.comm + state.comm;
+        let id = s_m.id_1 + state.id_0;
 
         let sig_chall = SigChall::challenge(
-            s_m.m2.tag_key,
-            s_m.m2.verifying_key,
+            s_m.tag_key,
+            s_m.verifying_key,
             rng,
-            s_m.m2.sig_commit,
+            s_m.sig_commit,
             "message",
         );
 
-        let m3 = IssuanceM3 { e: sig_chall };
+        let m3 = IssuanceM3 {
+            e: sig_chall.clone(),
+        };
 
-        Self {
-            m1: c_m.m1,
-            m3: Some(m3),
-            c: Some(c),
-            id: Some(id),
-        }
+        state.c = c;
+        state.id = id;
+        state.e = sig_chall.clone();
+
+        m3
     }
 
     /// populate_state. This function populates the local state for the client.
@@ -184,30 +199,30 @@ impl<B: BoomerangConfig> IssuanceC<B> {
     /// * `s_key_pair` - the server's keypair.
     /// * `c_key_pair` - the client's keypair.
     pub fn populate_state(
-        c_m: IssuanceC<B>,
-        s_m: IssuanceS<B>,
+        s_m: &IssuanceM4<B>,
+        state: &mut IssuanceStateC<B>,
         s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            &c_m.m3.unwrap().e,
-            &s_m.m4.unwrap().s,
+            &state.e,
+            &s_m.s,
             "message",
         );
 
         // The comm_state
-        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let commits: Vec<PedersenComm<B>> = vec![state.c];
         // The sig_state
         let sigs: Vec<SigSign<B>> = vec![sig];
         // The state: which contains the tokens
         let token = Token {
-            id: c_m.id.unwrap(),
+            id: state.id,
             v: <B as CurveConfig>::ScalarField::zero(),
             sk: c_key_pair.x,
-            r: c_m.m1.r,
-            gens: c_m.m1.gens,
+            r: state.r,
+            gens: state.gens.clone(),
         };
         let tokens: Vec<Token<B>> = vec![token];
 
@@ -215,7 +230,7 @@ impl<B: BoomerangConfig> IssuanceC<B> {
             comm_state: commits,
             sig_state: sigs,
             token_state: tokens,
-            c_key_pair,
+            c_key_pair: c_key_pair,
         }
     }
 }

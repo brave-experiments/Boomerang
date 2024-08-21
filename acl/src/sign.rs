@@ -14,11 +14,12 @@ use crate::verify::{SigComm, SigResp};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand, Zero};
 use merlin::Transcript;
+use std::default::Default;
 
 pub const CHALLENGE_SIZE: usize = 64;
 
 /// SigChall. This struct acts as a container for the second message (the challenge) of the Signature.
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigChall<A: ACLConfig> {
     /// e: the first message value.
     pub e: <A as CurveConfig>::ScalarField,
@@ -34,6 +35,44 @@ pub struct SigChall<A: ACLConfig> {
     t3: <A as CurveConfig>::ScalarField,
     t4: <A as CurveConfig>::ScalarField,
     t5: <A as CurveConfig>::ScalarField,
+}
+
+impl<A: ACLConfig> Clone for SigChall<A> {
+    fn clone(&self) -> Self {
+        SigChall {
+            e: self.e.clone(),
+            zeta: self.zeta.clone(),
+            zeta1: self.zeta1.clone(),
+            zeta2: self.zeta2.clone(),
+            gamma: self.gamma.clone(),
+            rand: self.rand.clone(),
+            tau: self.tau.clone(),
+            t1: self.t1.clone(),
+            t2: self.t2.clone(),
+            t3: self.t3.clone(),
+            t4: self.t4.clone(),
+            t5: self.t5.clone(),
+        }
+    }
+}
+
+impl<P: ACLConfig> Default for SigChall<P> {
+    fn default() -> Self {
+        Self {
+            e: <P as CurveConfig>::ScalarField::zero(), // Default value for `e`
+            zeta: sw::Affine::<P>::default(),           // Default value for `zeta`
+            zeta1: sw::Affine::<P>::default(),          // Default value for `zeta1`
+            zeta2: sw::Affine::<P>::default(),          // Default value for `zeta2`
+            gamma: <P as CurveConfig>::ScalarField::zero(), // Default value for `gamma`
+            rand: <P as CurveConfig>::ScalarField::zero(), // Default value for `rand`
+            tau: <P as CurveConfig>::ScalarField::zero(), // Default value for `tau`
+            t1: <P as CurveConfig>::ScalarField::zero(), // Default value for `t1`
+            t2: <P as CurveConfig>::ScalarField::zero(), // Default value for `t2`
+            t3: <P as CurveConfig>::ScalarField::zero(), // Default value for `t3`
+            t4: <P as CurveConfig>::ScalarField::zero(), // Default value for `t4`
+            t5: <P as CurveConfig>::ScalarField::zero(), // Default value for `t5`
+        }
+    }
 }
 
 impl<A: ACLConfig> SigChall<A> {
