@@ -40,18 +40,18 @@ pub struct SigChall<A: ACLConfig> {
 impl<A: ACLConfig> Clone for SigChall<A> {
     fn clone(&self) -> Self {
         SigChall {
-            e: self.e.clone(),
-            zeta: self.zeta.clone(),
-            zeta1: self.zeta1.clone(),
-            zeta2: self.zeta2.clone(),
-            gamma: self.gamma.clone(),
-            rand: self.rand.clone(),
-            tau: self.tau.clone(),
-            t1: self.t1.clone(),
-            t2: self.t2.clone(),
-            t3: self.t3.clone(),
-            t4: self.t4.clone(),
-            t5: self.t5.clone(),
+            e: self.e,
+            zeta: self.zeta,
+            zeta1: self.zeta1,
+            zeta2: self.zeta2,
+            gamma: self.gamma,
+            rand: self.rand,
+            tau: self.tau,
+            t1: self.t1,
+            t2: self.t2,
+            t3: self.t3,
+            t4: self.t4,
+            t5: self.t5,
         }
     }
 }

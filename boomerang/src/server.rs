@@ -174,9 +174,8 @@ impl<B: BoomerangConfig> IssuanceStateS<B> {
         key_pair: &ServerKeyPair<B>,
     ) -> IssuanceM4<B> {
         let sig_resp = SigResp::respond(&key_pair.s_key_pair, &state.sig_commit, &c_m.e);
-        let m4 = IssuanceM4 { s: sig_resp };
 
-        m4
+        IssuanceM4 { s: sig_resp }
     }
 }
 

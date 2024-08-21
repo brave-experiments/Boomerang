@@ -127,14 +127,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let m4_bytes = m3_response.bytes().await?;
             let mut m4_slice = &m4_bytes[..];
-            let m4: IBSM4 = IBSM4::deserialize_compressed(&mut m4_slice)
+            let _m4: IBSM4 = IBSM4::deserialize_compressed(&mut m4_slice)
                 .expect("Failed to deserialize Issuance M4");
             println!("Successfully received m4 from the server.");
 
             let remaining_bytes = m4_slice;
 
             // Deserialize the SKP part from the remaining bytes
-            let skp = ServerKeyPair::<Config>::deserialize_compressed(&mut &remaining_bytes[..])
+            let _skp = ServerKeyPair::<Config>::deserialize_compressed(&mut &remaining_bytes[..])
                 .expect("Failed to deserialize server's KeyPair");
 
             println!("Successfully received m4 and skp from the server.");

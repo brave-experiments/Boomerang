@@ -111,6 +111,7 @@ pub struct IssuanceStateC<B: BoomerangConfig> {
 
 impl<B: BoomerangConfig> IssuanceStateC<B> {
     /// Creates a new instance of `IssuanceStateC` with default values.
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         Self {
             id_0: <B as CurveConfig>::ScalarField::zero(),
@@ -149,15 +150,13 @@ impl<B: BoomerangConfig> IssuanceStateC<B> {
         state.gens = gens.clone();
         state.comm = c1;
 
-        let m1 = IssuanceM1 {
+        IssuanceM1 {
             comm: c1,
             pi_issuance: proof,
             u_pk: key_pair.public_key,
             len: vals.len(),
-            gens: gens,
-        };
-
-        m1
+            gens,
+        }
     }
 
     /// generate_issuance_m2. This function generates the second message of the Issuance Protocol.
@@ -230,7 +229,7 @@ impl<B: BoomerangConfig> IssuanceStateC<B> {
             comm_state: commits,
             sig_state: sigs,
             token_state: tokens,
-            c_key_pair: c_key_pair,
+            c_key_pair,
         }
     }
 }
