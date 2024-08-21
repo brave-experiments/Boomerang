@@ -12,8 +12,6 @@ use boomerang::client::UKeyPair;
 use boomerang::client::{IssuanceM3, IssuanceStateC};
 use boomerang::server::ServerKeyPair;
 use boomerang::server::{IssuanceM2, IssuanceM4, IssuanceStateS};
-use lazy_static::lazy_static;
-use std::sync::Mutex;
 use t256::Config;
 
 type CBKP = UKeyPair<Config>;
@@ -34,10 +32,6 @@ enum MessageType {
 struct Message {
     msg_type: MessageType,
     data: Vec<u8>,
-}
-
-lazy_static! {
-    static ref M3_BYTES_C: Mutex<Vec<u8>> = Mutex::new(Vec::new());
 }
 
 #[tokio::main]
@@ -116,9 +110,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let mut m3_bytes = Vec::new();
         m3.serialize_compressed(&mut m3_bytes).unwrap();
 
-        let mut m3_bytes_c = M3_BYTES_C.lock().unwrap();
-        m3_bytes_c.clone_from(&m3_bytes);
-
         let m3_message = Message {
             msg_type: MessageType::M3,
             data: m3_bytes,
@@ -135,15 +126,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
             println!("Successfully sent m3 to the server.");
 
             let m4_bytes = m3_response.bytes().await?;
-            let _m4: IBSM4 = IBSM4::deserialize_compressed(&mut m4_bytes.as_ref())
+            let mut m4_slice = &m4_bytes[..];
+            let m4: IBSM4 = IBSM4::deserialize_compressed(&mut m4_slice)
                 .expect("Failed to deserialize Issuance M4");
             println!("Successfully received m4 from the server.");
 
-            let _m3: IBCM3 = IBCM3::deserialize_compressed::<&[u8]>(m3_bytes_c.as_ref())
-                .expect("Failed to deserialize compressed Issuance M2");
+            let remaining_bytes = m4_slice;
 
-            //let skp = SBKP::generate(&mut rng); // FIX
-            //let state = IBCM::populate_state(m3.clone(), m4.clone(), &skp, kp.clone());
+            // Deserialize the SKP part from the remaining bytes
+            let skp = ServerKeyPair::<Config>::deserialize_compressed(&mut &remaining_bytes[..])
+                .expect("Failed to deserialize server's KeyPair");
+
+            println!("Successfully received m4 and skp from the server.");
+
+            //let _p_state = IBCM::populate_state(&m4, &mut state, &skp, kp.clone());
 
             println!("Issuance state fullfilled!");
         } else {

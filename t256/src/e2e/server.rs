@@ -149,11 +149,20 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             m4.serialize_compressed(&mut m4_bytes)
                 .expect("Failed to serialize Issuance M4");
 
+            // Serialize SKP
+            let mut skp_bytes = Vec::new();
+            skp.serialize_compressed(&mut skp_bytes)
+                .expect("Failed to serialize ServerKeyPair");
+
+            let mut response_bytes = Vec::new();
+            response_bytes.extend_from_slice(&m4_bytes);
+            response_bytes.extend_from_slice(&skp_bytes);
             println!("Sending M4...");
 
+            println!("client m4 {:?}", response_bytes);
             Ok(Response::builder()
                 .status(StatusCode::OK)
-                .body(Body::from(m4_bytes))
+                .body(Body::from(response_bytes))
                 .expect("Failed to create response"))
         }
     }

@@ -23,6 +23,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, Zero};
 
 use std::default::Default;
+use std::fmt;
 
 /// Server keypair.
 ///
@@ -62,6 +63,15 @@ impl<B: BoomerangConfig> ServerKeyPair<B> {
     /// Server tag key
     pub const fn tag_key(&self) -> &sw::Affine<B> {
         &self.s_key_pair.tag_key
+    }
+}
+
+impl<B: BoomerangConfig> fmt::Debug for ServerKeyPair<B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServerKeyPair")
+            .field("public_key", self.public_key())
+            .field("tag_key", self.tag_key())
+            .finish()
     }
 }
 
