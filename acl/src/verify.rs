@@ -16,7 +16,6 @@ use ark_std::Zero;
 use ark_std::{ops::Mul, UniformRand};
 use merlin::Transcript;
 use std::default::Default;
-use std::fmt;
 use std::marker::PhantomData;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.

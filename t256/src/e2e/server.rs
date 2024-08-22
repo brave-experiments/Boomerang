@@ -19,10 +19,12 @@ use std::sync::Mutex;
 use std::{net::SocketAddr, path::PathBuf};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use ark_ec::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::One;
 
-use boomerang::client::{IssuanceM1, IssuanceM3, IssuanceStateC};
-use boomerang::server::ServerKeyPair;
+use boomerang::client::{CollectionM2, CollectionM4, IssuanceM1, IssuanceM3, IssuanceStateC};
+use boomerang::server::{CollectionM3, CollectionStateS, ServerKeyPair};
 use boomerang::server::{IssuanceM2, IssuanceStateS};
 use t256::Config;
 
@@ -42,10 +44,17 @@ type IBCM1 = IssuanceM1<Config>;
 type IBSM2 = IssuanceM2<Config>;
 type IBCM3 = IssuanceM3<Config>;
 
+type CBSM = CollectionStateS<Config>;
+type CBSM3 = CollectionM3<Config>;
+type CBCM2 = CollectionM2<Config>;
+type CBCM4 = CollectionM4<Config>;
+
 #[derive(Serialize, Deserialize)]
 enum MessageType {
     M1,
     M3,
+    M6,
+    M10,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -105,6 +114,7 @@ lazy_static! {
         Some(SBKP::generate(&mut rng))
     });
     static ref IBSM_DEFAULT: Mutex<IBSM> = Mutex::new(IBSM::default());
+    static ref CBSM_DEFAULT: Mutex<CBSM> = Mutex::new(CBSM::default());
 }
 
 async fn post_handler(body: Body) -> Result<Response, Infallible> {
@@ -120,6 +130,9 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
 
     let mut ibsm_lock = IBSM_DEFAULT.lock().unwrap();
     let mut s_state = ibsm_lock.clone();
+
+    let mut cbsm_lock = CBSM_DEFAULT.lock().unwrap();
+    let mut col_state = cbsm_lock.clone();
 
     match message.msg_type {
         MessageType::M1 => {
@@ -158,14 +171,82 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             skp.serialize_compressed(&mut skp_bytes)
                 .expect("Failed to serialize ServerKeyPair");
 
+            // Also send the collection-procedure first message
+            let collection_m1 =
+                CollectionStateS::<Config>::generate_collection_m1(&mut rng, &mut col_state);
+            *cbsm_lock = col_state;
+
+            let mut m1_c_bytes = Vec::new();
+            collection_m1
+                .serialize_compressed(&mut m1_c_bytes)
+                .expect("Failed to serialize Collection M1");
+            println!(
+                "Bytes sent collection: (m1_message_bytes): {}",
+                m1_c_bytes.len()
+            );
+
             let mut response_bytes = Vec::new();
             response_bytes.extend_from_slice(&m4_bytes);
             response_bytes.extend_from_slice(&skp_bytes);
-            println!("Sending M4...");
+            response_bytes.extend_from_slice(&m1_c_bytes);
+
+            println!("Sending M4 and first of Collection...");
 
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .body(Body::from(response_bytes))
+                .expect("Failed to create response"))
+        }
+        MessageType::M6 => {
+            println!("Received m2 message of collection, processing...");
+
+            let m7: CBCM2 = CBCM2::deserialize_compressed(&mut message.data.as_slice())
+                .expect("Failed to deserialize compressed Collection M2");
+
+            let v = <Config as CurveConfig>::ScalarField::one();
+            let m8 = CollectionStateS::<Config>::generate_collection_m3(
+                &mut rng,
+                &m7,
+                &mut col_state,
+                skp,
+                v,
+            );
+
+            *cbsm_lock = col_state;
+
+            let mut m8_bytes = Vec::new();
+            m8.serialize_compressed(&mut m8_bytes)
+                .expect("Failed to serialize Collection M3");
+            println!(
+                "Bytes sent collection: (m3_message_bytes): {}",
+                m8_bytes.len()
+            );
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(m8_bytes))
+                .expect("Failed to create response"))
+        }
+        MessageType::M10 => {
+            println!("Received m4 message of collection, processing...");
+
+            let m10: CBCM4 = CBCM4::deserialize_compressed(&mut message.data.as_slice())
+                .expect("Failed to deserialize compressed Collection M4");
+
+            let m11 = CBSM::generate_collection_m5(&m10, &mut col_state, skp);
+            *cbsm_lock = col_state;
+
+            let mut m11_bytes = Vec::new();
+            m11.serialize_compressed(&mut m11_bytes)
+                .expect("Failed to serialize Collection M5");
+            println!(
+                "Bytes sent collection: (m5_message_bytes): {}",
+                m11_bytes.len()
+            );
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(m11_bytes))
                 .expect("Failed to create response"))
         }
     }
