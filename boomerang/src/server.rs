@@ -228,12 +228,14 @@ pub struct CollectionM5<B: BoomerangConfig> {
 }
 
 /// CollectionS. This struct represents the collection protocol for the server.
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone)]
 pub struct CollectionStateS<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
-    pub r2: <B as CurveConfig>::ScalarField,
+    r2: <B as CurveConfig>::ScalarField,
     /// sig_commit: the first signature value.
-    pub sig_commit: SigComm<B>,
+    sig_commit: SigComm<B>,
+    /// db: the db of tags.
+    db: Vec<ServerTag<B>>,
 }
 
 impl<B: BoomerangConfig> Default for CollectionStateS<B> {
@@ -241,6 +243,7 @@ impl<B: BoomerangConfig> Default for CollectionStateS<B> {
         Self {
             r2: <B as CurveConfig>::ScalarField::zero(),
             sig_commit: SigComm::<B>::default(),
+            db: Vec::new(),
         }
     }
 }
@@ -323,13 +326,6 @@ impl<B: BoomerangConfig> CollectionStateS<B> {
         }
 
         // TODO: verify the membership proof
-        #[allow(unused_variables)]
-        let dtag: ServerTag<B> = ServerTag {
-            tag: c_m.tag,
-            id_0: c_m.id,
-            r2: col_state.r2,
-        }; // TODO: this needs to be stored by the server and check regularly
-
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
         let v2 = <B as CurveConfig>::ScalarField::zero();
         let v3 = <B as CurveConfig>::ScalarField::zero();
@@ -340,7 +336,14 @@ impl<B: BoomerangConfig> CollectionStateS<B> {
 
         let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
 
+        let dtag: ServerTag<B> = ServerTag {
+            tag: c_m.tag,
+            id_0: c_m.id,
+            r2: col_state.r2,
+        };
+
         col_state.sig_commit = sig_comm;
+        col_state.db.push(dtag);
 
         CollectionM3 {
             id_1,

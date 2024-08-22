@@ -93,7 +93,7 @@ pub struct IssuanceM3<B: BoomerangConfig> {
 }
 
 /// IssuanceStateC. This struct represents the issuance protocol for the client.
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone)]
 pub struct IssuanceStateC<B: BoomerangConfig> {
     /// Serial Number
     id_0: <B as CurveConfig>::ScalarField,
@@ -276,7 +276,7 @@ pub struct CollectionM4<B: BoomerangConfig> {
 }
 
 /// CollectionStateC. This struct represents the collection protocol for the client.
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone)]
 pub struct CollectionStateC<B: BoomerangConfig> {
     /// c: the final commit value.
     c: PedersenComm<B>,
