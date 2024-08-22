@@ -94,7 +94,7 @@ pub struct IssuanceM2<B: BoomerangConfig> {
 
 /// IssuanceM4. This struct acts as a container for the fourth message of
 /// the issuance protocol.
-#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct IssuanceM4<B: BoomerangConfig> {
     /// s: the signature response value.
     pub s: SigResp<B>,

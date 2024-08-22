@@ -118,7 +118,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
         .as_ref()
         .expect("ServerKeyPair should be initialized");
 
-    let ibsm_lock = IBSM_DEFAULT.lock().unwrap();
+    let mut ibsm_lock = IBSM_DEFAULT.lock().unwrap();
     let mut s_state = ibsm_lock.clone();
 
     match message.msg_type {
@@ -133,6 +133,8 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             m2.serialize_compressed(&mut m2_bytes)
                 .expect("Failed to serialize Issuance M2");
             println!("Bytes sent (m2_message_bytes): {}", m2_bytes.len());
+
+            *ibsm_lock = s_state;
 
             Ok(Response::builder()
                 .status(StatusCode::OK)

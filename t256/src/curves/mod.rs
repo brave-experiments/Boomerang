@@ -21,7 +21,7 @@ mod tests;
 pub type Affine = sw::Affine<Config>;
 pub type Projective = sw::Projective<Config>;
 
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
 pub struct Config;
 
 impl CurveConfig for Config {

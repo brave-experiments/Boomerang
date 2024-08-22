@@ -16,6 +16,7 @@ use ark_std::Zero;
 use ark_std::{ops::Mul, UniformRand};
 use merlin::Transcript;
 use std::default::Default;
+use std::fmt;
 use std::marker::PhantomData;
 
 /// SigComm. This struct acts as a container for the first message (the commitment) of the Signature.
@@ -99,7 +100,7 @@ impl<A: ACLConfig> SigComm<A> {
 }
 
 /// SigResp. This struct acts as a container for the third message (the response) of the Signature.
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SigResp<A: ACLConfig> {
     /// c: the first message value.
     pub c: <A as CurveConfig>::ScalarField,
