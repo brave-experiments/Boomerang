@@ -7,8 +7,8 @@ macro_rules! __test_boomerang {
         type SBKP = ServerKeyPair<$boomerangconfig>;
         type IBCM = IssuanceStateC<$boomerangconfig>;
         type IBSM = IssuanceStateS<$boomerangconfig>;
-        type CBCM = CollectionC<$boomerangconfig>;
-        type CBSM = CollectionS<$boomerangconfig>;
+        type CBCM = CollectionStateC<$boomerangconfig>;
+        type CBSM = CollectionStateS<$boomerangconfig>;
         type SVBCM = SpendVerifyC<$boomerangconfig>;
         type SVBSM = SpendVerifyS<$boomerangconfig>;
         type ACLKP = KeyPair<$aclconfig>;
@@ -30,7 +30,7 @@ macro_rules! __test_boomerang {
             <<$config as PedersenConfig>::OCurve as SWCurveConfig>::GENERATOR;
 
         #[test]
-        fn test_boomerang_m1() {
+        fn test_boomerang_issuance_m1() {
             // Test the first message of the boomerang scheme.
             let ckp = CBKP::generate(&mut OsRng);
             assert!(ckp.public_key.is_on_curve());
@@ -41,7 +41,7 @@ macro_rules! __test_boomerang {
         }
 
         #[test]
-        fn test_boomerang_m2() {
+        fn test_boomerang_issuance_m2() {
             // Test the second message of the boomerang scheme.
             let ckp = CBKP::generate(&mut OsRng);
             assert!(ckp.public_key.is_on_curve());
@@ -62,7 +62,7 @@ macro_rules! __test_boomerang {
         }
 
         #[test]
-        fn test_boomerang_m3() {
+        fn test_boomerang_issuance_m3() {
             // Test the third message of the boomerang scheme.
             let ckp = CBKP::generate(&mut OsRng);
             assert!(ckp.public_key.is_on_curve());
@@ -85,7 +85,7 @@ macro_rules! __test_boomerang {
         }
 
         #[test]
-        fn test_boomerang_m4() {
+        fn test_boomerang_issuance_m4() {
             // Test the fourth message of the boomerang scheme.
             let ckp = CBKP::generate(&mut OsRng);
             assert!(ckp.public_key.is_on_curve());
@@ -187,11 +187,19 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
-            let collection_m2 =
-                CBCM::generate_collection_m2(&mut OsRng, issuance_state, collection_m1, &skp);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            let mut c_col_state = CBCM::default();
+            let collection_m2 = CBCM::generate_collection_m2(
+                &mut OsRng,
+                issuance_state,
+                &collection_m1,
+                &mut c_col_state,
+                &skp,
+            );
+
+            assert!(collection_m2.comm.comm.is_on_curve());
         }
 
         #[test]
@@ -233,26 +241,25 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
             let v = SF::one();
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2,
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
         }
 
         #[test]
@@ -293,42 +300,34 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
             let v = SF::one();
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
 
-            let collection_m4 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m3.clone(),
-            );
+            let collection_m4 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state, &collection_m3);
 
             let collection_m5 =
-                CBSM::generate_collection_m5(collection_m4.clone(), collection_m3.clone(), &skp);
+                CBSM::generate_collection_m5(&collection_m4, &mut s_col_state, &skp);
 
-            let collection_state = CBCM::populate_state(
-                collection_m4.clone(),
-                collection_m5.clone(),
-                &skp,
-                ckp.clone(),
-            );
+            let collection_state =
+                CBCM::populate_state(&mut c_col_state, &collection_m5, &skp, ckp.clone());
 
             assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
             assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
@@ -382,45 +381,34 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
             let v = SF::one();
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
 
-            let collection_m4 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m3.clone(),
-            );
+            let collection_m4 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state, &collection_m3);
 
             let collection_m5 =
-                CBSM::generate_collection_m5(collection_m4.clone(), collection_m3.clone(), &skp);
+                CBSM::generate_collection_m5(&collection_m4, &mut s_col_state, &skp);
 
-            let collection_state = CBCM::populate_state(
-                collection_m4.clone(),
-                collection_m5.clone(),
-                &skp,
-                ckp.clone(),
-            );
-
-            assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
-            assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
+            let collection_state =
+                CBCM::populate_state(&mut c_col_state, &collection_m5, &skp, ckp.clone());
 
             let sig_n = &collection_state.sig_state[0];
 
@@ -432,45 +420,39 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1_2 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state_2 = CBSM::default();
+            let collection_m1_2 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state_2);
+
+            let mut c_col_state_2 = CBCM::default();
             let collection_m2_2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 collection_state,
-                collection_m1_2.clone(),
+                &collection_m1_2,
+                &mut c_col_state_2,
                 &skp,
             );
 
-            assert!(collection_m2_2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2_2.comm.comm.is_on_curve());
 
-            let v_2 = SF::one();
+            let v = SF::one();
             let collection_m3_2 = CBSM::generate_collection_m3(
                 &mut OsRng,
-                collection_m2_2.clone(),
-                collection_m1_2.clone(),
+                &collection_m2_2,
+                &mut s_col_state_2,
                 &skp,
-                v_2,
+                v,
             );
 
-            assert!(collection_m3_2.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3_2.comm.comm.is_on_curve());
 
-            let collection_m4_2 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2_2.clone(),
-                collection_m3_2.clone(),
-            );
+            let collection_m4_2 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state_2, &collection_m3_2);
 
-            let collection_m5_2 = CBSM::generate_collection_m5(
-                collection_m4_2.clone(),
-                collection_m3_2.clone(),
-                &skp,
-            );
+            let collection_m5_2 =
+                CBSM::generate_collection_m5(&collection_m4_2, &mut s_col_state_2, &skp);
 
-            let collection_state_2 = CBCM::populate_state(
-                collection_m4_2.clone(),
-                collection_m5_2.clone(),
-                &skp,
-                ckp.clone(),
-            );
+            let collection_state_2 =
+                CBCM::populate_state(&mut c_col_state_2, &collection_m5_2, &skp, ckp.clone());
 
             assert!(collection_state_2.sig_state[0].sigma.zeta.is_on_curve());
             assert!(collection_state_2.sig_state[0].sigma.zeta1.is_on_curve());
@@ -524,42 +506,34 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
-            let v = SF::zero(); // FIX
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let v = SF::one();
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
 
-            let collection_m4 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m3.clone(),
-            );
+            let collection_m4 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state, &collection_m3);
 
             let collection_m5 =
-                CBSM::generate_collection_m5(collection_m4.clone(), collection_m3.clone(), &skp);
+                CBSM::generate_collection_m5(&collection_m4, &mut s_col_state, &skp);
 
-            let collection_state = CBCM::populate_state(
-                collection_m4.clone(),
-                collection_m5.clone(),
-                &skp,
-                ckp.clone(),
-            );
+            let collection_state =
+                CBCM::populate_state(&mut c_col_state, &collection_m5, &skp, ckp.clone());
 
             assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
             assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
@@ -627,42 +601,34 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
-            let v = SF::zero(); // FIX
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let v = SF::one();
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
 
-            let collection_m4 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m3.clone(),
-            );
+            let collection_m4 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state, &collection_m3);
 
             let collection_m5 =
-                CBSM::generate_collection_m5(collection_m4.clone(), collection_m3.clone(), &skp);
+                CBSM::generate_collection_m5(&collection_m4, &mut s_col_state, &skp);
 
-            let collection_state = CBCM::populate_state(
-                collection_m4.clone(),
-                collection_m5.clone(),
-                &skp,
-                ckp.clone(),
-            );
+            let collection_state =
+                CBCM::populate_state(&mut c_col_state, &collection_m5, &skp, ckp.clone());
 
             assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
             assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
@@ -747,42 +713,34 @@ macro_rules! __test_boomerang {
             );
             assert!(check == true);
 
-            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng);
+            let mut s_col_state = CBSM::default();
+            let collection_m1 = CBSM::generate_collection_m1(&mut OsRng, &mut s_col_state);
+
+            let mut c_col_state = CBCM::default();
             let collection_m2 = CBCM::generate_collection_m2(
                 &mut OsRng,
                 issuance_state,
-                collection_m1.clone(),
+                &collection_m1,
+                &mut c_col_state,
                 &skp,
             );
 
-            assert!(collection_m2.m2.comm.comm.is_on_curve());
+            assert!(collection_m2.comm.comm.is_on_curve());
 
-            let v = SF::zero(); // FIX
-            let collection_m3 = CBSM::generate_collection_m3(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m1.clone(),
-                &skp,
-                v,
-            );
+            let v = SF::one();
+            let collection_m3 =
+                CBSM::generate_collection_m3(&mut OsRng, &collection_m2, &mut s_col_state, &skp, v);
 
-            assert!(collection_m3.m3.clone().unwrap().comm.comm.is_on_curve());
+            assert!(collection_m3.comm.comm.is_on_curve());
 
-            let collection_m4 = CBCM::generate_collection_m4(
-                &mut OsRng,
-                collection_m2.clone(),
-                collection_m3.clone(),
-            );
+            let collection_m4 =
+                CBCM::generate_collection_m4(&mut OsRng, &mut c_col_state, &collection_m3);
 
             let collection_m5 =
-                CBSM::generate_collection_m5(collection_m4.clone(), collection_m3.clone(), &skp);
+                CBSM::generate_collection_m5(&collection_m4, &mut s_col_state, &skp);
 
-            let collection_state = CBCM::populate_state(
-                collection_m4.clone(),
-                collection_m5.clone(),
-                &skp,
-                ckp.clone(),
-            );
+            let collection_state =
+                CBCM::populate_state(&mut c_col_state, &collection_m5, &skp, ckp.clone());
 
             assert!(collection_state.sig_state[0].sigma.zeta.is_on_curve());
             assert!(collection_state.sig_state[0].sigma.zeta1.is_on_curve());
@@ -866,8 +824,8 @@ macro_rules! test_boomerang {
                 verify::SigVerify,
             };
             use ::boomerang::{
-                client::CollectionC, client::IssuanceStateC, client::SpendVerifyC,
-                client::UKeyPair, config::BoomerangConfig, server::CollectionS,
+                client::CollectionStateC, client::IssuanceStateC, client::SpendVerifyC,
+                client::UKeyPair, config::BoomerangConfig, server::CollectionStateS,
                 server::IssuanceStateS, server::ServerKeyPair, server::SpendVerifyS,
             };
             use ark_ec::{

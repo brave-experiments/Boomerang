@@ -10,7 +10,9 @@ use ark_ec::{
 use rand::{CryptoRng, RngCore};
 
 use crate::config::{BoomerangConfig, State};
-use crate::server::{CollectionS, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyS};
+use crate::server::{
+    CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyS,
+};
 
 use acl::{sign::SigChall, sign::SigProof, sign::SigSign};
 use merlin::Transcript;
@@ -263,10 +265,6 @@ pub struct CollectionM2<B: BoomerangConfig> {
     pub s_proof: SigProof<B>,
     /// tag_commits: the commits for the tag proof
     pub tag_commits: Vec<PedersenComm<B>>,
-    /// r: the random double-spending tag value.
-    r: <B as CurveConfig>::ScalarField,
-    /// val: the underlying value of the token.
-    val: <B as CurveConfig>::ScalarField,
 }
 
 /// CollectionM4. This struct acts as a container for the fourth message of
@@ -277,35 +275,60 @@ pub struct CollectionM4<B: BoomerangConfig> {
     pub e: SigChall<B>,
 }
 
-/// CollectionC. This struct represents the collection protocol for the client.
+/// CollectionStateC. This struct represents the collection protocol for the client.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CollectionC<B: BoomerangConfig> {
-    /// m2: the second message value.
-    pub m2: CollectionM2<B>,
-    /// m4: the fourth message value.
-    pub m4: Option<CollectionM4<B>>,
-    /// c: the commit value.
-    c: Option<PedersenComm<B>>,
+pub struct CollectionStateC<B: BoomerangConfig> {
+    /// c: the final commit value.
+    c: PedersenComm<B>,
     /// id: the serial number value.
-    id: Option<<B as CurveConfig>::ScalarField>,
+    id: <B as CurveConfig>::ScalarField,
     /// val: the underlying value.
-    val: Option<<B as CurveConfig>::ScalarField>,
+    val: <B as CurveConfig>::ScalarField,
+    /// comm: the initial commitment value.
+    comm: PedersenComm<B>,
+    /// gens: the generators of the commitment value.
+    gens: Generators<B>,
+    /// id_0: the serial number value.
+    id_0: <B as CurveConfig>::ScalarField,
+    /// r: the random double-spending tag value.
+    r: <B as CurveConfig>::ScalarField,
+    /// val: the underlying value of the token.
+    val_0: <B as CurveConfig>::ScalarField,
+    /// e: the signature challenge value.
+    e: SigChall<B>,
 }
 
-impl<B: BoomerangConfig> CollectionC<B> {
+impl<B: BoomerangConfig> CollectionStateC<B> {
+    #[allow(clippy::should_implement_trait)]
+    pub fn default() -> Self {
+        Self {
+            c: PedersenComm::default(),
+            id: <B as CurveConfig>::ScalarField::zero(),
+            val: <B as CurveConfig>::ScalarField::zero(),
+            comm: PedersenComm::default(),
+            gens: Generators::default(),
+            id_0: <B as CurveConfig>::ScalarField::zero(),
+            r: <B as CurveConfig>::ScalarField::zero(),
+            val_0: <B as CurveConfig>::ScalarField::zero(),
+            e: SigChall::default(),
+        }
+    }
+
     /// generate_collection_m2. This function generates the second message of
     /// the Collection Protocol.
     /// # Arguments
     /// * `rng` - the source of randomness.
     /// * `state` - the local client state.
     /// * `s_m` - the received server message.
+    /// * `col_state` - the tmp local client state.
     /// * `s_key_pair` - the server's keypair.
     pub fn generate_collection_m2<T: RngCore + CryptoRng>(
         rng: &mut T,
         state: State<B>,
-        s_m: CollectionS<B>,
+        s_m: &CollectionM1<B>,
+        col_state: &mut CollectionStateC<B>,
         s_key_pair: &ServerKeyPair<B>,
-    ) -> CollectionC<B> {
+    ) -> CollectionM2<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
 
@@ -336,11 +359,11 @@ impl<B: BoomerangConfig> CollectionC<B> {
         );
 
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
-        let tag = t_tag + s_m.m1.r2;
+        let tag = t_tag + s_m.r2;
 
         let a: PedersenComm<B> = PedersenComm::new(state.c_key_pair.x, rng);
         let b: PedersenComm<B> = PedersenComm::new(state.token_state[0].id, rng);
-        let c: PedersenComm<B> = PedersenComm::new(s_m.m1.r2, rng);
+        let c: PedersenComm<B> = PedersenComm::new(s_m.r2, rng);
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
 
@@ -351,7 +374,7 @@ impl<B: BoomerangConfig> CollectionC<B> {
             rng,
             &state.c_key_pair.x,
             &state.token_state[0].id,
-            &s_m.m1.r2,
+            &s_m.r2,
             &a,
             &b,
             &c,
@@ -371,30 +394,25 @@ impl<B: BoomerangConfig> CollectionC<B> {
             state.comm_state[0].r,
         );
 
-        let m2 = CollectionM2 {
+        col_state.id_0 = id1;
+        col_state.val_0 = state.token_state[0].v;
+        col_state.comm = c1;
+        col_state.r = r1;
+        col_state.gens = gens.clone();
+
+        CollectionM2 {
             comm: c1,
-            gens,
+            gens: gens.clone(),
             prev_comm: state.comm_state[0],
             prev_gens: state.token_state[0].gens.clone(),
             pi_1: proof_1,
             pi_2: proof_2,
             pi_3: proof_3,
             tag,
-            //id: state.token_state[0].id,
             id: id1,
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
             tag_commits,
-            r: r1,
-            val: state.token_state[0].v,
-        };
-
-        Self {
-            m2,
-            m4: None,
-            c: None,
-            id: None,
-            val: None,
         }
     }
 
@@ -406,26 +424,28 @@ impl<B: BoomerangConfig> CollectionC<B> {
     /// * `s_m` - the received server message.
     pub fn generate_collection_m4<T: RngCore + CryptoRng>(
         rng: &mut T,
-        c_m: CollectionC<B>,
-        s_m: CollectionS<B>,
-    ) -> CollectionC<B> {
-        let m3 = s_m.m3.clone().unwrap();
+        col_state: &mut CollectionStateC<B>,
+        s_m: &CollectionM3<B>,
+    ) -> CollectionM4<B> {
+        let c = s_m.comm + col_state.comm;
+        let id = s_m.id_1 + col_state.id_0;
+        let val = s_m.val + col_state.val_0;
 
-        let c = m3.comm + c_m.m2.comm;
-        let id = m3.id_1 + c_m.m2.id;
-        let val = m3.val + c_m.m2.val;
+        let sig_chall = SigChall::challenge(
+            s_m.tag_key,
+            s_m.verifying_key,
+            rng,
+            s_m.sig_commit,
+            "message",
+        );
 
-        let sig_chall =
-            SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
+        col_state.id = id;
+        col_state.val = val;
+        col_state.c = c;
+        col_state.e = sig_chall.clone();
 
-        let m4 = CollectionM4 { e: sig_chall };
-
-        Self {
-            m2: c_m.m2,
-            m4: Some(m4),
-            c: Some(c),
-            id: Some(id),
-            val: Some(val),
+        CollectionM4 {
+            e: sig_chall.clone(),
         }
     }
 
@@ -436,27 +456,27 @@ impl<B: BoomerangConfig> CollectionC<B> {
     /// * `s_key_pair` - the server's keypair.
     /// * `c_key_pair` - the client's keypair.
     pub fn populate_state(
-        c_m: CollectionC<B>,
-        s_m: CollectionS<B>,
+        col_state: &mut CollectionStateC<B>,
+        s_m: &CollectionM5<B>,
         s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            &c_m.m4.unwrap().e,
-            &s_m.m5.unwrap().s,
+            &col_state.e,
+            &s_m.s,
             "message",
         );
 
-        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let commits: Vec<PedersenComm<B>> = vec![col_state.c];
         let sigs: Vec<SigSign<B>> = vec![sig];
         let token = Token {
-            id: c_m.id.unwrap(),
-            v: c_m.val.unwrap(),
+            id: col_state.id,
+            v: col_state.val,
             sk: c_key_pair.x,
-            r: c_m.m2.r,
-            gens: c_m.m2.gens,
+            r: col_state.r,
+            gens: col_state.gens.clone(),
         };
 
         let tokens: Vec<Token<B>> = vec![token];

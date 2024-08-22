@@ -8,7 +8,7 @@ use ark_ec::{
 };
 use rand::{CryptoRng, RngCore};
 
-use crate::client::{CollectionC, IssuanceM1, IssuanceM3, SpendVerifyC};
+use crate::client::{CollectionM2, CollectionM4, IssuanceM1, IssuanceM3, SpendVerifyC};
 use crate::config::BoomerangConfig;
 
 use acl::{
@@ -196,13 +196,13 @@ pub struct CollectionM3<B: BoomerangConfig> {
     pub comm: PedersenComm<B>,
     /// sig_commit: the first signature value.
     pub sig_commit: SigComm<B>,
-    /// Serial Number
+    /// id_1: serial Number
     pub id_1: <B as CurveConfig>::ScalarField,
-    /// Val: the value to be added
+    /// val: the value to be added
     pub val: <B as CurveConfig>::ScalarField,
-    /// Public key
+    /// verifying_key: the public verifying key
     pub verifying_key: sw::Affine<B>,
-    /// Tag public key
+    /// tag_key: the tag public key
     pub tag_key: sw::Affine<B>,
 }
 
@@ -229,28 +229,34 @@ pub struct CollectionM5<B: BoomerangConfig> {
 
 /// CollectionS. This struct represents the collection protocol for the server.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CollectionS<B: BoomerangConfig> {
-    /// m1: the first message value.
-    pub m1: CollectionM1<B>,
-    /// m3: the third message value.
-    pub m3: Option<CollectionM3<B>>,
-    /// m5: the fifth message value.
-    pub m5: Option<CollectionM5<B>>,
+pub struct CollectionStateS<B: BoomerangConfig> {
+    /// r2: the random double-spending tag value.
+    pub r2: <B as CurveConfig>::ScalarField,
+    /// sig_commit: the first signature value.
+    pub sig_commit: SigComm<B>,
 }
 
-impl<B: BoomerangConfig> CollectionS<B> {
+impl<B: BoomerangConfig> Default for CollectionStateS<B> {
+    fn default() -> Self {
+        Self {
+            r2: <B as CurveConfig>::ScalarField::zero(),
+            sig_commit: SigComm::<B>::default(),
+        }
+    }
+}
+
+impl<B: BoomerangConfig> CollectionStateS<B> {
     /// generate_collection_m1. This function generates the first message of
     /// the Collection Protocol.
-    pub fn generate_collection_m1<T: RngCore + CryptoRng>(rng: &mut T) -> CollectionS<B> {
+    pub fn generate_collection_m1<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        col_state: &mut CollectionStateS<B>,
+    ) -> CollectionM1<B> {
         let r2 = <B as CurveConfig>::ScalarField::rand(rng);
 
-        let m1 = CollectionM1 { r2 };
+        col_state.r2 = r2;
 
-        Self {
-            m1,
-            m3: None,
-            m5: None,
-        }
+        CollectionM1 { r2 }
     }
 
     /// generate_collection_m3. This function generates the thrid message of
@@ -263,23 +269,22 @@ impl<B: BoomerangConfig> CollectionS<B> {
     /// * `v` - the value to add.
     pub fn generate_collection_m3<T: RngCore + CryptoRng>(
         rng: &mut T,
-        c_m: CollectionC<B>,
-        s_m: CollectionS<B>,
+        c_m: &CollectionM2<B>,
+        col_state: &mut CollectionStateS<B>,
         key_pair: &ServerKeyPair<B>,
         v: <B as CurveConfig>::ScalarField,
-    ) -> CollectionS<B> {
+    ) -> CollectionM3<B> {
         let check = SigVerify::verify(
             key_pair.s_key_pair.verifying_key,
             key_pair.s_key_pair.tag_key,
-            &c_m.m2.sig,
+            &c_m.sig,
             "message",
         );
         if !check {
             panic!("Boomerang collection: invalid signature");
         }
 
-        let check2 =
-            SigVerifProof::verify(&c_m.m2.s_proof, key_pair.s_key_pair.tag_key, &c_m.m2.sig);
+        let check2 = SigVerifProof::verify(&c_m.s_proof, key_pair.s_key_pair.tag_key, &c_m.sig);
         if !check2 {
             panic!("Boomerang collection: invalid proof sig");
         }
@@ -287,9 +292,8 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let label = b"BoomerangCollectionM2O1";
         let mut transcript = Transcript::new(label);
         let check3 = c_m
-            .m2
             .pi_1
-            .verify(&mut transcript, &c_m.m2.comm.comm, 4, &c_m.m2.gens);
+            .verify(&mut transcript, &c_m.comm.comm, 4, &c_m.gens);
 
         if !check3 {
             panic!("Boomerang collection: invalid proof opening 1");
@@ -297,25 +301,22 @@ impl<B: BoomerangConfig> CollectionS<B> {
 
         let label1 = b"BoomerangCollectionM2O2";
         let mut transcript1 = Transcript::new(label1);
-        let check4 = c_m.m2.pi_2.verify(
-            &mut transcript1,
-            &c_m.m2.prev_comm.comm,
-            4,
-            &c_m.m2.prev_gens,
-        );
+        let check4 = c_m
+            .pi_2
+            .verify(&mut transcript1, &c_m.prev_comm.comm, 4, &c_m.prev_gens);
         if !check4 {
             panic!("Boomerang collection: invalid proof opening 2");
         }
 
         let label2 = b"BoomerangCollectionM2AM2";
         let mut transcript2 = Transcript::new(label2);
-        let check5 = c_m.m2.pi_3.verify(
+        let check5 = c_m.pi_3.verify(
             &mut transcript2,
-            &c_m.m2.tag_commits[0].comm,
-            &c_m.m2.tag_commits[1].comm,
-            &c_m.m2.tag_commits[2].comm,
-            &c_m.m2.tag_commits[3].comm,
-            &c_m.m2.tag_commits[4].comm,
+            &c_m.tag_commits[0].comm,
+            &c_m.tag_commits[1].comm,
+            &c_m.tag_commits[2].comm,
+            &c_m.tag_commits[3].comm,
+            &c_m.tag_commits[4].comm,
         );
         if !check5 {
             panic!("Boomerang collection: invalid proof of tag");
@@ -324,9 +325,9 @@ impl<B: BoomerangConfig> CollectionS<B> {
         // TODO: verify the membership proof
         #[allow(unused_variables)]
         let dtag: ServerTag<B> = ServerTag {
-            tag: c_m.m2.tag,
-            id_0: c_m.m2.id,
-            r2: s_m.m1.r2,
+            tag: c_m.tag,
+            id_0: c_m.id,
+            r2: col_state.r2,
         }; // TODO: this needs to be stored by the server and check regularly
 
         let id_1 = <B as CurveConfig>::ScalarField::rand(rng);
@@ -334,24 +335,20 @@ impl<B: BoomerangConfig> CollectionS<B> {
         let v3 = <B as CurveConfig>::ScalarField::zero();
         let vals: Vec<<B as CurveConfig>::ScalarField> = vec![id_1, v, v2, v3];
 
-        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.m2.gens);
-        let c = c1 + c_m.m2.comm;
+        let c1 = PedersenComm::new_multi_with_all_generators(&vals, rng, &c_m.gens);
+        let c = c1 + c_m.comm;
 
         let sig_comm = SigComm::commit(&key_pair.s_key_pair, rng, c.comm);
 
-        let m3 = CollectionM3 {
+        col_state.sig_commit = sig_comm;
+
+        CollectionM3 {
             id_1,
             val: v,
             comm: c1,
             sig_commit: sig_comm,
             verifying_key: key_pair.s_key_pair.verifying_key,
             tag_key: key_pair.s_key_pair.tag_key,
-        };
-
-        Self {
-            m1: s_m.m1,
-            m3: Some(m3),
-            m5: None,
         }
     }
 
@@ -362,22 +359,13 @@ impl<B: BoomerangConfig> CollectionS<B> {
     /// * `s_m` - the server message.
     /// * `key_pair` - the server's keypair.
     pub fn generate_collection_m5(
-        c_m: CollectionC<B>,
-        s_m: CollectionS<B>,
+        c_m: &CollectionM4<B>,
+        col_state: &mut CollectionStateS<B>,
         key_pair: &ServerKeyPair<B>,
-    ) -> CollectionS<B> {
-        let sig_resp = SigResp::respond(
-            &key_pair.s_key_pair,
-            &s_m.m3.clone().unwrap().sig_commit,
-            &c_m.m4.unwrap().e,
-        );
-        let m5 = CollectionM5 { s: sig_resp };
+    ) -> CollectionM5<B> {
+        let sig_resp = SigResp::respond(&key_pair.s_key_pair, &col_state.sig_commit, &c_m.e);
 
-        Self {
-            m1: s_m.m1,
-            m3: s_m.m3,
-            m5: Some(m5),
-        }
+        CollectionM5 { s: sig_resp }
     }
 }
 
