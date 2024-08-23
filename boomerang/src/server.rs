@@ -438,7 +438,7 @@ impl<B: BoomerangConfig> Clone for SpendVerifyM5<B> {
 }
 
 /// SpendVerifyS. This struct represents the spendverify protocol for the server.
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct SpendVerifyStateS<B: BoomerangConfig> {
     /// r2: the random double-spending tag value.
     r2: <B as CurveConfig>::ScalarField,

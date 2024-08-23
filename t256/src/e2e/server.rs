@@ -23,9 +23,10 @@ use ark_ec::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::One;
 
-use boomerang::client::{CollectionM2, CollectionM4, IssuanceM1, IssuanceM3, IssuanceStateC};
-use boomerang::server::{CollectionM3, CollectionStateS, ServerKeyPair};
-use boomerang::server::{IssuanceM2, IssuanceStateS};
+use boomerang::client::{
+    CollectionM2, CollectionM4, IssuanceM1, IssuanceM3, SpendVerifyM2, SpendVerifyM4,
+};
+use boomerang::server::{CollectionStateS, IssuanceStateS, ServerKeyPair, SpendVerifyStateS};
 use t256::Config;
 
 use rand_core::OsRng;
@@ -38,16 +39,17 @@ struct Ports {
 }
 
 type SBKP = ServerKeyPair<Config>;
-type IBCM = IssuanceStateC<Config>;
 type IBSM = IssuanceStateS<Config>;
 type IBCM1 = IssuanceM1<Config>;
-type IBSM2 = IssuanceM2<Config>;
 type IBCM3 = IssuanceM3<Config>;
 
 type CBSM = CollectionStateS<Config>;
-type CBSM3 = CollectionM3<Config>;
 type CBCM2 = CollectionM2<Config>;
 type CBCM4 = CollectionM4<Config>;
+
+type SBSM = SpendVerifyStateS<Config>;
+type SBCM2 = SpendVerifyM2<Config>;
+type SBCM4 = SpendVerifyM4<Config>;
 
 #[derive(Serialize, Deserialize)]
 enum MessageType {
@@ -55,12 +57,14 @@ enum MessageType {
     M3,
     M6,
     M10,
+    M13,
+    M14,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Message {
     msg_type: MessageType,
-    data: Vec<u8>, // Serialized data for IBCM or other relevant data
+    data: Vec<u8>, // Serialized data
 }
 
 #[tokio::main]
@@ -115,6 +119,7 @@ lazy_static! {
     });
     static ref IBSM_DEFAULT: Mutex<IBSM> = Mutex::new(IBSM::default());
     static ref CBSM_DEFAULT: Mutex<CBSM> = Mutex::new(CBSM::default());
+    static ref SBSM_DEFAULT: Mutex<SBSM> = Mutex::new(SBSM::default());
 }
 
 async fn post_handler(body: Body) -> Result<Response, Infallible> {
@@ -134,6 +139,9 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
     let mut cbsm_lock = CBSM_DEFAULT.lock().unwrap();
     let mut col_state = cbsm_lock.clone();
 
+    let mut sbsm_lock = SBSM_DEFAULT.lock().unwrap();
+    let mut spend_state = sbsm_lock.clone();
+
     match message.msg_type {
         MessageType::M1 => {
             println!("Received m1 message, processing...");
@@ -145,7 +153,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             let mut m2_bytes = Vec::new();
             m2.serialize_compressed(&mut m2_bytes)
                 .expect("Failed to serialize Issuance M2");
-            println!("Bytes sent (m2_message_bytes): {}", m2_bytes.len());
+            println!("Bytes sent issuance (m2_message_bytes): {}", m2_bytes.len());
 
             *ibsm_lock = s_state;
 
@@ -164,7 +172,7 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
             let mut m4_bytes = Vec::new();
             m4.serialize_compressed(&mut m4_bytes)
                 .expect("Failed to serialize Issuance M4");
-            println!("Bytes sent (m4_message_bytes): {}", m4_bytes.len());
+            println!("Bytes sent issuance (m4_message_bytes): {}", m4_bytes.len());
 
             // Serialize SKP
             let mut skp_bytes = Vec::new();
@@ -244,9 +252,85 @@ async fn post_handler(body: Body) -> Result<Response, Infallible> {
                 m11_bytes.len()
             );
 
+            // Also send the spend/verify-procedure first message
+            let spendverify_m1 =
+                SpendVerifyStateS::<Config>::generate_spendverify_m1(&mut rng, &mut spend_state);
+            *sbsm_lock = spend_state;
+
+            let mut m1_s_bytes = Vec::new();
+            spendverify_m1
+                .serialize_compressed(&mut m1_s_bytes)
+                .expect("Failed to serialize Spend Verify M1");
+            println!(
+                "Bytes sent spend-verify: (m1_message_bytes): {}",
+                m1_s_bytes.len()
+            );
+
+            let mut response_bytes = Vec::new();
+            response_bytes.extend_from_slice(&m11_bytes);
+            response_bytes.extend_from_slice(&m1_s_bytes);
+
+            println!("Sending M5 and first of SpendVerify...");
+
             Ok(Response::builder()
                 .status(StatusCode::OK)
-                .body(Body::from(m11_bytes))
+                .body(Body::from(response_bytes))
+                .expect("Failed to create response"))
+        }
+        MessageType::M13 => {
+            println!("Received m2 message of spend-verify, processing...");
+
+            let m14: SBCM2 = SBCM2::deserialize_compressed(&mut message.data.as_slice())
+                .expect("Failed to deserialize compressed Spend-verify M2");
+
+            let policy_state: Vec<<Config as CurveConfig>::ScalarField> =
+                vec![<Config as CurveConfig>::ScalarField::from(2)];
+            let m15 = SBSM::generate_spendverify_m3(
+                &mut rng,
+                &m14,
+                &mut spend_state,
+                skp,
+                policy_state.clone(),
+            );
+            *sbsm_lock = spend_state;
+
+            let mut m15_bytes = Vec::new();
+            m15.serialize_compressed(&mut m15_bytes)
+                .expect("Failed to serialize Spend-Verify M3");
+            println!(
+                "Bytes sent spend-verify: (m3_message_bytes): {}",
+                m15_bytes.len()
+            );
+
+            println!("Sending M3 of SpendVerify...");
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(m15_bytes))
+                .expect("Failed to create response"))
+        }
+        MessageType::M14 => {
+            println!("Received m4 message of spend-verify, processing...");
+
+            let m15: SBCM4 = SBCM4::deserialize_compressed(&mut message.data.as_slice())
+                .expect("Failed to deserialize compressed Spend-verify M4");
+
+            let m16 = SBSM::generate_spendverify_m5(&m15, &mut spend_state, skp);
+            *sbsm_lock = spend_state;
+
+            let mut m16_bytes = Vec::new();
+            m16.serialize_compressed(&mut m16_bytes)
+                .expect("Failed to serialize Spend-Verify M6");
+            println!(
+                "Bytes sent spend-verify: (m5_message_bytes): {}",
+                m16_bytes.len()
+            );
+
+            println!("Sending M5 of SpendVerify...");
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(m16_bytes))
                 .expect("Failed to create response"))
         }
     }

@@ -678,7 +678,7 @@ impl<B: BoomerangConfig> SpendVerifyStateC<B> {
 
         s_state.r = r1;
         s_state.val_0 = state.token_state[0].v;
-        s_state.spend_state = spend_state.clone();
+        s_state.spend_state.clone_from(&spend_state);
         s_state.comm = c1;
         s_state.id_0 = id1;
         s_state.gens = gens.clone();

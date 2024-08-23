@@ -7,28 +7,32 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
+use ark_ec::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use boomerang::client::UKeyPair;
-use boomerang::client::{CollectionM4, CollectionStateC, IssuanceM3, IssuanceStateC};
-use boomerang::server::ServerKeyPair;
+use ark_std::One;
+
+use boomerang::client::{CollectionStateC, IssuanceStateC, SpendVerifyStateC, UKeyPair};
 use boomerang::server::{
-    CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, IssuanceStateS,
+    CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyM1,
+    SpendVerifyM3, SpendVerifyM5,
 };
 use t256::Config;
 
 type CBKP = UKeyPair<Config>;
 type SBKP = ServerKeyPair<Config>;
 type IBCM = IssuanceStateC<Config>;
-type IBSM = IssuanceStateS<Config>;
 type IBSM2 = IssuanceM2<Config>;
-type IBCM3 = IssuanceM3<Config>;
 type IBSM4 = IssuanceM4<Config>;
 
 type CBSM1 = CollectionM1<Config>;
-type CBCM4 = CollectionM4<Config>;
 type CBSM3 = CollectionM3<Config>;
 type CBSM5 = CollectionM5<Config>;
 type CBCM = CollectionStateC<Config>;
+
+type SBSM1 = SpendVerifyM1<Config>;
+type SBSM3 = SpendVerifyM3<Config>;
+type SBSM5 = SpendVerifyM5<Config>;
+type SBCM = SpendVerifyStateC<Config>;
 
 #[derive(Serialize, Deserialize)]
 enum MessageType {
@@ -36,6 +40,8 @@ enum MessageType {
     M3,
     M6,
     M10,
+    M13,
+    M14,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -55,6 +61,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let kp = CBKP::generate(&mut rng);
     let mut state = IBCM::default();
     let mut col_state = CBCM::default();
+    let mut s_state = SBCM::default();
 
     let m1 = IBCM::generate_issuance_m1(&kp, &mut state, &mut rng);
     let mut m1_bytes = Vec::new();
@@ -65,7 +72,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         data: m1_bytes,
     };
     let m1_message_bytes = bincode::serialize(&m1_message).unwrap();
-    println!("Bytes sent (m1_message_bytes): {}", m1_message_bytes.len());
+    println!(
+        "Bytes sent issuance (m1_message_bytes): {}",
+        m1_message_bytes.len()
+    );
 
     let http_response = client
         .post("http://127.0.0.1:7878")
@@ -87,7 +97,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             data: m3_bytes,
         };
         let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
-        println!("Bytes sent (m3_message_bytes): {}", m3_message_bytes.len());
+        println!(
+            "Bytes sent issuance (m3_message_bytes): {}",
+            m3_message_bytes.len()
+        );
 
         let m3_response = client
             .post("http://127.0.0.1:7878")
@@ -142,6 +155,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
             data: m3_bytes,
         };
         let m3_message_bytes = bincode::serialize(&m3_message).unwrap();
+        println!(
+            "Bytes sent issuance (m3_message_bytes): {}",
+            m3_message_bytes.len()
+        );
 
         let m3_response = client
             .post("http://127.0.0.1:7878")
@@ -186,6 +203,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 data: m6_bytes,
             };
             let m6_message_bytes = bincode::serialize(&m6_message).unwrap();
+            println!(
+                "Bytes sent collection (m2_message_bytes): {}",
+                m6_message_bytes.len()
+            );
 
             let m6_response = client
                 .post("http://127.0.0.1:7878")
@@ -210,6 +231,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     data: m10_bytes,
                 };
                 let m10_message_bytes = bincode::serialize(&m10_message).unwrap();
+                println!(
+                    "Bytes sent collection (m4_message_bytes): {}",
+                    m10_message_bytes.len()
+                );
 
                 let m10_response = client
                     .post("http://127.0.0.1:7878")
@@ -225,8 +250,94 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
                     println!("Successfully received m5 collection from the server.");
 
-                    let _c_col_state = CBCM::populate_state(&mut col_state, &m11, &skp, kp.clone());
+                    let c_col_state = CBCM::populate_state(&mut col_state, &m11, &skp, kp.clone());
                     println!("Collection protocol sucessful!");
+
+                    let mut m12_slice = m11_slice;
+                    let m12: SBSM1 = SBSM1::deserialize_compressed(&mut m12_slice)
+                        .expect("Failed to deserialize Collection M1");
+
+                    println!("Successfully received collection m1 from the server.");
+
+                    let spend_state: Vec<<Config as CurveConfig>::ScalarField> =
+                        vec![<Config as CurveConfig>::ScalarField::one()];
+                    let m13 = SBCM::generate_spendverify_m2(
+                        &mut rng,
+                        c_col_state,
+                        &mut s_state,
+                        &m12,
+                        &skp,
+                        spend_state,
+                    );
+                    let mut m13_bytes = Vec::new();
+                    m13.serialize_compressed(&mut m13_bytes).unwrap();
+
+                    let m13_message = Message {
+                        msg_type: MessageType::M13,
+                        data: m13_bytes,
+                    };
+                    let m13_message_bytes = bincode::serialize(&m13_message).unwrap();
+                    println!(
+                        "Bytes sent spend-verify (m2_message_bytes): {}",
+                        m13_message_bytes.len()
+                    );
+
+                    let m13_response = client
+                        .post("http://127.0.0.1:7878")
+                        .body(m13_message_bytes)
+                        .send()
+                        .await?;
+                    if m13_response.status().is_success() {
+                        let m15_bytes = m13_response.bytes().await?;
+                        let mut m15_slice = &m15_bytes[..];
+                        let m15: SBSM3 = SBSM3::deserialize_compressed(&mut m15_slice)
+                            .expect("Failed to deserialize Spend-Verify M3");
+
+                        println!("Successfully received m3 spend-verify from the server.");
+
+                        let m14 = SBCM::generate_spendverify_m4(&mut rng, &mut s_state, &m15);
+                        let mut m14_bytes = Vec::new();
+                        m14.serialize_compressed(&mut m14_bytes).unwrap();
+
+                        let m14_message = Message {
+                            msg_type: MessageType::M14,
+                            data: m14_bytes,
+                        };
+                        let m14_message_bytes = bincode::serialize(&m14_message).unwrap();
+                        println!(
+                            "Bytes sent spend-verify (m4_message_bytes): {}",
+                            m14_message_bytes.len()
+                        );
+
+                        let m14_response = client
+                            .post("http://127.0.0.1:7878")
+                            .body(m14_message_bytes)
+                            .send()
+                            .await?;
+                        if m14_response.status().is_success() {
+                            let m16_bytes = m14_response.bytes().await?;
+                            let mut m16_slice = &m16_bytes[..];
+                            let m16: SBSM5 = SBSM5::deserialize_compressed(&mut m16_slice)
+                                .expect("Failed to deserialize Spend-Verify M5");
+
+                            println!("Successfully received m5 spend-verify from the server.");
+
+                            let _spt_state =
+                                SBCM::populate_state(&mut s_state, &m16, &skp, kp.clone());
+
+                            println!("Spend-Verify protocol sucessful!");
+                        } else {
+                            println!(
+                                "Failed parsing m5 of spend-verify. Status: {}",
+                                m14_response.status()
+                            );
+                        }
+                    } else {
+                        println!(
+                            "Failed parsing m3 of spend-verify. Status: {}",
+                            m13_response.status()
+                        );
+                    }
                 } else {
                     println!(
                         "Failed parsing m5 of collection. Status: {}",
