@@ -12,7 +12,7 @@ pub mod rewards {
     use rand::Rng;
     use std::convert::TryInto;
 
-    fn extract_u64_from_compressed_data(compressed_data: &[u8]) -> Result<u64, &'static str> {
+    pub fn extract_u64_from_compressed_data(compressed_data: &[u8]) -> Result<u64, &'static str> {
         // Ensure we have at least 8 bytes to extract a u64
         if compressed_data.len() < 8 {
             return Err("Insufficient bytes to extract u64");
@@ -204,6 +204,80 @@ pub mod rewards {
                 })?;
 
             // Return Ok if both verifications succeed
+            Ok(())
+        }
+    }
+
+    /// SubProof. This struct acts as a container for the sub-proof.
+    #[derive(CanonicalSerialize, CanonicalDeserialize)]
+    pub struct SubProof<B: BoomerangConfig> {
+        // the range proof
+        pub range_proof: RangeProof<sw::Affine<B>>,
+        // the pc gens for range proof
+        pub range_gensp_r: PedersenGens<sw::Affine<B>>,
+        // the bp gens for range proof
+        pub range_gensb_r: BulletproofGens<sw::Affine<B>>,
+        // the commitment of range proof
+        pub r_comms: sw::Affine<B>,
+    }
+
+    impl<B: BoomerangConfig> Clone for SubProof<B> {
+        fn clone(&self) -> Self {
+            SubProof {
+                range_proof: self.range_proof.clone(),
+                range_gensp_r: self.range_gensp_r,
+                range_gensb_r: self.range_gensb_r.clone(),
+                r_comms: self.r_comms,
+            }
+        }
+    }
+
+    impl<B: BoomerangConfig> SubProof<B> {
+        pub fn prove(spend_u64: u64, rng: &mut impl Rng) -> Self {
+            let max_spend = 64; // TODO: should be app specific
+
+            let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
+            // We instantiate with the maximum capacity
+            let bp_gens_r = BulletproofGens::new(max_spend, 1);
+            let mut transcript = Transcript::new(b"Boomerang verify sub proof");
+            let blind = <B as CurveConfig>::ScalarField::rand(rng);
+            let (r_proof, r_comms) = RangeProof::prove_single(
+                &bp_gens_r,
+                &pc_gens_r,
+                &mut transcript,
+                spend_u64,
+                &blind,
+                max_spend,
+            )
+            .unwrap();
+
+            SubProof {
+                range_proof: r_proof,
+                range_gensp_r: pc_gens_r,
+                range_gensb_r: bp_gens_r,
+                r_comms,
+            }
+        }
+
+        pub fn verify(&self) -> Result<(), String> {
+            let mut transcript = Transcript::new(b"Boomerang verify sub proof");
+            let max_sub = 64; // TODO: should be app specific
+
+            self.range_proof
+                .verify_single(
+                    &self.range_gensb_r,
+                    &self.range_gensp_r,
+                    &mut transcript,
+                    &self.r_comms,
+                    max_sub,
+                )
+                .map_err(|e| {
+                    format!(
+                        "Boomerang verification: sub range proof verification failed: {}",
+                        e
+                    )
+                })?;
+
             Ok(())
         }
     }

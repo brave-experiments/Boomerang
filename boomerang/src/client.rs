@@ -11,7 +11,8 @@ use rand::{CryptoRng, RngCore};
 
 use crate::config::{BoomerangConfig, State};
 use crate::server::{
-    CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyS,
+    CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyM1,
+    SpendVerifyM3, SpendVerifyM5,
 };
 
 use acl::{sign::SigChall, sign::SigProof, sign::SigSign};
@@ -22,9 +23,10 @@ use pedersen::{
     pedersen_config::PedersenComm,
 };
 
-use ark_bulletproofs::{BulletproofGens, PedersenGens, RangeProof};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{ops::Mul, UniformRand, Zero};
+
+use crate::utils::rewards::*;
 
 /// The token representation.
 #[derive(Clone)]
@@ -492,30 +494,6 @@ impl<B: BoomerangConfig> CollectionStateC<B> {
 
 /// Spending/Verification Protocol
 
-/// SubProof. This struct acts as a container for the sub-proof.
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
-pub struct SubProof<B: BoomerangConfig> {
-    // the range proof
-    pub range_proof: RangeProof<sw::Affine<B>>,
-    // the pc gens for range proof
-    pub range_gensp_r: PedersenGens<sw::Affine<B>>,
-    // the bp gens for range proof
-    pub range_gensb_r: BulletproofGens<sw::Affine<B>>,
-    // the commitment of range proof
-    pub r_comms: sw::Affine<B>,
-}
-
-impl<B: BoomerangConfig> Clone for SubProof<B> {
-    fn clone(&self) -> Self {
-        SubProof {
-            range_proof: self.range_proof.clone(),
-            range_gensp_r: self.range_gensp_r,
-            range_gensb_r: self.range_gensb_r.clone(),
-            r_comms: self.r_comms,
-        }
-    }
-}
-
 /// SpendVerifyM2. This struct acts as a container for the second message of
 /// the spendverify protocol.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
@@ -549,10 +527,6 @@ pub struct SpendVerifyM2<B: BoomerangConfig> {
     pub tag_commits: Vec<PedersenComm<B>>,
     /// spend_state: the values to spend
     pub spend_state: Vec<<B as CurveConfig>::ScalarField>,
-    /// r: the random double-spending tag value.
-    r: <B as CurveConfig>::ScalarField,
-    /// val: the underlying value of the token.
-    val: <B as CurveConfig>::ScalarField,
 }
 
 /// SpendVerifyM4. This struct acts as a container for the fourth message of
@@ -565,35 +539,63 @@ pub struct SpendVerifyM4<B: BoomerangConfig> {
 
 /// SpendVerifyC. This struct represents the spendverify protocol for the client.
 #[derive(Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct SpendVerifyC<B: BoomerangConfig> {
-    /// m2: the second message value.
-    pub m2: SpendVerifyM2<B>,
-    /// m4: the fourth message value.
-    pub m4: Option<SpendVerifyM4<B>>,
+pub struct SpendVerifyStateC<B: BoomerangConfig> {
     /// c: the commit value.
-    c: Option<PedersenComm<B>>,
+    c: PedersenComm<B>,
     /// id: the serial number value.
-    id: Option<<B as CurveConfig>::ScalarField>,
+    id: <B as CurveConfig>::ScalarField,
     /// val: the underlying value.
-    val: Option<<B as CurveConfig>::ScalarField>,
+    val: <B as CurveConfig>::ScalarField,
+    /// comm: the initial commitment value.
+    comm: PedersenComm<B>,
+    /// gens: the generators of the committed values.
+    gens: Generators<B>,
+    /// id_0: the current serial number value.
+    id_0: <B as CurveConfig>::ScalarField,
+    /// r: the random double-spending tag value.
+    r: <B as CurveConfig>::ScalarField,
+    /// val_0: the underlying current value of the token.
+    val_0: <B as CurveConfig>::ScalarField,
+    /// e: the signature challenge value.
+    e: SigChall<B>,
+    /// spend_state: the spent values.
+    spend_state: Vec<<B as CurveConfig>::ScalarField>,
 }
 
-impl<B: BoomerangConfig> SpendVerifyC<B> {
+impl<B: BoomerangConfig> SpendVerifyStateC<B> {
+    #[allow(clippy::should_implement_trait)]
+    pub fn default() -> Self {
+        Self {
+            c: PedersenComm::default(),
+            id: <B as CurveConfig>::ScalarField::zero(),
+            val: <B as CurveConfig>::ScalarField::zero(),
+            comm: PedersenComm::default(),
+            gens: Generators::default(),
+            id_0: <B as CurveConfig>::ScalarField::zero(),
+            r: <B as CurveConfig>::ScalarField::zero(),
+            val_0: <B as CurveConfig>::ScalarField::zero(),
+            e: SigChall::default(),
+            spend_state: Vec::default(),
+        }
+    }
+
     /// generate_spendverify_m2. This function generates the second message of
     /// the Spend/Verify Protocol.
     /// # Arguments
     /// * `rng` - the source of randomness.
     /// * `state` - the local client state.
+    /// * `s_state` - the tmp client state.
     /// * `s_m` - the received server message.
     /// * `s_key_pair` - the server's keypair.
-    /// * `spend_state` - the values to spend.
+    /// * `spend_state` - the values to spend passed as a vector.
     pub fn generate_spendverify_m2<T: RngCore + CryptoRng>(
         rng: &mut T,
         state: State<B>,
-        s_m: SpendVerifyS<B>,
+        s_state: &mut SpendVerifyStateC<B>,
+        s_m: &SpendVerifyM1<B>,
         s_key_pair: &ServerKeyPair<B>,
         spend_state: Vec<<B as CurveConfig>::ScalarField>,
-    ) -> SpendVerifyC<B> {
+    ) -> SpendVerifyM2<B> {
         let r1 = <B as CurveConfig>::ScalarField::rand(rng);
         let id1 = <B as CurveConfig>::ScalarField::rand(rng);
 
@@ -624,11 +626,11 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
         );
 
         let t_tag = state.c_key_pair.x * state.token_state[0].id;
-        let tag = t_tag + s_m.m1.r2;
+        let tag = t_tag + s_m.r2;
 
         let a: PedersenComm<B> = PedersenComm::new(state.c_key_pair.x, rng);
         let b: PedersenComm<B> = PedersenComm::new(state.token_state[0].id, rng);
-        let c: PedersenComm<B> = PedersenComm::new(s_m.m1.r2, rng);
+        let c: PedersenComm<B> = PedersenComm::new(s_m.r2, rng);
         let d: PedersenComm<B> = PedersenComm::new(t_tag, rng);
         let e: PedersenComm<B> = d + c;
 
@@ -639,7 +641,7 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             rng,
             &state.c_key_pair.x,
             &state.token_state[0].id,
-            &s_m.m1.r2,
+            &s_m.r2,
             &a,
             &b,
             &c,
@@ -649,37 +651,18 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
 
         // Calculate the sub_proof
         let spend = state.token_state[0].v - spend_state[0];
-        // TODO: too hacky
+
         let mut compressed_bytes = Vec::new();
         spend.serialize_compressed(&mut compressed_bytes).unwrap();
-        let spend_bytes = compressed_bytes
-            .as_slice()
-            .get(0..8) // Take the first 8 bytes
-            .map(|bytes| u64::from_le_bytes(bytes.try_into().unwrap())) // Convert to u64
-            .unwrap_or(0); // Default to 0 if not enough bytes
 
-        let max_spend = 64; // TODO: should be app specific
-        let pc_gens_r: PedersenGens<sw::Affine<B>> = PedersenGens::default();
-        // We instantiate with the maximum capacity
-        let bp_gens_r = BulletproofGens::new(max_spend, 1);
-        let mut transcript_r = Transcript::new(b"Boomerang verify sub proof");
-        let blind = <B as CurveConfig>::ScalarField::rand(rng);
-        let (r_proof, r_comms) = RangeProof::prove_single(
-            &bp_gens_r,
-            &pc_gens_r,
-            &mut transcript_r,
-            spend_bytes,
-            &blind,
-            max_spend,
-        )
-        .unwrap();
-
-        let sub_proof = SubProof {
-            range_proof: r_proof,
-            range_gensp_r: pc_gens_r,
-            range_gensb_r: bp_gens_r,
-            r_comms,
+        let spend_u64 = match extract_u64_from_compressed_data(&compressed_bytes) {
+            Ok(value) => value,
+            Err(_e) => {
+                panic!("Boomerang verification: failed to serialise")
+            }
         };
+
+        let sub_proof = SubProof::prove(spend_u64, rng);
 
         let tag_commits: Vec<PedersenComm<B>> = vec![a, b, c, d, e];
         // TODO: add membership proof
@@ -693,7 +676,14 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             state.comm_state[0].r,
         );
 
-        let m2 = SpendVerifyM2 {
+        s_state.r = r1;
+        s_state.val_0 = state.token_state[0].v;
+        s_state.spend_state = spend_state.clone();
+        s_state.comm = c1;
+        s_state.id_0 = id1;
+        s_state.gens = gens.clone();
+
+        SpendVerifyM2 {
             comm: c1,
             gens,
             prev_comm: state.comm_state[0],
@@ -707,75 +697,65 @@ impl<B: BoomerangConfig> SpendVerifyC<B> {
             sig: state.sig_state[0].clone(),
             s_proof: sig_proof,
             tag_commits,
-            spend_state,
-            r: r1,
-            val: state.token_state[0].v,
-        };
-
-        Self {
-            m2,
-            m4: None,
-            c: None,
-            id: None,
-            val: None,
+            spend_state: spend_state.clone(),
         }
     }
 
     pub fn generate_spendverify_m4<T: RngCore + CryptoRng>(
         rng: &mut T,
-        c_m: SpendVerifyC<B>,
-        s_m: SpendVerifyS<B>,
-    ) -> SpendVerifyC<B> {
-        let m3 = s_m.m3.clone().unwrap();
-
+        s_state: &mut SpendVerifyStateC<B>,
+        s_m: &SpendVerifyM3<B>,
+    ) -> SpendVerifyM4<B> {
         // Verify rewards proof
-        let reward_proof = m3.pi_reward;
-        let check = reward_proof.verify(&c_m.m2.spend_state);
+        let reward_proof = &s_m.pi_reward;
+        let check = reward_proof.verify(&s_state.spend_state);
         if check.is_err() {
             panic!("Boomerang verification: reward proof verification failed")
         }
 
         // The other way around to handle the negative
-        let c = c_m.m2.comm - m3.comm;
-        let id = c_m.m2.id - m3.id_1;
-        let val = c_m.m2.val - m3.val;
+        let c = s_state.comm - s_m.comm;
+        let id = s_state.id_0 - s_m.id_1;
+        let val = s_state.val_0 - s_m.val;
 
-        let sig_chall =
-            SigChall::challenge(m3.tag_key, m3.verifying_key, rng, m3.sig_commit, "message");
+        let sig_chall = SigChall::challenge(
+            s_m.tag_key,
+            s_m.verifying_key,
+            rng,
+            s_m.sig_commit,
+            "message",
+        );
 
-        let m4 = SpendVerifyM4 { e: sig_chall };
+        s_state.id = id;
+        s_state.val = val;
+        s_state.c = c;
+        s_state.e = sig_chall.clone();
 
-        Self {
-            m2: c_m.m2,
-            m4: Some(m4),
-            c: Some(c),
-            id: Some(id),
-            val: Some(val),
-        }
+        SpendVerifyM4 { e: sig_chall }
     }
 
     pub fn populate_state(
-        c_m: SpendVerifyC<B>,
-        s_m: SpendVerifyS<B>,
+        s_state: &mut SpendVerifyStateC<B>,
+        s_m: &SpendVerifyM5<B>,
         s_key_pair: &ServerKeyPair<B>,
         c_key_pair: UKeyPair<B>,
     ) -> State<B> {
         let sig = SigSign::sign(
             s_key_pair.s_key_pair.verifying_key,
             s_key_pair.s_key_pair.tag_key,
-            &c_m.m4.unwrap().e,
-            &s_m.m5.unwrap().s,
+            &s_state.e,
+            &s_m.s,
             "message",
         );
 
-        let commits: Vec<PedersenComm<B>> = vec![c_m.c.unwrap()];
+        let commits: Vec<PedersenComm<B>> = vec![s_state.c];
         let sigs: Vec<SigSign<B>> = vec![sig];
         let token = Token {
-            id: c_m.id.unwrap(),
-            v: c_m.val.unwrap(),
+            id: s_state.id,
+            v: s_state.val,
             sk: c_key_pair.x,
-            r: c_m.m2.r,
-            gens: c_m.m2.gens,
+            r: s_state.r,
+            gens: s_state.gens.clone(),
         };
         let tokens: Vec<Token<B>> = vec![token];
 
