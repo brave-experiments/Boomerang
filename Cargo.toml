@@ -3,6 +3,7 @@ members = [
   "./pedersen",
   "./t256",
   "./t384",
+  "./tsecp256k1",
   "./acl",
   "./boomerang",
   "./macros",
