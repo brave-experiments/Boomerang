@@ -41,6 +41,9 @@ sha2 = "0.10.8"
 name = "bench_tcurve"
 harness = false
 
+[lib]
+bench = false
+
 [features]
 default = []
 std = [ "ark-std/std", "ark-ff/std", "ark-ec/std" ]
