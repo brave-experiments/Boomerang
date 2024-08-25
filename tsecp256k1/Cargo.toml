@@ -41,6 +41,14 @@ sha2 = "0.10.8"
 name = "bench_tcurve"
 harness = false
 
+[[bench]]
+name = "bench_tacl"
+harness = false
+
+[[bench]]
+name = "bench_tboomerang"
+harness = false
+
 [lib]
 bench = false
 
