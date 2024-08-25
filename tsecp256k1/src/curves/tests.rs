@@ -4,11 +4,11 @@ use ark_ec::short_weierstrass::{self as sw};
 use ark_secp256k1::Config as secp256k1conf;
 use boomerang_macros::test_acl;
 use boomerang_macros::test_boomerang;
-//use boomerang_macros::test_pedersen;
+use boomerang_macros::test_pedersen;
 
 type OtherProject = sw::Projective<secp256k1conf>;
 
 test_group!(g1; Projective; sw);
-//test_pedersen!(tp; Config, OtherProject); // we ignore this test here due to this not being a tom curve
+test_pedersen!(tp; Config, OtherProject);
 test_acl!(acl; Config, Config, OtherProject);
 test_boomerang!(boomerang; Config, Config, Config, OtherProject);

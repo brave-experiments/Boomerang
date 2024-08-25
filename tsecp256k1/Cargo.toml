@@ -34,6 +34,12 @@ ark-serialize = { version = "0.4.0", default-features = false }
 ark-algebra-test-templates = { version = "0.4.0", default-features = false }
 ark-algebra-bench-templates = { version = "0.4.0", default-features = false }
 ark-secp256k1 = {version ="0.4.0", default-features = false}
+criterion = "0.5.1"
+sha2 = "0.10.8"
+
+[[bench]]
+name = "bench_tcurve"
+harness = false
 
 [features]
 default = []

@@ -52,6 +52,9 @@ harness = false
 name = "bench_tboomerang"
 harness = false
 
+[lib]
+bench = false
+
 [features]
 default = []
 std = [ "ark-std/std", "ark-ff/std", "ark-ec/std" ]
