@@ -15,7 +15,7 @@ pedersen = { path="../pedersen" }
 acl = { path="../acl" }
 boomerang = { path="../boomerang" }
 boomerang-macros = { path="../macros"}
-t256 = { path = "../t256" }
+tsecp256k1 = { path = "../tsecp256k1" }
 rand = { version = "0.8.5" }
 rand_core = { version = "0.6.4" }
 ark-ff-macros =  { version = "0.4.2", default-features = false }

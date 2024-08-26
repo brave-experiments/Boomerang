@@ -23,8 +23,8 @@ To benchmark:
 
     cargo bench
 
-To see the the protocol in action, run the end2end example client and server
-programs in separate terminals:
+To see the protocol in action, run the end2end example client and server
+programs in separate terminals (this will use the secp256k1 curve):
 
 ```sh
 cargo run --example server
@@ -33,9 +33,6 @@ and then
 ```sh
 cargo run --example client
 ```
-
-These end2end examples are also run automatically after the unit tests
-as part of `make test`.
 
 ## Components
 

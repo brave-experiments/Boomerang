@@ -27,7 +27,7 @@ use boomerang::client::{
     CollectionM2, CollectionM4, IssuanceM1, IssuanceM3, SpendVerifyM2, SpendVerifyM4,
 };
 use boomerang::server::{CollectionStateS, IssuanceStateS, ServerKeyPair, SpendVerifyStateS};
-use t256::Config;
+use tsecp256k1::Config;
 
 use rand_core::OsRng;
 

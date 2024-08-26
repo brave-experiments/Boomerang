@@ -15,10 +15,9 @@ use boomerang::server::{
     CollectionM1, CollectionM3, CollectionM5, IssuanceM2, IssuanceM4, ServerKeyPair, SpendVerifyM1,
     SpendVerifyM3, SpendVerifyM5,
 };
-use t256::Config;
+use tsecp256k1::Config;
 
 type CBKP = UKeyPair<Config>;
-type SBKP = ServerKeyPair<Config>;
 type IBCM = IssuanceStateC<Config>;
 type IBSM2 = IssuanceM2<Config>;
 type IBSM4 = IssuanceM4<Config>;
