@@ -1,0 +1,31 @@
+[package]
+name = "boomerang-demo"
+version = "0.1.1"
+description = "Demonstration of the Boomerang protocol over HTTP"
+edition = "2021"
+
+[dependencies]
+ark-ff = { version = "0.4.2", default-features = false }
+ark-ec = { version = "0.4.2", default-features = false }
+ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
+ark-std = { version = "0.4.0", default-features = false }
+ark-secp256r1 = {default-features = false, git = "https://github.com/arkworks-rs/curves" }
+ark-serialize = { version = "0.4.2", default-features = false }
+pedersen = { path="../pedersen" }
+acl = { path="../acl" }
+boomerang = { path="../boomerang" }
+boomerang-macros = { path="../macros"}
+t256 = { path = "../t256" }
+rand = { version = "0.8.5" }
+rand_core = { version = "0.6.4" }
+ark-ff-macros =  { version = "0.4.2", default-features = false }
+axum = "0.7"  # or the latest version
+axum-server = { version = "0.7.1", features = ["tls-rustls-no-provider"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"  # Ensure you have tracing
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", features = ["rustls-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+bincode = "1.3"
+lazy_static = "1.4.0"
+rcgen = "0.13.1"

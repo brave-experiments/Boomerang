@@ -25,12 +25,13 @@ To benchmark:
 
 To see the the protocol in action, run the end2end example client and server
 programs in separate terminals:
+
 ```sh
-cargo run --bin server
+cargo run --example server
 ```
 and then
 ```sh
-cargo run --bin client
+cargo run --example client
 ```
 
 These end2end examples are also run automatically after the unit tests

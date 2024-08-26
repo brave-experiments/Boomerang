@@ -9,5 +9,6 @@ members = [
   "./boomerang",
   "./macros",
   "./bulletproofs",
+  "./demo",
 ]
 resolver = "2"

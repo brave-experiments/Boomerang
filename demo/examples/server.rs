@@ -85,12 +85,10 @@ async fn main() {
 
     let config = RustlsConfig::from_pem_file(
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("e2e")
+            .join("examples")
             .join("cert.pem"),
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("src")
-            .join("e2e")
+            .join("examples")
             .join("key.pem"),
     )
     .await
