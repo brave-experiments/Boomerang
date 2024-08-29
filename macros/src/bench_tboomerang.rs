@@ -608,6 +608,85 @@ macro_rules! bench_tboomerang_spending_m6_time {
 }
 
 #[macro_export]
+macro_rules! bench_tboomerang_rewards_proof {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            let spend_state: Vec<<$config as CurveConfig>::ScalarField> =
+                vec![<$config as CurveConfig>::ScalarField::one()];
+            let policy_state: Vec<<$config as CurveConfig>::ScalarField> =
+                vec![<$config as CurveConfig>::ScalarField::from(2)];
+
+            c.bench_function(concat!($curve_name, " rewards-proof prove time"), |b| {
+                b.iter(|| {
+                    RWP::<$config>::prove(
+                        &spend_state,
+                        &policy_state,
+                        2,
+                        <$config as CurveConfig>::ScalarField::from(2),
+                        &mut OsRng,
+                    );
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tboomerang_rewards_proof_verify {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            let spend_state: Vec<<$config as CurveConfig>::ScalarField> =
+                vec![<$config as CurveConfig>::ScalarField::one()];
+            let policy_state: Vec<<$config as CurveConfig>::ScalarField> =
+                vec![<$config as CurveConfig>::ScalarField::from(2)];
+            let proof = RWP::<$config>::prove(
+                &spend_state,
+                &policy_state,
+                2,
+                <$config as CurveConfig>::ScalarField::from(2),
+                &mut OsRng,
+            );
+
+            c.bench_function(concat!($curve_name, " rewards-proof verify time"), |b| {
+                b.iter(|| {
+                    <Result<RWP<$config>, String> as Clone>::clone(&proof)
+                        .expect("Failed to get rewards proof")
+                        .verify(&spend_state);
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tboomerang_sub_proof {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            c.bench_function(concat!($curve_name, " sub-proof prove time"), |b| {
+                b.iter(|| {
+                    SP::<$config>::prove(2, &mut OsRng);
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! bench_tboomerang_sub_proof_verify {
+    ($config: ty, $bench_name: ident, $curve_name: tt) => {
+        pub fn $bench_name(c: &mut Criterion) {
+            let proof = SP::<$config>::prove(2, &mut OsRng);
+
+            c.bench_function(concat!($curve_name, " sub-proof verify time"), |b| {
+                b.iter(|| {
+                    proof.verify();
+                });
+            });
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! bench_tboomerang_import_everything {
     () => {
         use acl::{
@@ -629,6 +708,7 @@ macro_rules! bench_tboomerang_import_everything {
             client::SpendVerifyStateC as SVBC, client::UKeyPair as CBKP, config::BoomerangConfig,
             server::CollectionStateS as CBSM, server::IssuanceStateS as IBSM,
             server::ServerKeyPair as SBKP, server::SpendVerifyStateS as SVBS,
+            utils::rewards::BRewardsProof as RWP, utils::rewards::SubProof as SP,
         };
         use core::ops::Mul;
         use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -665,6 +745,18 @@ macro_rules! bench_tboomerang_make_all {
         $crate::bench_tboomerang_spending_m4_time!($config, boomerang_spending_m4, $curve_name);
         $crate::bench_tboomerang_spending_m5_time!($config, boomerang_spending_m5, $curve_name);
         $crate::bench_tboomerang_spending_m6_time!($config, boomerang_spending_m6, $curve_name);
+        $crate::bench_tboomerang_rewards_proof!($config, boomerang_rewards_proof, $curve_name);
+        $crate::bench_tboomerang_rewards_proof_verify!(
+            $config,
+            boomerang_rewards_proof_verify,
+            $curve_name
+        );
+        $crate::bench_tboomerang_sub_proof!($config, boomerang_sub_proof, $curve_name);
+        $crate::bench_tboomerang_sub_proof_verify!(
+            $config,
+            boomerang_sub_proof_verify,
+            $curve_name
+        );
 
         criterion_group!(
             benches,
@@ -685,6 +777,10 @@ macro_rules! bench_tboomerang_make_all {
             boomerang_spending_m4,
             boomerang_spending_m5,
             boomerang_spending_m6,
+            boomerang_rewards_proof,
+            boomerang_rewards_proof_verify,
+            boomerang_sub_proof,
+            boomerang_sub_proof_verify,
         );
         criterion_main!(benches);
     };
