@@ -49,11 +49,11 @@ macro_rules! bench_tcurve_opening_multi_prover_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
-            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let x = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
-            vals.push(b);
+            vals.push(x);
             vals.push(e);
             vals.push(d);
 
@@ -79,11 +79,11 @@ macro_rules! bench_tcurve_opening_multi_verifier_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
-            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let x = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
-            vals.push(b);
+            vals.push(x);
             vals.push(e);
             vals.push(d);
 
@@ -113,12 +113,12 @@ macro_rules! bench_tcurve_issuance_multi_prover_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
-            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let x = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let sk = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
-            vals.push(b);
+            vals.push(x);
             vals.push(e);
             vals.push(d);
             vals.push(sk);
@@ -148,12 +148,12 @@ macro_rules! bench_tcurve_issuance_multi_verifier_time {
     ($config: ty, $bench_name: ident, $curve_name: tt, $OtherProjectiveType: ty) => {
         pub fn $bench_name(c: &mut Criterion) {
             // Sample a new random scalars.
-            let b = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
+            let x = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let e = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let d = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let sk = <$config as CurveConfig>::ScalarField::rand(&mut OsRng);
             let mut vals: Vec<<$config as CurveConfig>::ScalarField> = Vec::new();
-            vals.push(b);
+            vals.push(x);
             vals.push(e);
             vals.push(d);
             vals.push(sk);
@@ -260,14 +260,14 @@ macro_rules! bench_tcurve_mul_verifier_time {
 
             let label = b"PedersenMul";
             let a = SF::rand(&mut OsRng);
-            let b = SF::rand(&mut OsRng);
-            let z = a * b;
+            let x = SF::rand(&mut OsRng);
+            let z = a * x;
 
             let c1: PC = PC::new(a, &mut OsRng);
-            let c2: PC = PC::new(b, &mut OsRng);
+            let c2: PC = PC::new(x, &mut OsRng);
             let c3: PC = PC::new(z, &mut OsRng);
             let mut transcript = Transcript::new(label);
-            let proof = MP::create(&mut transcript, &mut OsRng, &a, &b, &c1, &c2, &c3);
+            let proof = MP::create(&mut transcript, &mut OsRng, &a, &x, &c1, &c2, &c3);
 
             c.bench_function(concat!($curve_name, " mul proof verifier time"), |b| {
                 b.iter(|| {
@@ -288,26 +288,26 @@ macro_rules! bench_tcurve_add_mul_prover_time {
 
             let label = b"PedersenMul";
             let a = SF::rand(&mut OsRng);
-            let b = SF::rand(&mut OsRng);
-            let c = SF::rand(&mut OsRng);
-            let w = a * b;
-            let t = w + c;
+            let x = SF::rand(&mut OsRng);
+            let z = SF::rand(&mut OsRng);
+            let w = a * x;
+            let t = w + z;
 
             let c1: PC = PC::new(a, &mut OsRng);
-            let c2: PC = PC::new(b, &mut OsRng);
+            let c2: PC = PC::new(x, &mut OsRng);
             let c3: PC = PC::new(z, &mut OsRng);
             let c4: PC = PC::new(w, &mut OsRng);
             let c5: PC = c4 + c3;
 
-            c.bench_function(concat!($curve_name, " add-mul proof prover time"), |bf| {
-                bf.iter(|| {
+            c.bench_function(concat!($curve_name, " add-mul proof prover time"), |b| {
+                b.iter(|| {
                     let mut transcript = Transcript::new(label);
                     AMP::create(
                         &mut transcript,
                         &mut OsRng,
                         &a,
-                        &b,
-                        &c,
+                        &x,
+                        &z,
                         &c1,
                         &c2,
                         &c3,
@@ -329,13 +329,13 @@ macro_rules! bench_tcurve_add_mul_verifier_time {
 
             let label = b"PedersenMul";
             let a = SF::rand(&mut OsRng);
-            let b = SF::rand(&mut OsRng);
-            let c = SF::rand(&mut OsRng);
-            let w = a * b;
-            let t = w + c;
+            let x = SF::rand(&mut OsRng);
+            let z = SF::rand(&mut OsRng);
+            let w = a * x;
+            let t = w + z;
 
             let c1: PC = PC::new(a, &mut OsRng);
-            let c2: PC = PC::new(b, &mut OsRng);
+            let c2: PC = PC::new(x, &mut OsRng);
             let c3: PC = PC::new(z, &mut OsRng);
             let c4: PC = PC::new(w, &mut OsRng);
             let c5: PC = c4 + c3;
@@ -345,8 +345,8 @@ macro_rules! bench_tcurve_add_mul_verifier_time {
                 &mut transcript,
                 &mut OsRng,
                 &a,
-                &b,
-                &c,
+                &x,
+                &z,
                 &c1,
                 &c2,
                 &c3,
@@ -508,6 +508,18 @@ macro_rules! bench_tcurve_make_all {
             $curve_name,
             $OtherProjectiveType
         );
+        $crate::bench_tcurve_add_mul_prover_time!(
+            $config,
+            add_mul_proof_creation,
+            $curve_name,
+            $OtherProjectiveType
+        );
+        $crate::bench_tcurve_add_mul_verifier_time!(
+            $config,
+            add_mul_proof_verification,
+            $curve_name,
+            $OtherProjectiveType
+        );
         $crate::bench_tcurve_non_zero_prover_time!(
             $config,
             non_zero_proof_creation,
@@ -533,6 +545,8 @@ macro_rules! bench_tcurve_make_all {
             equality_proof_verification,
             mul_proof_creation,
             mul_proof_verification,
+            add_mul_proof_creation,
+            add_mul_proof_verification,
         );
         criterion_main!(benches);
     };
