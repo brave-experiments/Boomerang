@@ -248,7 +248,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
         proof: &SigProof<A>,
         tag_key: sw::Affine<A>,
         sig_m: &SigSign<A>,
-        gens: &Vec<sw::Affine<A>>,
+        gens: &[sw::Affine<A>],
     ) -> bool {
         // Equality proof of zeta = b_gamma
         let rhs1 = (tag_key.mul(proof.pi1.a1)).into_affine();
