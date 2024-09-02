@@ -278,7 +278,7 @@ impl<A: ACLConfig> SigVerifProof<A> {
             .pi3
             .iter()
             .zip(proof.h_vec.iter())
-            .zip(gens.iter().take(proof.pi3.len()))
+            .zip(gens.iter().take(proof.pi3.len()).skip(1))
         {
             let rhs4 = (tag_key.mul(pi.a1)).into_affine();
             let rhs5 = (gen.mul(pi.a1)).into_affine();

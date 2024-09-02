@@ -467,7 +467,7 @@ impl<A: ACLConfig> SigProof<A> {
             .map(|&item| {
                 let r = <A as CurveConfig>::ScalarField::rand(rng);
                 let t1 = (tag_key.mul(r)).into_affine();
-                let t2 = (item.mul(sig_m.opening.gamma)).into_affine();
+                let t2 = (item.mul(r)).into_affine();
 
                 let label3 = b"Chall ACLZK3";
                 let mut transcript_v = Transcript::new(label3);
