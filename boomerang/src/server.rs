@@ -499,7 +499,12 @@ impl<B: BoomerangConfig> SpendVerifyStateS<B> {
             panic!("Boomerang spend-verify: invalid signature");
         }
 
-        let check2 = SigVerifProof::verify(&c_m.s_proof, key_pair.s_key_pair.tag_key, &c_m.sig, &c_m.prev_gens.generators);
+        let check2 = SigVerifProof::verify(
+            &c_m.s_proof,
+            key_pair.s_key_pair.tag_key,
+            &c_m.sig,
+            &c_m.prev_gens.generators,
+        );
         if !check2 {
             panic!("Boomerang spend-verify: invalid proof sig");
         }
