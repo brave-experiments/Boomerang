@@ -396,6 +396,8 @@ pub struct SigProof<A: ACLConfig> {
     pub pi1: SigProofD<A>,
     /// p2: the second proof.
     pub pi2: SigProofO<A>,
+    /// p3: the third proof.
+    pub pi3: Vec<SigProofD<A>>,
     /// h_vec: the commitment to the sub values.
     pub h_vec: Vec<sw::Affine<A>>,
     /// val: the first message value.
@@ -457,7 +459,32 @@ impl<A: ACLConfig> SigProof<A> {
 
         let pi1 = SigProofD { t1, t2, a1 };
 
-        // Equality proofs of zeta = h_vec -> TODO
+        // Equality proofs of zeta = h_vec
+        let pi_hvec: Vec<SigProofD<A>> = gens
+            .iter()
+            .take(vals.len())
+            .skip(1)
+            .map(|&item| {
+                let r = <A as CurveConfig>::ScalarField::rand(rng);
+                let t1 = (tag_key.mul(r)).into_affine();
+                let t2 = (item.mul(r)).into_affine();
+
+                let label3 = b"Chall ACLZK3";
+                let mut transcript_v = Transcript::new(label3);
+                Self::make_transcript(&mut transcript_v, &t1, &t2);
+
+                let mut buf3 = [0u8; 64];
+                let _ = &transcript_v.challenge_bytes(b"challzk3", &mut buf3);
+
+                let ch: <A as CurveConfig>::ScalarField =
+                    <A as CurveConfig>::ScalarField::deserialize_compressed(&buf3[..]).unwrap();
+
+                let a1 = r + sig_m.opening.gamma * ch;
+
+                // Opening proof `pi`
+                SigProofD { t1, t2, a1 }
+            })
+            .collect();
 
         // Compute partial commitment
         //let mut total: sw::Affine<A> = sw::Affine::identity();
@@ -498,6 +525,7 @@ impl<A: ACLConfig> SigProof<A> {
             b_gamma,
             pi1,
             pi2,
+            pi3: pi_hvec,
             h_vec,
             val,
         }

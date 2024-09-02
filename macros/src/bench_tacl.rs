@@ -200,7 +200,7 @@ macro_rules! bench_tacl_sign_verify_time {
 
             // Now we can just benchmark how long it takes to create a new multi proof.
             c.bench_function(concat!($curve_name, " acl proof verify time"), |b| {
-                b.iter(|| ACLSPV::verify(&proof, kp.tag_key, &m4));
+                b.iter(|| ACLSPV::verify(&proof, kp.tag_key, &m4, &gens.generators));
             });
         }
     };

@@ -233,6 +233,13 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t1.is_on_curve());
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
+            for h in proof.h_vec.iter() {
+                assert!(h.is_on_curve());
+            }
+            for pi in proof.pi3.iter() {
+                assert!(pi.t1.is_on_curve());
+                assert!(pi.t2.is_on_curve());
+            }
         }
 
         #[test]
@@ -279,8 +286,15 @@ macro_rules! __test_acl {
             assert!(proof.pi1.t1.is_on_curve());
             assert!(proof.pi1.t2.is_on_curve());
             assert!(proof.pi2.t3.is_on_curve());
+            for h in proof.h_vec.iter() {
+                assert!(h.is_on_curve());
+            }
+            for pi in proof.pi3.iter() {
+                assert!(pi.t1.is_on_curve());
+                assert!(pi.t2.is_on_curve());
+            }
 
-            let check = ACLSPV::verify(&proof, kp.tag_key, &m4);
+            let check = ACLSPV::verify(&proof, kp.tag_key, &m4, &gens.generators);
             assert!(check == true);
         }
     };
