@@ -5,6 +5,7 @@ use rand::rngs::OsRng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use std::time::Instant;
 
 use ark_ec::CurveConfig;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -50,6 +51,8 @@ struct Message {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let start_time = Instant::now();
+
     // Create a Reqwest client
     let client = Client::builder()
         .danger_accept_invalid_certs(true) // Accept self-signed certificates
@@ -355,5 +358,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         println!("HTTPS Error: {}", https_response.status());
     }
 
+    let elapsed_time = start_time.elapsed(); // Calculate elapsed time
+    println!("Total execution time: {:?}", elapsed_time); // Print elapsed time
     Ok(())
 }
