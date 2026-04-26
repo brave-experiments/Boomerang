@@ -18,7 +18,7 @@ rand = { version = "0.8.5" }
 rand_core = { version = "0.6.4" }
 merlin = { version = "3.0.0" }
 ark-secp384r1 = {default-features = false, git = "https://github.com/arkworks-rs/curves" }
-ark-ff-macros =  { version = "0.4.2", default-features = false }
+ark-ff-macros =  { version = "0.6.0", default-features = false }
 criterion = "0.5.1"
 sha2 = "0.10.8"
 
