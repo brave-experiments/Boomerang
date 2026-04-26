@@ -18,7 +18,7 @@ ark-ec = { version = "0.4.0", default-features = false }
 ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
 ark-std = { version = "0.4.0", default-features = false }
 ark-secq256k1 = {default-features = false, git = "https://github.com/arkworks-rs/curves", tag = "v0.4.0-alpha.2"}
-ark-ff-macros =  { version = "0.4.2", default-features = false }
+ark-ff-macros =  { version = "0.6.0", default-features = false }
 rand_core = { version = "0.6.4" }
 merlin = { version = "3.0.0" }
 sha2 = "0.10.8"

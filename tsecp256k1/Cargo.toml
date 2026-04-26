@@ -19,7 +19,7 @@ ark-ec = { version = "0.4.0", default-features = false }
 ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
 ark-std = { version = "0.4.0", default-features = false }
 ark-secp256k1 = {version ="0.4.0", default-features = false}
-ark-ff-macros =  { version = "0.4.2", default-features = false }
+ark-ff-macros =  { version = "0.6.0", default-features = false }
 rand_core = { version = "0.6.4" }
 merlin = { version = "3.0.0" }
 sha2 = "0.10.8"
