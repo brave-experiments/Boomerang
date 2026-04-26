@@ -24,7 +24,7 @@ clear_on_drop = { version = "0.2", features = ["no_cc"] }
 rand_chacha = "0.3"
 
 [dependencies.ark-ec]
-version = '0.4.0'
+version = '0.6.0'
 default-features = false
 
 [dependencies.ark-ff]
