@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ec = { version = "0.4.2", default-features = false }
+ark-ec = { version = "0.6.0", default-features = false }
 ark-std = { version = "0.4.0", default-features = false }
 ark-bulletproofs = { path="../bulletproofs" }
 ark-serialize = { version = "0.4.2"}
